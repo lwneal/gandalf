@@ -187,6 +187,10 @@ input = torch.FloatTensor(opt.batchSize, 3, opt.imageSize, opt.imageSize)
 noise = torch.FloatTensor(opt.batchSize, nz, 1, 1)
 fixed_noise = torch.FloatTensor(opt.batchSize, nz, 1, 1).normal_(0, 1)
 label = torch.FloatTensor(opt.batchSize)
+
+plus_one = torch.FloatTensor([1])
+minus_one = torch.FloatTensor([-1])
+
 real_label = 1
 fake_label = 0
 
@@ -196,6 +200,8 @@ if opt.cuda:
     criterion.cuda()
     input, label = input.cuda(), label.cuda()
     noise, fixed_noise = noise.cuda(), fixed_noise.cuda()
+    plus_one = plus_one.cuda()
+    minus_one = minus_one.cuda()
 
 fixed_noise = Variable(fixed_noise)
 
@@ -205,13 +211,13 @@ optimizerG = optim.Adam(netG.parameters(), lr=opt.lr, betas=(opt.beta1, 0.999))
 
 for epoch in range(opt.niter):
     for i, data in enumerate(dataloader, 0):
-        real, _ = data
+        real_images, labels = data
         if opt.cuda:
-            real = real.cuda()
+            real_images = real_images.cuda()
         # Every batch can be a different size!
-        batch_size = real.size(0)
+        batch_size = real_images.size(0)
 
-        real_input.resize_as_(real).copy_(real)
+        real_input.resize_as_(real_images).copy_(real_images)
         label.resize_(batch_size)
         noise.resize_(batch_size, nz, 1, 1).normal_(0, 1)
 
@@ -257,7 +263,6 @@ for epoch in range(opt.niter):
     # Apply learning rate decay
     optimizerD.param_groups[0]['lr'] *= .99
     optimizerG.param_groups[0]['lr'] *= .99
-
 
     # do checkpointing
     torch.save(netG.state_dict(), '%s/netG_epoch_%d.pth' % (opt.outf, epoch))
