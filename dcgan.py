@@ -188,9 +188,7 @@ noise = torch.FloatTensor(opt.batchSize, nz, 1, 1)
 fixed_noise = torch.FloatTensor(opt.batchSize, nz, 1, 1).normal_(0, 1)
 label_one = torch.FloatTensor(opt.batchSize)
 label_zero = torch.FloatTensor(opt.batchSize)
-
-plus_one = torch.FloatTensor([1])
-minus_one = torch.FloatTensor([-1])
+label_minus_one = torch.FloatTensor(opt.batchSize)
 
 if opt.cuda:
     # TODO: This is silly
@@ -200,10 +198,9 @@ if opt.cuda:
     real_input = real_input.cuda()
     label_one = label_one.cuda()
     label_zero = label_zero.cuda()
+    label_minus_one = label_minus_one.cuda()
     noise = noise.cuda()
     fixed_noise = fixed_noise.cuda()
-    plus_one = plus_one.cuda()
-    minus_one = minus_one.cuda()
 
 fixed_noise = Variable(fixed_noise)
 
@@ -228,38 +225,62 @@ for epoch in range(opt.niter):
         label_one.fill_(1)
         label_zero.resize_(batch_size)
         label_zero.fill_(0)
+        label_minus_one.resize_(batch_size)
+        label_minus_one.fill_(-1)
+
+        if opt.ganType == 'wgan':
+            for p in netD.parameters():
+                p.data.clamp_(-.01, .01)
 
         ############################
-        # (1) Update D network: maximize log(D(x)) + log(1 - D(G(z)))
+        # (1) Update D network
+        # DCGAN: maximize log(D(x)) + log(1 - D(G(z)))
+        # WGAN: maximize D(G(z)) - D(x)
         ###########################
-        netD.zero_grad()
+        critic_updates = 3 if opt.ganType == 'wgan' else 1
+        for _ in range(critic_updates):
+            netD.zero_grad()
 
-        D_real_output = netD(Variable(real_input))
-        errD_real = criterion(D_real_output, Variable(label_one))
-        errD_real.backward()
+            D_real_output = netD(Variable(real_input))
+            if opt.ganType == 'dcgan':
+                errD_real = criterion(D_real_output, Variable(label_one))
+                errD_real.backward()
+            elif opt.ganType == 'wgan':
+                errD_real = D_real_output
+                errD_real.backward(label_one)
 
-        fake = netG(Variable(noise))
-        D_fake_output = netD(fake.detach())
-        errD_fake = criterion(D_fake_output, Variable(label_zero))
-        errD_fake.backward()
+            fake = netG(Variable(noise))
+            D_fake_output = netD(fake.detach())
+            if opt.ganType == 'dcgan':
+                errD_fake = criterion(D_fake_output, Variable(label_zero))
+                errD_fake.backward()
+            elif opt.ganType == 'wgan':
+                errD_fake = D_fake_output
+                errD_fake.backward(label_minus_one)
 
-        errD = errD_real + errD_fake
-        optimizerD.step()
+            optimizerD.step()
         ###########################
 
         ############################
-        # (2) Update G network: maximize log(D(G(z)))
+        # (2) Update G network:
+        # DCGAN: maximize log(D(G(z)))
+        # WGAN: minimize D(G(z))
         ############################
         netG.zero_grad()
         DG_fake_output = netD(fake)
-        errG = criterion(DG_fake_output, Variable(label_one))
-        errG.backward()
+        if opt.ganType == 'dcgan':
+            errG = criterion(DG_fake_output, Variable(label_one))
+            errG.backward()
+        elif opt.ganType == 'wgan':
+            errG = DG_fake_output
+            errG.backward(label_one)
         optimizerG.step()
         ###########################
 
         D_x = D_real_output.data.mean()
         D_G_z1 = D_fake_output.data.mean()
         D_G_z2 = DG_fake_output.data.mean()
+        errD = errD_real + errD_fake
         if i % 25 == 0:
             print('[%d/%d][%d/%d] Loss_D: %.4f Loss_G: %.4f D(x): %.4f D(G(z)): %.4f / %.4f'
                   % (epoch, opt.niter, i, len(dataloader),
