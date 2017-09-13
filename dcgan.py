@@ -94,6 +94,32 @@ ndf = int(opt.ndf)
 nc = 3
 
 
+def calc_gradient_penalty(netD, real_data, fake_data):
+    alpha = torch.rand(opt.batchSize, 1)
+    alpha = alpha.expand(real_data.size())
+    alpha = alpha.cuda()
+
+    interpolates = alpha * real_data + (1 - alpha) * fake_data
+    interpolates = interpolates.cuda()
+    interpolates = Variable(interpolates, requires_grad=True)
+
+    disc_interpolates = netD(interpolates)
+
+    ones = torch.ones(disc_interpolates.size()).cuda()
+    from torch.autograd import grad
+    gradients = grad(
+            outputs=disc_interpolates, 
+            inputs=interpolates, 
+            grad_outputs=ones, 
+            create_graph=True, 
+            retain_graph=True, 
+            only_inputs=True)[0]
+
+    LAMBDA = 10.
+    return ((gradients.norm(2, dim=1) - 1) ** 2).mean() * LAMBDA
+
+
+
 # custom weights initialization called on netG and netD
 def weights_init(m):
     classname = m.__class__.__name__
@@ -204,7 +230,7 @@ if opt.cuda:
 
 fixed_noise = Variable(fixed_noise)
 
-if opt.ganType == 'dcgan':
+if opt.ganType in ('dcgan', 'wgan-gp'):
     optimizerD = optim.Adam(netD.parameters(), lr=opt.lr, betas=(opt.beta1, 0.999))
     optimizerG = optim.Adam(netG.parameters(), lr=opt.lr, betas=(opt.beta1, 0.999))
 elif opt.ganType == 'wgan':
@@ -228,10 +254,6 @@ for epoch in range(opt.niter):
         label_minus_one.resize_(batch_size)
         label_minus_one.fill_(-1)
 
-        if opt.ganType == 'wgan':
-            for p in netD.parameters():
-                p.data.clamp_(-.01, .01)
-
         ############################
         # (1) Update D network
         # DCGAN: maximize log(D(x)) + log(1 - D(G(z)))
@@ -245,7 +267,7 @@ for epoch in range(opt.niter):
             if opt.ganType == 'dcgan':
                 errD_real = criterion(D_real_output, Variable(label_one))
                 errD_real.backward()
-            elif opt.ganType == 'wgan':
+            elif opt.ganType in ('wgan', 'wgan-gp'):
                 errD_real = D_real_output
                 errD_real.backward(label_one)
 
@@ -254,11 +276,22 @@ for epoch in range(opt.niter):
             if opt.ganType == 'dcgan':
                 errD_fake = criterion(D_fake_output, Variable(label_zero))
                 errD_fake.backward()
-            elif opt.ganType == 'wgan':
+            elif opt.ganType in ('wgan', 'wgan-gp'):
                 errD_fake = D_fake_output
                 errD_fake.backward(label_minus_one)
 
             optimizerD.step()
+
+            if opt.ganType == 'wgan':
+                for p in netD.parameters():
+                    p.data.clamp_(-.01, .01)
+            elif opt.ganType == 'wgan-gp':
+                gradient_penalty = calc_gradient_penalty(netD,
+                        real_input, fake.data)
+
+                gradient_penalty.backward()
+
+
         ###########################
 
         ############################
@@ -271,7 +304,7 @@ for epoch in range(opt.niter):
         if opt.ganType == 'dcgan':
             errG = criterion(DG_fake_output, Variable(label_one))
             errG.backward()
-        elif opt.ganType == 'wgan':
+        elif opt.ganType in ('wgan', 'wgan-gp'):
             errG = DG_fake_output
             errG.backward(label_one)
         optimizerG.step()
@@ -287,7 +320,8 @@ for epoch in range(opt.niter):
                      errD.data[0], errG.data[0], D_x, D_G_z1, D_G_z2))
             demo_img = netG(fixed_noise)
             video_filename = "{}/generated.mjpeg".format(opt.outf)
-            show(demo_img, video_filename=video_filename, display=False)
+            show(demo_img, video_filename=video_filename, display=False,
+                    caption="Epoch {}".format(epoch))
         if i % 250 == 0:
             show(demo_img, display=True, save=False)
 
