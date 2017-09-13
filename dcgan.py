@@ -286,7 +286,8 @@ for epoch in range(opt.niter):
                   % (epoch, opt.niter, i, len(dataloader),
                      errD.data[0], errG.data[0], D_x, D_G_z1, D_G_z2))
             demo_img = netG(fixed_noise)
-            show(demo_img, video_filename="generated.mjpeg", display=False)
+            video_filename = "{}/generated.mjpeg".format(opt.outf)
+            show(demo_img, video_filename=video_filename, display=False)
         if i % 250 == 0:
             show(demo_img, display=True, save=False)
 
