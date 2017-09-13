@@ -95,7 +95,7 @@ nc = 3
 
 
 def calc_gradient_penalty(netD, real_data, fake_data):
-    alpha = torch.rand(opt.batchSize, 1)
+    alpha = torch.rand(opt.batchSize, 1, 1, 1)
     alpha = alpha.expand(real_data.size())
     alpha = alpha.cuda()
 
@@ -195,8 +195,6 @@ class _netD(nn.Module):
 
         if opt.ganType == 'dcgan':
             x = nn.Sigmoid()(x)
-        elif opt.ganType == 'wgan':
-            pass
 
         return x.view(-1, 1).squeeze(1)
 
@@ -259,7 +257,7 @@ for epoch in range(opt.niter):
         # DCGAN: maximize log(D(x)) + log(1 - D(G(z)))
         # WGAN: maximize D(G(z)) - D(x)
         ###########################
-        critic_updates = 3 if opt.ganType == 'wgan' else 1
+        critic_updates = 1 if opt.ganType == 'dcgan' else 5
         for _ in range(critic_updates):
             netD.zero_grad()
 
@@ -267,31 +265,34 @@ for epoch in range(opt.niter):
             if opt.ganType == 'dcgan':
                 errD_real = criterion(D_real_output, Variable(label_one))
                 errD_real.backward()
-            elif opt.ganType in ('wgan', 'wgan-gp'):
+            elif opt.ganType == 'wgan':
                 errD_real = D_real_output
                 errD_real.backward(label_one)
+            elif opt.ganType == 'wgan-gp':
+                errD_real = D_real_output.mean()
+                errD_real.backward(torch.FloatTensor([1]).cuda())
 
             fake = netG(Variable(noise))
             D_fake_output = netD(fake.detach())
             if opt.ganType == 'dcgan':
                 errD_fake = criterion(D_fake_output, Variable(label_zero))
                 errD_fake.backward()
-            elif opt.ganType in ('wgan', 'wgan-gp'):
+            elif opt.ganType == 'wgan':
                 errD_fake = D_fake_output
                 errD_fake.backward(label_minus_one)
+            elif opt.ganType == 'wgan-gp':
+                errD_fake = D_fake_output.mean()
+                errD_fake.backward(torch.FloatTensor([-1]).cuda())
 
-            optimizerD.step()
 
             if opt.ganType == 'wgan':
                 for p in netD.parameters():
                     p.data.clamp_(-.01, .01)
             elif opt.ganType == 'wgan-gp':
-                gradient_penalty = calc_gradient_penalty(netD,
-                        real_input, fake.data)
-
+                gradient_penalty = calc_gradient_penalty(netD, real_input, fake.data)
                 gradient_penalty.backward()
 
-
+            optimizerD.step()
         ###########################
 
         ############################
