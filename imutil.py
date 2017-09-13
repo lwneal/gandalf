@@ -76,8 +76,7 @@ def show(
         video_filename=None,
         resize_to=None,
         caption=None,
-        font_size=16,
-        ordering=None):
+        font_size=16):
     # Munge data to allow input filenames, pixels, PIL images, etc
     if type(data) == type(np.array([])):
         pixels = data
@@ -88,23 +87,23 @@ def show(
         pixels = data.cpu().numpy()
         if len(pixels.shape) == 4:
             pixels = pixels.transpose((0,2,3,1))
-        elif len(pixels.shape) == 3:
+        elif len(pixels.shape) == 3 and pixels.shape[0] in (1, 3):
             pixels = pixels.transpose((1,2,0))
     elif type(data).__name__ == 'Variable':
         # Pytorch tensor container
         pixels = data.data.cpu().numpy()
         if len(pixels.shape) == 4:
             pixels = pixels.transpose((0,2,3,1))
-        elif len(pixels.shape) == 3:
+        elif len(pixels.shape) == 3 and pixels.shape[0] in (1, 3):
             pixels = pixels.transpose((1,2,0))
     else:
         pixels = decode_jpg(data, resize_to=resize_to)
 
-    # Expand 2-dimensional images to 3 dimensions
-    if pixels.shape[-1] > 3:
+    # Split non-RGB images into sets of monochrome images
+    if pixels.shape[-1] not in (1, 3):
         pixels = np.expand_dims(pixels, axis=-1)
 
-    # Expand monochrome to RGB
+    # Expand matrices to monochrome images
     while len(pixels.shape) < 3:
         pixels = np.expand_dims(pixels, axis=-1)
 
@@ -165,6 +164,7 @@ def show(
     # Output JPG files can be collected into a video with ffmpeg -i *.jpg
     if video_filename:
         open(video_filename, 'a').write(encode_jpg(pixels))
+    return pixels
 
 
 def combine_images(generated_images):

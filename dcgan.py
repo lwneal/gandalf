@@ -32,7 +32,6 @@ parser.add_argument('--ngpu', type=int, default=1, help='number of GPUs to use')
 parser.add_argument('--netG', default='', help="path to netG (to continue training)")
 parser.add_argument('--netD', default='', help="path to netD (to continue training)")
 parser.add_argument('--outf', default='.', help='folder to output images and model checkpoints')
-parser.add_argument('--startEpoch', type=int, default=0, help='continue saved run from this epoch')
 parser.add_argument('--manualSeed', type=int, help='manual seed')
 parser.add_argument('--ganType', default='dcgan', help='dcgan, wgan, wgan-gp')
 
@@ -205,11 +204,7 @@ fixed_noise = Variable(fixed_noise)
 optimizerD = optim.Adam(netD.parameters(), lr=opt.lr, betas=(opt.beta1, 0.999))
 optimizerG = optim.Adam(netG.parameters(), lr=opt.lr, betas=(opt.beta1, 0.999))
 
-if opt.startEpoch > 0:
-    print("TODO: load model from previous epoch")
-    raise NotImplementedError
-
-for epoch in range(opt.startEpoch, opt.startEpoch + opt.niter):
+for epoch in range(opt.niter):
     for i, data in enumerate(dataloader, 0):
         ############################
         # (1) Update D network: maximize log(D(x)) + log(1 - D(G(z)))
@@ -224,7 +219,6 @@ for epoch in range(opt.startEpoch, opt.startEpoch + opt.niter):
         label.resize_(batch_size).fill_(real_label)
         inputv = Variable(input)
         labelv = Variable(label)
-
         output = netD(inputv)
         errD_real = criterion(output, labelv)
         errD_real.backward()
