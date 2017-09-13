@@ -211,7 +211,7 @@ for epoch in range(opt.niter):
         # Every batch can be a different size!
         batch_size = real.size(0)
 
-        input.resize_as_(real).copy_(real)
+        real_input.resize_as_(real).copy_(real)
         label.resize_(batch_size)
         noise.resize_(batch_size, nz, 1, 1).normal_(0, 1)
 
@@ -220,7 +220,7 @@ for epoch in range(opt.niter):
         ###########################
         # train with real
         netD.zero_grad()
-        D_real_output = netD(Variable(input))
+        D_real_output = netD(Variable(real_input))
         label.fill_(real_label)
         errD_real = criterion(D_real_output, Variable(label))
         errD_real.backward()
