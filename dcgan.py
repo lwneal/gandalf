@@ -183,31 +183,36 @@ print(netD)
 
 criterion = nn.BCELoss()
 
-input = torch.FloatTensor(opt.batchSize, 3, opt.imageSize, opt.imageSize)
+real_input = torch.FloatTensor(opt.batchSize, 3, opt.imageSize, opt.imageSize)
 noise = torch.FloatTensor(opt.batchSize, nz, 1, 1)
 fixed_noise = torch.FloatTensor(opt.batchSize, nz, 1, 1).normal_(0, 1)
-label = torch.FloatTensor(opt.batchSize)
+label_one = torch.FloatTensor(opt.batchSize)
+label_zero = torch.FloatTensor(opt.batchSize)
 
 plus_one = torch.FloatTensor([1])
 minus_one = torch.FloatTensor([-1])
 
-real_label = 1
-fake_label = 0
-
 if opt.cuda:
+    # TODO: This is silly
     netD.cuda()
     netG.cuda()
     criterion.cuda()
-    input, label = input.cuda(), label.cuda()
-    noise, fixed_noise = noise.cuda(), fixed_noise.cuda()
+    real_input = real_input.cuda()
+    label_one = label_one.cuda()
+    label_zero = label_zero.cuda()
+    noise = noise.cuda()
+    fixed_noise = fixed_noise.cuda()
     plus_one = plus_one.cuda()
     minus_one = minus_one.cuda()
 
 fixed_noise = Variable(fixed_noise)
 
-# setup optimizer
-optimizerD = optim.Adam(netD.parameters(), lr=opt.lr, betas=(opt.beta1, 0.999))
-optimizerG = optim.Adam(netG.parameters(), lr=opt.lr, betas=(opt.beta1, 0.999))
+if opt.ganType == 'dcgan':
+    optimizerD = optim.Adam(netD.parameters(), lr=opt.lr, betas=(opt.beta1, 0.999))
+    optimizerG = optim.Adam(netG.parameters(), lr=opt.lr, betas=(opt.beta1, 0.999))
+elif opt.ganType == 'wgan':
+    optimizerD = optim.RMSprop(netD.parameters(), lr=opt.lr)
+    optimizerG = optim.RMSprop(netG.parameters(), lr=opt.lr)
 
 for epoch in range(opt.niter):
     for i, data in enumerate(dataloader, 0):
@@ -218,37 +223,39 @@ for epoch in range(opt.niter):
         batch_size = real_images.size(0)
 
         real_input.resize_as_(real_images).copy_(real_images)
-        label.resize_(batch_size)
         noise.resize_(batch_size, nz, 1, 1).normal_(0, 1)
+        label_one.resize_(batch_size)
+        label_one.fill_(1)
+        label_zero.resize_(batch_size)
+        label_zero.fill_(0)
 
         ############################
         # (1) Update D network: maximize log(D(x)) + log(1 - D(G(z)))
         ###########################
-        # train with real
         netD.zero_grad()
+
         D_real_output = netD(Variable(real_input))
-        label.fill_(real_label)
-        errD_real = criterion(D_real_output, Variable(label))
+        errD_real = criterion(D_real_output, Variable(label_one))
         errD_real.backward()
 
-        # train with fake
         fake = netG(Variable(noise))
         D_fake_output = netD(fake.detach())
-        label.fill_(fake_label)
-        errD_fake = criterion(D_fake_output, Variable(label))
+        errD_fake = criterion(D_fake_output, Variable(label_zero))
         errD_fake.backward()
+
         errD = errD_real + errD_fake
         optimizerD.step()
+        ###########################
 
         ############################
         # (2) Update G network: maximize log(D(G(z)))
-        ###########################
+        ############################
         netG.zero_grad()
         DG_fake_output = netD(fake)
-        label.fill_(real_label)
-        errG = criterion(DG_fake_output, Variable(label))
+        errG = criterion(DG_fake_output, Variable(label_one))
         errG.backward()
         optimizerG.step()
+        ###########################
 
         D_x = D_real_output.data.mean()
         D_G_z1 = D_fake_output.data.mean()
@@ -258,7 +265,9 @@ for epoch in range(opt.niter):
                   % (epoch, opt.niter, i, len(dataloader),
                      errD.data[0], errG.data[0], D_x, D_G_z1, D_G_z2))
             demo_img = netG(fixed_noise)
-            show(demo_img, video_filename='generated.mjpg', display=False)
+            show(demo_img, video_filename="generated.mjpeg", display=False)
+        if i % 250 == 0:
+            show(demo_img, display=True, save=False)
 
     # Apply learning rate decay
     optimizerD.param_groups[0]['lr'] *= .99
