@@ -220,19 +220,17 @@ for epoch in range(opt.niter):
         ###########################
         # train with real
         netD.zero_grad()
-        output = netD(Variable(input))
+        D_real_output = netD(Variable(input))
         label.fill_(real_label)
-        errD_real = criterion(output, Variable(label))
+        errD_real = criterion(D_real_output, Variable(label))
         errD_real.backward()
-        D_x = output.data.mean()
 
         # train with fake
         fake = netG(Variable(noise))
-        output = netD(fake.detach())
+        D_fake_output = netD(fake.detach())
         label.fill_(fake_label)
-        errD_fake = criterion(output, Variable(label))
+        errD_fake = criterion(D_fake_output, Variable(label))
         errD_fake.backward()
-        D_G_z1 = output.data.mean()
         errD = errD_real + errD_fake
         optimizerD.step()
 
@@ -240,25 +238,26 @@ for epoch in range(opt.niter):
         # (2) Update G network: maximize log(D(G(z)))
         ###########################
         netG.zero_grad()
-        output = netD(fake)
+        DG_fake_output = netD(fake)
         label.fill_(real_label)
-        errG = criterion(output, Variable(label))
+        errG = criterion(DG_fake_output, Variable(label))
         errG.backward()
-        D_G_z2 = output.data.mean()
         optimizerG.step()
 
-        print('[%d/%d][%d/%d] Loss_D: %.4f Loss_G: %.4f D(x): %.4f D(G(z)): %.4f / %.4f'
-              % (epoch, opt.niter, i, len(dataloader),
-                 errD.data[0], errG.data[0], D_x, D_G_z1, D_G_z2))
-        if i % 100 == 0:
-            vutils.save_image(real,
-                    '%s/real_samples.png' % opt.outf,
-                    normalize=True)
-            fake = netG(fixed_noise)
-            vutils.save_image(fake.data,
-                    '%s/fake_samples_epoch_%03d.png' % (opt.outf, epoch),
-                    normalize=True)
-            show(fake)
+        D_x = D_real_output.data.mean()
+        D_G_z1 = D_fake_output.data.mean()
+        D_G_z2 = DG_fake_output.data.mean()
+        if i % 25 == 0:
+            print('[%d/%d][%d/%d] Loss_D: %.4f Loss_G: %.4f D(x): %.4f D(G(z)): %.4f / %.4f'
+                  % (epoch, opt.niter, i, len(dataloader),
+                     errD.data[0], errG.data[0], D_x, D_G_z1, D_G_z2))
+            demo_img = netG(fixed_noise)
+            show(demo_img, video_filename='generated.mjpg', display=False)
+
+    # Apply learning rate decay
+    optimizerD.param_groups[0]['lr'] *= .99
+    optimizerG.param_groups[0]['lr'] *= .99
+
 
     # do checkpointing
     torch.save(netG.state_dict(), '%s/netG_epoch_%d.pth' % (opt.outf, epoch))
