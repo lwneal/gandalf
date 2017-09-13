@@ -166,10 +166,9 @@ class _netD(nn.Module):
         x = self.bn3(x)
         x = nn.LeakyReLU(0.2, inplace=True)(x)
         x = self.conv5(x)
-        x = nn.Sigmoid()(x)
 
         if opt.ganType == 'dcgan':
-            pass
+            x = nn.Sigmoid()(x)
         elif opt.ganType == 'wgan':
             pass
 
@@ -206,31 +205,32 @@ optimizerG = optim.Adam(netG.parameters(), lr=opt.lr, betas=(opt.beta1, 0.999))
 
 for epoch in range(opt.niter):
     for i, data in enumerate(dataloader, 0):
+        real, _ = data
+        if opt.cuda:
+            real = real.cuda()
+        # Every batch can be a different size!
+        batch_size = real.size(0)
+
+        input.resize_as_(real).copy_(real)
+        label.resize_(batch_size)
+        noise.resize_(batch_size, nz, 1, 1).normal_(0, 1)
+
         ############################
         # (1) Update D network: maximize log(D(x)) + log(1 - D(G(z)))
         ###########################
         # train with real
         netD.zero_grad()
-        real_cpu, _ = data
-        batch_size = real_cpu.size(0)
-        if opt.cuda:
-            real_cpu = real_cpu.cuda()
-        input.resize_as_(real_cpu).copy_(real_cpu)
-        label.resize_(batch_size).fill_(real_label)
-        inputv = Variable(input)
-        labelv = Variable(label)
-        output = netD(inputv)
-        errD_real = criterion(output, labelv)
+        output = netD(Variable(input))
+        label.fill_(real_label)
+        errD_real = criterion(output, Variable(label))
         errD_real.backward()
         D_x = output.data.mean()
 
         # train with fake
-        noise.resize_(batch_size, nz, 1, 1).normal_(0, 1)
-        noisev = Variable(noise)
-        fake = netG(noisev)
-        labelv = Variable(label.fill_(fake_label))
+        fake = netG(Variable(noise))
         output = netD(fake.detach())
-        errD_fake = criterion(output, labelv)
+        label.fill_(fake_label)
+        errD_fake = criterion(output, Variable(label))
         errD_fake.backward()
         D_G_z1 = output.data.mean()
         errD = errD_real + errD_fake
@@ -240,9 +240,9 @@ for epoch in range(opt.niter):
         # (2) Update G network: maximize log(D(G(z)))
         ###########################
         netG.zero_grad()
-        labelv = Variable(label.fill_(real_label))  # fake labels are real for generator cost
         output = netD(fake)
-        errG = criterion(output, labelv)
+        label.fill_(real_label)
+        errG = criterion(output, Variable(label))
         errG.backward()
         D_G_z2 = output.data.mean()
         optimizerG.step()
@@ -251,13 +251,14 @@ for epoch in range(opt.niter):
               % (epoch, opt.niter, i, len(dataloader),
                  errD.data[0], errG.data[0], D_x, D_G_z1, D_G_z2))
         if i % 100 == 0:
-            vutils.save_image(real_cpu,
+            vutils.save_image(real,
                     '%s/real_samples.png' % opt.outf,
                     normalize=True)
             fake = netG(fixed_noise)
             vutils.save_image(fake.data,
                     '%s/fake_samples_epoch_%03d.png' % (opt.outf, epoch),
                     normalize=True)
+            show(fake)
 
     # do checkpointing
     torch.save(netG.state_dict(), '%s/netG_epoch_%d.pth' % (opt.outf, epoch))

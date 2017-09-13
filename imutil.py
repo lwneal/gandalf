@@ -164,7 +164,6 @@ def show(
     # Output JPG files can be collected into a video with ffmpeg -i *.jpg
     if video_filename:
         open(video_filename, 'a').write(encode_jpg(pixels))
-    return pixels
 
 
 def combine_images(generated_images):
