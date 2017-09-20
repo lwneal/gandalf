@@ -1,4 +1,5 @@
 import network_definitions
+from torch import optim
 
 
 def build_networks(latentSize):
