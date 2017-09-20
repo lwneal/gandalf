@@ -32,12 +32,14 @@ class ImageConverter(Converter):
             height=32,
             crop_to_bounding_box=False,
             random_horizontal_flip=False,
-            torch=False):
+            torch=False,
+            normalize=True):
         self.img_shape = (width, height)
         self.bounding_box = crop_to_bounding_box
         self.data_dir = dataset.data_dir
         self.random_horizontal_flip = random_horizontal_flip
         self.torch = torch
+        self.normalize = normalize
 
     def to_array(self, example):
         filename = os.path.join(self.data_dir, str(example['filename']))
@@ -49,6 +51,9 @@ class ImageConverter(Converter):
             img = np.flip(img, axis=1)
         if self.torch:
             img = img.transpose((2,0,1))
+        if self.normalize:
+            img *= 1.0 / 255
+            img -= 0.5
         return img
 
     def from_array(self, array):
