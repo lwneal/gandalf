@@ -86,7 +86,7 @@ class encoderLReLU64(nn.Module):
         self.conv4 = nn.Conv2d(64 * 4, 64 * 8, 4, 2, 1, bias=False)
         self.bn3 = nn.BatchNorm2d(64 * 8)
         self.conv5 = nn.Conv2d(64 * 8, 64 * 16, 4, 1, 0, bias=False)
-        self.fc1 = nn.Linear(64 * 16, self.latent_size)
+        self.fc1 = nn.Linear(64 * 16, self.latent_size, bias=False)
         self.apply(weights_init)
         self.cuda()
 

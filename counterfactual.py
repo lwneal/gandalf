@@ -63,7 +63,7 @@ print(netD)
 
 optimizerD = optim.Adam(netD.parameters(), lr=opt.lr, betas=(opt.beta1, 0.999))
 optimizerG = optim.Adam(netG.parameters(), lr=opt.lr, betas=(opt.beta1, 0.999))
-optimizerE = optim.Adam(netE.parameters(), lr=opt.lr, betas=(opt.beta1, 0.999))
+optimizerE = optim.Adam(netE.parameters(), lr=opt.lr / 10, betas=(opt.beta1, 0.999))
 
 
 dataloader = CustomDataloader(
