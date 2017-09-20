@@ -16,7 +16,7 @@ from torch.autograd import Variable
 
 from imutil import show
 from dataloader import CustomDataloader
-from gradient_penalty import calc_gradient_penalty
+from training import train_adversarial_autoencoder
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--dataset', required=True, help='Path to a .dataset file')
@@ -27,6 +27,7 @@ parser.add_argument('--latentSize', type=int, default=100, help='size of the lat
 parser.add_argument('--epochs', type=int, default=25, help='number of epochs to train for')
 parser.add_argument('--lr', type=float, default=0.0001, help='learning rate, default=0.0001')
 parser.add_argument('--beta1', type=float, default=0.5, help='beta1 for adam. default=0.5')
+parser.add_argument('--decay', type=float, default=0.9, help='Learning rate decay per epoch. default=0.9')
 parser.add_argument('--netE', default='', help="path to netE (to continue training)")
 parser.add_argument('--netG', default='', help="path to netG (to continue training)")
 parser.add_argument('--netD', default='', help="path to netD (to continue training)")
@@ -42,34 +43,8 @@ except OSError:
 
 cudnn.benchmark = True
 
-
-netE = network_definitions.encoderLReLU64(opt.latentSize)
-if opt.netE:
-    netE.load_state_dict(torch.load(opt.netE))
-
-netG = network_definitions.generatorReLU64(opt.latentSize)
-if opt.netG:
-    netG.load_state_dict(torch.load(opt.netG))
-
-netD = network_definitions.discriminatorLReLU64()
-if opt.netD:
-    netD.load_state_dict(torch.load(opt.netD))
-
-networks = {
-    'encoder': netE,
-    'generator': netG,
-    'discriminator': netD,
-}
-
-def get_optimizers(networks, lr, beta1):
-    optimizers = {}
-    for name in networks:
-        net = networks[name]
-        optimizers[name] = optim.Adam(net.parameters(), lr=lr, betas=(beta1, .999))
-    return optimizers
-
+networks = build_networks(opt.latentSize)
 optimizers = get_optimizers(networks, opt.lr, opt.beta1)
-
 
 dataloader = CustomDataloader(
         opt.dataset,
@@ -87,8 +62,7 @@ for epoch in range(opt.epochs):
         'epochs': opt.epochs,
         'imageSize': opt.imageSize,
     }
-    from training import train_adversarial_autoencoder
-    train_adversarial_autoencoder(networks, optimizers, dataloader, **params)
+    train_adversarial_autoencoder(networks, optimizers, dataloader, epoch=epoch, **params)
 
     # Apply learning rate decay
     for opt in optimizers:
