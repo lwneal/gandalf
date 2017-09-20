@@ -13,22 +13,24 @@ import torchvision.datasets as dset
 import torchvision.transforms as transforms
 from torch.autograd import grad
 from torch.autograd import Variable
-from imutil import show
 
+from imutil import show
+from dataloader import CustomDataloader
+from gradient_penalty import calc_gradient_penalty
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--dataset', required=True, help='Path to a .dataset file')
 parser.add_argument('--workers', type=int, help='number of data loading workers', default=2)
-parser.add_argument('--batchSize', type=int, default=64, help='input batch size')
+parser.add_argument('--batchSize', type=int, default=16, help='input batch size')
 parser.add_argument('--imageSize', type=int, default=64, help='the height / width of the input image to network')
 parser.add_argument('--latentSize', type=int, default=100, help='size of the latent z vector')
 parser.add_argument('--epochs', type=int, default=25, help='number of epochs to train for')
 parser.add_argument('--lr', type=float, default=0.0001, help='learning rate, default=0.0001')
 parser.add_argument('--beta1', type=float, default=0.5, help='beta1 for adam. default=0.5')
+parser.add_argument('--netE', default='', help="path to netE (to continue training)")
 parser.add_argument('--netG', default='', help="path to netG (to continue training)")
 parser.add_argument('--netD', default='', help="path to netD (to continue training)")
 parser.add_argument('--outf', default='.', help='folder to output images and model checkpoints')
-parser.add_argument('--manualSeed', type=int, help='manual seed')
 
 opt = parser.parse_args()
 print(opt)
@@ -38,78 +40,52 @@ try:
 except OSError:
     pass
 
-if opt.manualSeed is None:
-    opt.manualSeed = random.randint(1, 10000)
-print("Random Seed: ", opt.manualSeed)
-random.seed(opt.manualSeed)
-torch.manual_seed(opt.manualSeed)
-torch.cuda.manual_seed_all(opt.manualSeed)
-
 cudnn.benchmark = True
 
-def calc_gradient_penalty(netD, real_data, fake_data):
-    alpha = torch.rand(real_data.size()[0], 1, 1, 1)
-    alpha = alpha.expand(real_data.size())
-    alpha = alpha.cuda()
 
-    interpolates = alpha * real_data + (1 - alpha) * fake_data
-    interpolates = interpolates.cuda()
-    interpolates = Variable(interpolates, requires_grad=True)
+netE = network_definitions.encoderLReLU64(opt.latentSize)
+if opt.netE:
+    netE.load_state_dict(torch.load(opt.netE))
 
-    disc_interpolates = netD(interpolates)
-
-    ones = torch.ones(disc_interpolates.size()).cuda()
-    gradients = grad(
-            outputs=disc_interpolates, 
-            inputs=interpolates, 
-            grad_outputs=ones, 
-            create_graph=True, 
-            retain_graph=True, 
-            only_inputs=True)[0]
-
-    LAMBDA = 20.
-    penalty = ((gradients.norm(2, dim=1) - 1) ** 2).mean() * LAMBDA
-    return penalty
-
-
-
-netG = network_definitions.deconvReLU64(opt.latentSize)
-if opt.netG != '':
+netG = network_definitions.generatorReLU64(opt.latentSize)
+if opt.netG:
     netG.load_state_dict(torch.load(opt.netG))
-print(netG)
 
-netD = network_definitions.convLReLU64()
-if opt.netD != '':
+netD = network_definitions.discriminatorLReLU64()
+if opt.netD:
     netD.load_state_dict(torch.load(opt.netD))
+
+print("Loaded Models:")
+print(netE)
+print(netG)
 print(netD)
 
-real_input = torch.FloatTensor(opt.batchSize, 3, opt.imageSize, opt.imageSize).cuda()
-noise = torch.FloatTensor(opt.batchSize, opt.latentSize, 1, 1).cuda()
-fixed_noise = Variable(torch.FloatTensor(opt.batchSize, opt.latentSize, 1, 1).normal_(0, 1)).cuda()
-label_one = torch.FloatTensor(opt.batchSize).cuda().fill_(1)
-label_zero = torch.FloatTensor(opt.batchSize).cuda().fill_(0)
-label_minus_one = torch.FloatTensor(opt.batchSize).cuda().fill_(-1)
-
-netD.cuda()
-netG.cuda()
 
 optimizerD = optim.Adam(netD.parameters(), lr=opt.lr, betas=(opt.beta1, 0.999))
 optimizerG = optim.Adam(netG.parameters(), lr=opt.lr, betas=(opt.beta1, 0.999))
+optimizerE = optim.Adam(netE.parameters(), lr=opt.lr, betas=(opt.beta1, 0.999))
 
-from dataloader import CustomDataloader
+
 dataloader = CustomDataloader(
         opt.dataset,
         batch_size=opt.batchSize,
         height=opt.imageSize,
         width=opt.imageSize,
-        random_horizontal_flip=True,
+        random_horizontal_flip=False,
         torch=True)
+
+
+real_input = torch.FloatTensor(opt.batchSize, 3, opt.imageSize, opt.imageSize).cuda()
+noise = torch.FloatTensor(opt.batchSize, opt.latentSize).cuda()
+fixed_noise = Variable(torch.FloatTensor(opt.batchSize, opt.latentSize).normal_(0, 1)).cuda()
+label_one = torch.FloatTensor(opt.batchSize).cuda().fill_(1)
+label_zero = torch.FloatTensor(opt.batchSize).cuda().fill_(0)
+label_minus_one = torch.FloatTensor(opt.batchSize).cuda().fill_(-1)
 
 for epoch in range(opt.epochs):
     for i, img_batch in enumerate(dataloader):
         ############################
         # (1) Update D network
-        # DCGAN: maximize log(D(x)) + log(1 - D(G(z)))
         # WGAN: maximize D(G(z)) - D(x)
         ###########################
         for _ in range(5):
@@ -132,7 +108,6 @@ for epoch in range(opt.epochs):
 
         ############################
         # (2) Update G network:
-        # DCGAN: maximize log(D(G(z)))
         # WGAN: minimize D(G(z))
         ############################
         netG.zero_grad()
@@ -142,24 +117,41 @@ for epoch in range(opt.epochs):
         optimizerG.step()
         ###########################
 
+        ############################
+        # (3) Update G(E()) network:
+        # Autoencoder: Minimize X - G(E(X))
+        ############################
+        netE.zero_grad()
+        netG.zero_grad()
+        encoded = netE(Variable(img_batch))
+        reconstructed = netG(encoded)
+        errE = torch.sum(torch.abs(reconstructed - Variable(img_batch)))
+        errE.backward()
+        optimizerE.step()
+        optimizerG.step()
+        ############################
+
         D_x = D_real_output.data.mean()
-        D_G_z1 = D_fake_output.data.mean()
-        D_G_z2 = DG_fake_output.data.mean()
         errD = errD_real + errD_fake
-        if i % 5 == 0:
-            print('[{}/{}][{}/{}] Loss_D: {:.4f} Loss_G: {:.4f} D(x): {:.4f} D(G(z)): {:.4f} / {:.4f}'.format(
-                  epoch, opt.epochs, i, len(dataloader), errD.data[0], errG.data[0], D_x, D_G_z1, D_G_z2))
+        if i % 25 == 0:
+            print('[{}/{}][{}/{}] Loss_D: {:.4f} Loss_G: {:.4f}  Loss_E: {:.4f}'.format(
+                  epoch, opt.epochs, i, len(dataloader),
+                  errD.data[0], errG.data[0], errE.data[0]))
             video_filename = "{}/generated.mjpeg".format(opt.outf)
             caption = "Epoch {}".format(epoch)
             demo_img = netG(fixed_noise)
             show(demo_img, video_filename=video_filename, caption=caption, display=False)
-        if i % 25 == 0:
+        if i % 100 == 0:
+            show(img_batch, display=True, save=False)
+            show(reconstructed, display=True, save=False)
             show(demo_img, display=True, save=False)
 
     # Apply learning rate decay
+    optimizerE.param_groups[0]['lr'] *= .5
     optimizerD.param_groups[0]['lr'] *= .5
     optimizerG.param_groups[0]['lr'] *= .5
 
     # do checkpointing
+    torch.save(netE.state_dict(), '%s/netE_epoch_%d.pth' % (opt.outf, epoch))
     torch.save(netG.state_dict(), '%s/netG_epoch_%d.pth' % (opt.outf, epoch))
     torch.save(netD.state_dict(), '%s/netD_epoch_%d.pth' % (opt.outf, epoch))

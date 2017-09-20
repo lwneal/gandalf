@@ -98,8 +98,10 @@ def show(
             pixels = pixels.transpose((0,2,3,1))
         elif len(pixels.shape) == 3 and pixels.shape[0] in (1, 3):
             pixels = pixels.transpose((1,2,0))
-    else:
+    elif hasattr(data, 'startswith'):
         pixels = decode_jpg(data, resize_to=resize_to)
+    else:
+        pixels = np.array(data)
 
     # Split non-RGB images into sets of monochrome images
     if pixels.shape[-1] not in (1, 3):

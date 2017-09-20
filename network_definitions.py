@@ -11,9 +11,9 @@ def weights_init(m):
         m.bias.data.fill_(0)
 
 
-class deconvReLU64(nn.Module):
+class generatorReLU64(nn.Module):
     def __init__(self, latent_size=100):
-        super(deconvReLU64, self).__init__()
+        super(self.__class__, self).__init__()
         self.conv1 = nn.ConvTranspose2d(latent_size, 64 * 8, 4, 1, 0, bias=False)
         self.bn1 = nn.BatchNorm2d(64 * 8)
         self.conv2 = nn.ConvTranspose2d(64 * 8, 64 * 4, 4, 2, 1, bias=False)
@@ -24,8 +24,10 @@ class deconvReLU64(nn.Module):
         self.bn4 = nn.BatchNorm2d(64)
         self.conv5 = nn.ConvTranspose2d(    64,      3, 4, 2, 1, bias=False)
         self.apply(weights_init)
+        self.cuda()
 
     def forward(self, x):
+        x = x.unsqueeze(-1).unsqueeze(-1)
         x = self.conv1(x)
         x = self.bn1(x)
         x = nn.ReLU(True)(x)
@@ -42,9 +44,9 @@ class deconvReLU64(nn.Module):
         return x
 
 
-class convLReLU64(nn.Module):
+class discriminatorLReLU64(nn.Module):
     def __init__(self, latent_size=100):
-        super(convLReLU64, self).__init__()
+        super(self.__class__, self).__init__()
         self.conv1 = nn.Conv2d(3, 64, 4, 2, 1, bias=False)
         self.conv2 = nn.Conv2d(64, 64 * 2, 4, 2, 1, bias=False)
         self.bn1 = nn.BatchNorm2d(64 * 2)
@@ -54,6 +56,7 @@ class convLReLU64(nn.Module):
         self.bn3 = nn.BatchNorm2d(64 * 8)
         self.conv5 = nn.Conv2d(64 * 8, 1, 4, 1, 0, bias=False)
         self.apply(weights_init)
+        self.cuda()
 
     def forward(self, x):
         x = self.conv1(x)
@@ -71,9 +74,9 @@ class convLReLU64(nn.Module):
         return x.view(-1, 1).squeeze(1)
 
 
-class convEncoderLReLU64(nn.Module):
+class encoderLReLU64(nn.Module):
     def __init__(self, latent_size=100):
-        super(convLReLU64, self).__init__()
+        super(self.__class__, self).__init__()
         self.latent_size = latent_size
         self.conv1 = nn.Conv2d(3, 64, 4, 2, 1, bias=False)
         self.conv2 = nn.Conv2d(64, 64 * 2, 4, 2, 1, bias=False)
@@ -82,8 +85,10 @@ class convEncoderLReLU64(nn.Module):
         self.bn2 = nn.BatchNorm2d(64 * 4)
         self.conv4 = nn.Conv2d(64 * 4, 64 * 8, 4, 2, 1, bias=False)
         self.bn3 = nn.BatchNorm2d(64 * 8)
-        self.conv5 = nn.Conv2d(64 * 8, 1, 4, 1, 0, bias=False)
+        self.conv5 = nn.Conv2d(64 * 8, 64 * 16, 4, 1, 0, bias=False)
+        self.fc1 = nn.Linear(64 * 16, self.latent_size)
         self.apply(weights_init)
+        self.cuda()
 
     def forward(self, x):
         x = self.conv1(x)
@@ -98,4 +103,5 @@ class convEncoderLReLU64(nn.Module):
         x = self.bn3(x)
         x = nn.LeakyReLU(0.2, inplace=True)(x)
         x = self.conv5(x)
-        return x.view(-1, 1).squeeze(self.latent_size)
+        x = self.fc1(x.squeeze())
+        return x
