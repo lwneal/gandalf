@@ -63,13 +63,13 @@ def train_adversarial_autoencoder(models, optimizers, dataloader, epoch=None, **
         # Autoencoder: Minimize X - G(E(X))
         ############################
         netE.zero_grad()
-        #netG.zero_grad()
+        netG.zero_grad()
         encoded = netE(Variable(img_batch))
         reconstructed = netG(encoded)
         errE = torch.mean(torch.abs(reconstructed - Variable(img_batch)))
         errE.backward()
         optimizerE.step()
-        #optimizerG.step()
+        optimizerG.step()
         ############################
 
         D_x = D_real_output.data.mean()
