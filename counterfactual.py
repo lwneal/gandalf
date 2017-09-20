@@ -17,16 +17,14 @@ from imutil import show
 
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--dataset', required=True, help='cifar10 | lsun | imagenet | folder | lfw | fake')
-parser.add_argument('--dataroot', required=True, help='path to dataset')
+parser.add_argument('--dataset', required=True, help='Path to a .dataset file')
 parser.add_argument('--workers', type=int, help='number of data loading workers', default=2)
 parser.add_argument('--batchSize', type=int, default=64, help='input batch size')
 parser.add_argument('--imageSize', type=int, default=64, help='the height / width of the input image to network')
 parser.add_argument('--latentSize', type=int, default=100, help='size of the latent z vector')
-parser.add_argument('--niter', type=int, default=25, help='number of epochs to train for')
+parser.add_argument('--epochs', type=int, default=25, help='number of epochs to train for')
 parser.add_argument('--lr', type=float, default=0.0001, help='learning rate, default=0.0001')
 parser.add_argument('--beta1', type=float, default=0.5, help='beta1 for adam. default=0.5')
-parser.add_argument('--ngpu', type=int, default=1, help='number of GPUs to use')
 parser.add_argument('--netG', default='', help="path to netG (to continue training)")
 parser.add_argument('--netD', default='', help="path to netD (to continue training)")
 parser.add_argument('--outf', default='.', help='folder to output images and model checkpoints')
@@ -48,40 +46,6 @@ torch.manual_seed(opt.manualSeed)
 torch.cuda.manual_seed_all(opt.manualSeed)
 
 cudnn.benchmark = True
-
-if opt.dataset in ['imagenet', 'folder', 'lfw']:
-    # folder dataset
-    dataset = dset.ImageFolder(root=opt.dataroot,
-                               transform=transforms.Compose([
-                                   transforms.Scale(opt.imageSize),
-                                   transforms.CenterCrop(opt.imageSize),
-                                   transforms.ToTensor(),
-                                   transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
-                               ]))
-elif opt.dataset == 'lsun':
-    dataset = dset.LSUN(db_path=opt.dataroot, classes=['bedroom_train'],
-                        transform=transforms.Compose([
-                            transforms.Scale(opt.imageSize),
-                            transforms.CenterCrop(opt.imageSize),
-                            transforms.ToTensor(),
-                            transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
-                        ]))
-elif opt.dataset == 'cifar10':
-    dataset = dset.CIFAR10(root=opt.dataroot, download=True,
-                           transform=transforms.Compose([
-                               transforms.Scale(opt.imageSize),
-                               transforms.ToTensor(),
-                               transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
-                           ]))
-elif opt.dataset == 'fake':
-    dataset = dset.FakeData(image_size=(3, opt.imageSize, opt.imageSize),
-                            transform=transforms.ToTensor())
-assert dataset
-dataloader = torch.utils.data.DataLoader(dataset, batch_size=opt.batchSize,
-                                         shuffle=True, num_workers=int(opt.workers))
-
-ngpu = int(opt.ngpu)
-
 
 def calc_gradient_penalty(netD, real_data, fake_data):
     alpha = torch.rand(real_data.size()[0], 1, 1, 1)
@@ -122,12 +86,9 @@ print(netD)
 real_input = torch.FloatTensor(opt.batchSize, 3, opt.imageSize, opt.imageSize).cuda()
 noise = torch.FloatTensor(opt.batchSize, opt.latentSize, 1, 1).cuda()
 fixed_noise = Variable(torch.FloatTensor(opt.batchSize, opt.latentSize, 1, 1).normal_(0, 1)).cuda()
-label_one = torch.FloatTensor(opt.batchSize).cuda()
-label_zero = torch.FloatTensor(opt.batchSize).cuda()
-label_minus_one = torch.FloatTensor(opt.batchSize).cuda()
-label_one.fill_(1)
-label_zero.fill_(0)
-label_minus_one.fill_(-1)
+label_one = torch.FloatTensor(opt.batchSize).cuda().fill_(1)
+label_zero = torch.FloatTensor(opt.batchSize).cuda().fill_(0)
+label_minus_one = torch.FloatTensor(opt.batchSize).cuda().fill_(-1)
 
 netD.cuda()
 netG.cuda()
@@ -135,19 +96,17 @@ netG.cuda()
 optimizerD = optim.Adam(netD.parameters(), lr=opt.lr, betas=(opt.beta1, 0.999))
 optimizerG = optim.Adam(netG.parameters(), lr=opt.lr, betas=(opt.beta1, 0.999))
 
-from dataset_file import DatasetFile
-from converter import ImageConverter
+from dataloader import CustomDataloader
+dataloader = CustomDataloader(
+        opt.dataset,
+        batch_size=opt.batchSize,
+        height=opt.imageSize,
+        width=opt.imageSize,
+        random_horizontal_flip=True,
+        torch=True)
 
-dsf = DatasetFile('~/data/celeba.dataset')
-conv = ImageConverter(dsf, height=opt.imageSize, width=opt.imageSize)
-
-def generator():
-    for _ in range(dsf.count() / opt.batchSize):
-        batch = conv(dsf.get_batch(batch_size=opt.batchSize))
-        yield torch.FloatTensor(batch).cuda()
-
-for epoch in range(opt.niter):
-    for i, img_batch in enumerate(generator()):
+for epoch in range(opt.epochs):
+    for i, img_batch in enumerate(dataloader):
         ############################
         # (1) Update D network
         # DCGAN: maximize log(D(x)) + log(1 - D(G(z)))
@@ -189,7 +148,7 @@ for epoch in range(opt.niter):
         errD = errD_real + errD_fake
         if i % 5 == 0:
             print('[{}/{}][{}/{}] Loss_D: {:.4f} Loss_G: {:.4f} D(x): {:.4f} D(G(z)): {:.4f} / {:.4f}'.format(
-                  epoch, opt.niter, i, len(dataloader), errD.data[0], errG.data[0], D_x, D_G_z1, D_G_z2))
+                  epoch, opt.epochs, i, len(dataloader), errD.data[0], errG.data[0], D_x, D_G_z1, D_G_z2))
             video_filename = "{}/generated.mjpeg".format(opt.outf)
             caption = "Epoch {}".format(epoch)
             demo_img = netG(fixed_noise)

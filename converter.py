@@ -8,10 +8,11 @@ different array each time to_array is called with the same example
 """
 import os
 import numpy as np
+import random
 import imutil
 
 
-# Converters can be used like a function
+# Converters can be used like a function, on a single example or a batch
 class Converter(object):
     def __call__(self, inputs):
         if isinstance(inputs, np.ndarray):
@@ -22,12 +23,21 @@ class Converter(object):
             return self.to_array(inputs)
 
 
-# Outputs images as eg. 3x32x32 FloatTensor Variables
+# Crops, resizes, normalizes, performs any desired augmentations
+# Outputs images as eg. 32x32x3 np.array or eg. 3x32x32 torch.FloatTensor
 class ImageConverter(Converter):
-    def __init__(self, dataset, width=32, height=32, bounding_box=False):
+    def __init__(self, 
+            dataset,
+            width=32,
+            height=32,
+            crop_to_bounding_box=False,
+            random_horizontal_flip=False,
+            torch=False):
         self.img_shape = (width, height)
-        self.bounding_box = bounding_box
+        self.bounding_box = crop_to_bounding_box
         self.data_dir = dataset.data_dir
+        self.random_horizontal_flip = random_horizontal_flip
+        self.torch = torch
 
     def to_array(self, example):
         filename = os.path.join(self.data_dir, str(example['filename']))
@@ -35,12 +45,11 @@ class ImageConverter(Converter):
         img = imutil.decode_jpg(filename, 
                 resize_to=self.img_shape, 
                 crop_to_box=box)
-        # Normalize pixels to the mean
-        EPSILON = .001
-        img /= (EPSILON + img.mean(axis=(0,1)))
-        img -= img.mean(axis=(0,1))
-        img /= 2
-        return img.transpose((2,0,1))
+        if self.random_horizontal_flip and random.getrandbits(1):
+            img = np.flip(img, axis=1)
+        if self.torch:
+            img = img.transpose((2,0,1))
+        return img
 
     def from_array(self, array):
         return array

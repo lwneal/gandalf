@@ -29,7 +29,7 @@ def encode_jpg(pixels, resize_to=None):
 
 # Input: Filename, or JPG bytes
 # Output: Numpy array containing images
-def decode_jpg(jpg, crop_to_box=None, resize_to=(224,224)):
+def decode_jpg(jpg, crop_to_box=None, resize_to=(224,224), pil=False):
     if jpg.startswith('\xFF\xD8'):
         # Input is a JPG buffer
         img = Image.open(StringIO(jpg))
@@ -52,6 +52,8 @@ def decode_jpg(jpg, crop_to_box=None, resize_to=(224,224)):
         img = img.crop((int(i) for i in absolute_box))
     if resize_to:
         img = img.resize(resize_to)
+    if pil:
+        return img
     return np.array(img).astype(float)
 
 figure = []
