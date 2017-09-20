@@ -30,13 +30,13 @@ parser.add_argument('--beta1', type=float, default=0.5, help='beta1 for adam. de
 parser.add_argument('--netE', default='', help="path to netE (to continue training)")
 parser.add_argument('--netG', default='', help="path to netG (to continue training)")
 parser.add_argument('--netD', default='', help="path to netD (to continue training)")
-parser.add_argument('--outf', default='.', help='folder to output images and model checkpoints')
+parser.add_argument('--resultDir', default='.', help='Output directory for images and model checkpoints')
 
 opt = parser.parse_args()
 print(opt)
 
 try:
-    os.makedirs(opt.outf)
+    os.makedirs(opt.resultDir)
 except OSError:
     pass
 
@@ -63,7 +63,7 @@ print(netD)
 
 optimizerD = optim.Adam(netD.parameters(), lr=opt.lr, betas=(opt.beta1, 0.999))
 optimizerG = optim.Adam(netG.parameters(), lr=opt.lr, betas=(opt.beta1, 0.999))
-optimizerE = optim.Adam(netE.parameters(), lr=opt.lr / 10, betas=(opt.beta1, 0.999))
+optimizerE = optim.Adam(netE.parameters(), lr=opt.lr, betas=(opt.beta1, 0.999))
 
 
 dataloader = CustomDataloader(
@@ -125,7 +125,7 @@ for epoch in range(opt.epochs):
         netG.zero_grad()
         encoded = netE(Variable(img_batch))
         reconstructed = netG(encoded)
-        errE = torch.sum(torch.abs(reconstructed - Variable(img_batch)))
+        errE = torch.mean(torch.abs(reconstructed - Variable(img_batch)))
         errE.backward()
         optimizerE.step()
         optimizerG.step()
@@ -134,10 +134,10 @@ for epoch in range(opt.epochs):
         D_x = D_real_output.data.mean()
         errD = errD_real + errD_fake
         if i % 25 == 0:
-            print('[{}/{}][{}/{}] Loss_D: {:.4f} Loss_G: {:.4f}  Loss_E: {:.4f}'.format(
+            print('[{}/{}][{}/{}] Loss_D: {:.4f} Loss_G: {:.4f} Loss_GP: {:.4f}  Loss_E: {:.4f}'.format(
                   epoch, opt.epochs, i, len(dataloader),
-                  errD.data[0], errG.data[0], errE.data[0]))
-            video_filename = "{}/generated.mjpeg".format(opt.outf)
+                  errD.data[0], errG.data[0], gradient_penalty.data[0], errE.data[0]))
+            video_filename = "{}/generated.mjpeg".format(opt.resultDir)
             caption = "Epoch {}".format(epoch)
             demo_img = netG(fixed_noise)
             show(demo_img, video_filename=video_filename, caption=caption, display=False)
@@ -152,6 +152,6 @@ for epoch in range(opt.epochs):
     optimizerG.param_groups[0]['lr'] *= .5
 
     # do checkpointing
-    torch.save(netE.state_dict(), '%s/netE_epoch_%d.pth' % (opt.outf, epoch))
-    torch.save(netG.state_dict(), '%s/netG_epoch_%d.pth' % (opt.outf, epoch))
-    torch.save(netD.state_dict(), '%s/netD_epoch_%d.pth' % (opt.outf, epoch))
+    torch.save(netE.state_dict(), '%s/netE_epoch_%d.pth' % (opt.resultDir, epoch))
+    torch.save(netG.state_dict(), '%s/netG_epoch_%d.pth' % (opt.resultDir, epoch))
+    torch.save(netD.state_dict(), '%s/netD_epoch_%d.pth' % (opt.resultDir, epoch))
