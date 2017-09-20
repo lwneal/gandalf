@@ -3,13 +3,14 @@ from __future__ import print_function
 import argparse
 import os
 import torch
-import torch.nn.parallel
-import torch.backends.cudnn as cudnn
-import torch.utils.data
+import sys
+
+sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
 from dataloader import CustomDataloader
 from training import train_adversarial_autoencoder
 from networks import build_networks, get_optimizers
+
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--dataset', required=True, help='Path to a .dataset file')
@@ -33,7 +34,6 @@ try:
 except OSError:
     pass
 
-cudnn.benchmark = True
 
 networks = build_networks(opt.latentSize)
 optimizers = get_optimizers(networks, opt.lr, opt.beta1)
@@ -57,8 +57,8 @@ for epoch in range(opt.epochs):
     train_adversarial_autoencoder(networks, optimizers, dataloader, epoch=epoch, **params)
 
     # Apply learning rate decay
-    for opt in optimizers:
-        opt.param_groups[0]['lr'] *= .9
+    for optimizer in optimizers.values():
+        optimizer.param_groups[0]['lr'] *= .9
 
     # do checkpointing
     for name in networks:
