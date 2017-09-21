@@ -47,14 +47,14 @@ class generatorReLU64(nn.Module):
 class discriminatorLReLU64(nn.Module):
     def __init__(self, latent_size=100):
         super(self.__class__, self).__init__()
-        self.conv1 = nn.Conv2d(3,       64,         4, 2, 1, bias=False)
-        self.conv2 = nn.Conv2d(64,      64 * 2,     4, 2, 1, bias=False)
-        self.bn1 = nn.BatchNorm2d(64 * 2)
-        self.conv3 = nn.Conv2d(64 * 2,  64 * 4,     4, 2, 1, bias=False)
-        self.bn2 = nn.BatchNorm2d(64 * 4)
-        self.conv4 = nn.Conv2d(64 * 4,  64 * 8,     4, 2, 1, bias=False)
-        self.bn3 = nn.BatchNorm2d(64 * 8)
-        self.conv5 = nn.Conv2d(64 * 8,  1,          4, 1, 0, bias=False)
+        self.conv1 = nn.Conv2d(3,       64,      4, 2, 1, bias=False)
+        self.conv2 = nn.Conv2d(64,      128,     4, 2, 1, bias=False)
+        self.bn1 = nn.BatchNorm2d(128)
+        self.conv3 = nn.Conv2d(128,     256,     4, 2, 1, bias=False)
+        self.bn2 = nn.BatchNorm2d(256)
+        self.conv4 = nn.Conv2d(256,     512,     4, 2, 1, bias=False)
+        self.bn3 = nn.BatchNorm2d(512)
+        self.conv5 = nn.Conv2d(512,  1,          4, 1, 0, bias=False)
         self.apply(weights_init)
         self.cuda()
 
