@@ -37,7 +37,8 @@ def train_adversarial_autoencoder(models, optimizers, dataloader, epoch=None, **
 
             noise.normal_(0, 1)
             fake = netG(Variable(noise))
-            D_fake_output = netD(fake.detach())
+            fake = fake.detach()
+            D_fake_output = netD(fake)
             errD_fake = D_fake_output.mean()
             errD_fake.backward(label_minus_one)
 
@@ -52,6 +53,8 @@ def train_adversarial_autoencoder(models, optimizers, dataloader, epoch=None, **
         # WGAN: minimize D(G(z))
         ############################
         netG.zero_grad()
+        noise.normal_(0, 1)
+        fake = netG(Variable(noise))
         DG_fake_output = netD(fake)
         errG = DG_fake_output.mean()
         errG.backward(label_one)
@@ -66,23 +69,33 @@ def train_adversarial_autoencoder(models, optimizers, dataloader, epoch=None, **
         netG.zero_grad()
         encoded = netE(Variable(img_batch))
         reconstructed = netG(encoded)
-        errE = torch.mean(torch.abs(reconstructed - Variable(img_batch)))
-        errE.backward()
+        errGE = torch.mean(torch.abs(reconstructed - Variable(img_batch)))
+        errGE.backward()
+        ############################
+        # (4) Update E(G()) network:
+        # Inverse Autoencoder: Minimize Z - E(G(Z))
+        ############################
+        noise.normal_(0, 1)
+        fake = netG(Variable(noise))
+        reencoded = netE(fake)
+        errEG = torch.mean((reencoded - Variable(noise)) ** 2)
+        errEG.backward()
         optimizerE.step()
         optimizerG.step()
         ############################
 
-        D_x = D_real_output.data.mean()
         errD = errD_real + errD_fake
         if i % 25 == 0:
-            print('[{}/{}][{}/{}] Loss_D: {:.4f} Loss_G: {:.4f} Loss_GP: {:.4f}  Loss_E: {:.4f}'.format(
+            print('[{}/{}][{}/{}] Loss_D: {:.4f} Loss_G: {:.4f} Loss_GP: {:.4f}  Loss_GE: {:.4f} Loss_EG {:.4f}'.format(
                   epoch, epochs, i, len(dataloader),
-                  errD.data[0], errG.data[0], gradient_penalty.data[0], errE.data[0]))
+                  errD.data[0],
+                  errG.data[0],
+                  gradient_penalty.data[0],
+                  errGE.data[0],
+                  errEG.data[0]))
             video_filename = "{}/generated.mjpeg".format(resultDir)
             caption = "Epoch {}".format(epoch)
             demo_img = netG(fixed_noise)
             imutil.show(demo_img, video_filename=video_filename, caption=caption, display=False)
         if i % 100 == 0:
-            imutil.show(img_batch, display=True, save=False)
-            imutil.show(reconstructed, display=True, save=False)
-            imutil.show(demo_img, display=True, save=False)
+            imutil.show(torch.cat([img_batch[:12], reconstructed.data[:12], demo_img.data[:12]]))
