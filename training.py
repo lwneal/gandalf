@@ -1,3 +1,4 @@
+import time
 import torch
 from torch.autograd import Variable
 from gradient_penalty import calc_gradient_penalty
@@ -86,16 +87,20 @@ def train_adversarial_autoencoder(models, optimizers, dataloader, epoch=None, **
 
         errD = errD_real + errD_fake
         if i % 25 == 0:
-            print('[{}/{}][{}/{}] Loss_D: {:.4f} Loss_G: {:.4f} Loss_GP: {:.4f}  Loss_GE: {:.4f} Loss_EG {:.4f}'.format(
+            msg = '[{}/{}][{}/{}] D:{:=5.3f} G:{:=5.3f} GP:{:=5.3f} GE:{:=5.3f} EG:{:=5.3f}'
+            msg = msg.format(
                   epoch, epochs, i, len(dataloader),
                   errD.data[0],
                   errG.data[0],
                   gradient_penalty.data[0],
                   errGE.data[0],
-                  errEG.data[0]))
+                  errEG.data[0])
+            print(msg)
             video_filename = "{}/generated.mjpeg".format(resultDir)
-            caption = "Epoch {}".format(epoch)
-            demo_img = netG(fixed_noise)
-            imutil.show(demo_img, video_filename=video_filename, caption=caption, display=False)
+            caption = "Epoch {:02d} iter {:05d}".format(epoch, i)
+            demo_gen = netG(fixed_noise)
+            imutil.show(demo_gen, video_filename=video_filename, caption=caption, display=False)
         if i % 100 == 0:
-            imutil.show(torch.cat([img_batch[:12], reconstructed.data[:12], demo_img.data[:12]]))
+            img = torch.cat([img_batch[:12], reconstructed.data[:12], demo_gen.data[:12]])
+            filename = "{}/demo_{}.jpg".format(resultDir, int(time.time()))
+            imutil.show(img, caption=msg, font_size=8, filename=filename)
