@@ -35,7 +35,7 @@ except OSError:
     pass
 
 
-networks = build_networks(opt.latentSize)
+networks = build_networks(opt.latentSize, opt.resultDir)
 optimizers = get_optimizers(networks, opt.lr, opt.beta1)
 
 dataloader = CustomDataloader(
