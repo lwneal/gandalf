@@ -14,7 +14,7 @@ from networks import build_networks, get_optimizers
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--dataset', required=True, help='Path to a .dataset file')
-parser.add_argument('--batchSize', type=int, default=36, help='Batch size [default: 36]')
+parser.add_argument('--batchSize', type=int, default=64, help='Batch size [default: 64]')
 parser.add_argument('--imageSize', type=int, default=64, help='Height / width of images [default: 64]')
 parser.add_argument('--latentSize', type=int, default=100, help='Size of the latent z vector [default: 100]')
 parser.add_argument('--epochs', type=int, default=25, help='number of epochs to train for [default: 25]')

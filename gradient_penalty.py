@@ -1,7 +1,7 @@
 import torch
 from torch import autograd
 
-def calc_gradient_penalty(netD, real_data, fake_data, penalty_lambda=10.0):
+def calc_gradient_penalty(netD, real_data, fake_data, penalty_lambda=20.0):
     alpha = torch.rand(real_data.size()[0], 1, 1, 1)
     alpha = alpha.expand(real_data.size())
     alpha = alpha.cuda()
