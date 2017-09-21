@@ -53,7 +53,6 @@ class ImageConverter(Converter):
             img = img.transpose((2,0,1))
         if self.normalize:
             img *= 1.0 / 255
-            img -= 0.5
         return img
 
     def from_array(self, array):
