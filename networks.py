@@ -14,7 +14,7 @@ def build_networks(latent_size, result_dir, image_size):
         networks['encoder'] = network_definitions.encoderLReLU128(latent_size)
         networks['generator'] = network_definitions.generatorReLU128(latent_size)
 
-    networks['discriminator'] = network_definitions.discriminatorLReLU64()
+    networks['discriminator'] = network_definitions.discriminatorMultiscale128()
     networks['classifier'] = network_definitions.classifierMLP256(num_classes=10, latent_size=latent_size)
 
     for name, net in networks.items():
