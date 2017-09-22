@@ -34,10 +34,6 @@ try:
 except OSError:
     pass
 
-
-networks = build_networks(opt.latentSize, opt.resultDir, opt.imageSize)
-optimizers = get_optimizers(networks, opt.lr, opt.beta1)
-
 dataloader = CustomDataloader(
         opt.dataset,
         batch_size=opt.batchSize,
@@ -45,6 +41,12 @@ dataloader = CustomDataloader(
         width=opt.imageSize,
         random_horizontal_flip=False,
         torch=True)
+
+num_classes = dataloader.num_classes
+print("Building classifier with {} classes".format(num_classes))
+networks = build_networks(opt.latentSize, opt.resultDir, opt.imageSize, num_classes)
+optimizers = get_optimizers(networks, opt.lr, opt.beta1)
+
 
 for epoch in range(opt.epochs):
     params = {

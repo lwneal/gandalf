@@ -11,6 +11,7 @@ class CustomDataloader(object):
         self.lab_conv = LabelConverter(self.dsf)
         self.batch_size = batch_size
         self.fold = fold
+        self.num_classes = self.lab_conv.num_classes
 
     def __iter__(self):
         for _ in range(len(self)):

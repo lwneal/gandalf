@@ -4,7 +4,7 @@ import torch
 from torch import optim
 
 
-def build_networks(latent_size, result_dir, image_size):
+def build_networks(latent_size, result_dir, image_size, num_classes):
 
     networks = {}
     if image_size <= 64:
@@ -15,7 +15,7 @@ def build_networks(latent_size, result_dir, image_size):
         networks['generator'] = network_definitions.generatorReLU128(latent_size)
 
     networks['discriminator'] = network_definitions.discriminatorMultiscale128()
-    networks['classifier'] = network_definitions.classifierMLP256(num_classes=10, latent_size=latent_size)
+    networks['classifier'] = network_definitions.classifierMLP256(num_classes=num_classes, latent_size=latent_size)
 
     for name, net in networks.items():
         pth = get_latest_pth(result_dir, name)
