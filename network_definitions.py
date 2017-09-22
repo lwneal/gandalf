@@ -294,7 +294,7 @@ class encoderLReLU128(nn.Module):
 
 
 class classifierMLP256(nn.Module):
-    def __init__(self, num_classes, latent_size=100):
+    def __init__(self, latent_size=100, num_classes=2):
         super(self.__class__, self).__init__()
         self.latent_size = latent_size
         self.fc1 = nn.Linear(latent_size, 256)
