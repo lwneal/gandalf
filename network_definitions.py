@@ -146,7 +146,9 @@ class encoderLReLU64(nn.Module):
         x = self.bn3(x)
         x = nn.LeakyReLU(0.2, inplace=True)(x)
         x = self.conv5(x)
-        x = self.fc1(x.squeeze())
+        x = nn.LeakyReLU(0.2, inplace=True)(x)
+        x = x.squeeze()
+        x = self.fc1(x)
         return x
 
 
