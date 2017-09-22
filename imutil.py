@@ -6,7 +6,7 @@ import subprocess
 from distutils import spawn
 import numpy as np
 from PIL import Image, ImageFont, ImageDraw
-from StringIO import StringIO
+from io import StringIO
 
 # Should be available on Ubuntu 14.04+
 FONT_FILE = '/usr/share/fonts/truetype/freefont/FreeMonoBold.ttf'

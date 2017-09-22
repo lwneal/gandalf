@@ -21,4 +21,4 @@ class CustomDataloader(object):
             yield images, labels
 
     def __len__(self):
-        return self.dsf.count() / self.batch_size
+        return self.dsf.count() // self.batch_size
