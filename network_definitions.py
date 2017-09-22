@@ -117,6 +117,56 @@ class discriminatorLReLU64(nn.Module):
         return x.view(-1, 1).squeeze(1)
 
 
+class discriminatorMultiscale128(nn.Module):
+    def __init__(self, latent_size=100):
+        super(self.__class__, self).__init__()
+        self.conv1 = nn.Conv2d(3,       64,      4, 2, 1, bias=False)
+        self.conv2 = nn.Conv2d(64,      128,     4, 2, 1, bias=False)
+        self.conv3 = nn.Conv2d(128,     256,     4, 2, 1, bias=False)
+        self.conv4 = nn.Conv2d(256,     512,     4, 2, 1, bias=False)
+        self.conv5 = nn.Conv2d(512,     1024,    4, 2, 1, bias=False)
+        self.conv6 = nn.Conv2d(1024,    1,       4, 1, 0, bias=False)
+        self.conv_c1 = nn.Conv2d(256,     1,       4, 1, 0, bias=False)
+        self.conv_c2 = nn.Conv2d(512,     1,       4, 1, 0, bias=False)
+        self.bn1 = nn.BatchNorm2d(128)
+        self.bn2 = nn.BatchNorm2d(256)
+        self.bn3 = nn.BatchNorm2d(512)
+        self.bn4 = nn.BatchNorm2d(1024)
+        self.apply(weights_init)
+        self.cuda()
+
+    def forward(self, x):
+        x = self.conv1(x)
+        x = nn.LeakyReLU(0.2, inplace=True)(x)
+        x = self.conv2(x)
+        x = self.bn1(x)
+        x = nn.LeakyReLU(0.2, inplace=True)(x)
+        x = self.conv3(x)
+        x = self.bn2(x)
+        x = nn.LeakyReLU(0.2, inplace=True)(x)
+
+        # This skin doesn't look real...
+        critic1 = self.conv_c1(x).mean(-1).mean(-1)
+
+        x = self.conv4(x)
+        x = self.bn3(x)
+        x = nn.LeakyReLU(0.2, inplace=True)(x)
+
+        # This nose doesn't look real...
+        critic2 = self.conv_c2(x).mean(-1).mean(-1)
+
+        x = self.conv5(x)
+        x = self.bn4(x)
+        x = nn.LeakyReLU(0.2, inplace=True)(x)
+        x = self.conv6(x)
+
+        # This face doesn't look real!
+        critic3 = x.mean(-1).mean(-1)
+
+        wasserstein_distance = critic1 + critic2 + critic3
+        return wasserstein_distance.squeeze()
+
+
 class encoderLReLU64(nn.Module):
     def __init__(self, latent_size=100):
         super(self.__class__, self).__init__()
