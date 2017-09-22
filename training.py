@@ -97,8 +97,9 @@ def train_adversarial_autoencoder(models, optimizers, dataloader, epoch=None, **
         ############################
         netE.zero_grad()
         netC.zero_grad()
-        preds = netC(netE(Variable(images)))
-        errC = nll_loss(preds, Variable(labels))
+        latent_points = netE(Variable(images))
+        class_predictions = netC(latent_points)
+        errC = nll_loss(class_predictions, Variable(labels))
         errC.backward()
         optimizerE.step()
         optimizerC.step()
