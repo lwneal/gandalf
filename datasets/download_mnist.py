@@ -1,9 +1,9 @@
 #!/usr/bin/env python
+import numpy as np
 import sys
-import tqdm
+import requests
 import os
 import json
-from keras import datasets
 from PIL import Image
 from tqdm import tqdm
 
@@ -30,6 +30,17 @@ def save_set(fold, x, y, suffix='png'):
         fp.write('\n')
     fp.close()
     return examples
+
+
+def download_mnist_data(path='mnist.npz'):
+    if not os.path.exists(path):
+        response = requests.get('https://s3.amazonaws.com/img-datasets/mnist.npz')
+        open(path, 'w').write(response.content)
+    f = np.load(path)
+    x_train, y_train = f['x_train'], f['y_train']
+    x_test, y_test = f['x_test'], f['y_test']
+    f.close()
+    return (x_train, y_train), (x_test, y_test)
     
 
 if __name__ == '__main__':
@@ -42,7 +53,8 @@ if __name__ == '__main__':
         print("MNIST dataset exists at {}/mnist".format(DATA_DIR))
         if '--force' not in sys.argv:
             exit()
-    (train_x, train_y), (test_x, test_y) = datasets.mnist.load_data()
+    (train_x, train_y), (test_x, test_y) = download_mnist_data()
+
     train = save_set('train', train_x, train_y)
     test = save_set('test', test_x, test_y)
     for example in train:

@@ -106,7 +106,7 @@ def train_adversarial_autoencoder(models, optimizers, dataloader, epoch=None, **
         ############################
 
         # https://discuss.pytorch.org/t/argmax-with-pytorch/1528/2
-        _, predicted = preds.max(1)
+        _, predicted = class_predictions.max(1)
         correct += sum(predicted.data == labels)
         total += len(predicted)
 
