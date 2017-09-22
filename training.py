@@ -27,6 +27,8 @@ def train_adversarial_autoencoder(models, optimizers, dataloader, epoch=None, **
     label_one = torch.FloatTensor(batchSize).cuda().fill_(1)
     label_zero = torch.FloatTensor(batchSize).cuda().fill_(0)
     label_minus_one = torch.FloatTensor(batchSize).cuda().fill_(-1)
+    correct = 0
+    total = 0
 
     for i, data in enumerate(dataloader):
         images, labels = data
@@ -104,7 +106,8 @@ def train_adversarial_autoencoder(models, optimizers, dataloader, epoch=None, **
 
         # https://discuss.pytorch.org/t/argmax-with-pytorch/1528/2
         _, predicted = preds.max(1)
-        acc = sum(predicted.data == labels) * 1.0 / len(predicted)
+        correct += sum(predicted.data == labels)
+        total += len(predicted)
 
         errD = errD_real + errD_fake
         if i % 25 == 0:
@@ -116,7 +119,7 @@ def train_adversarial_autoencoder(models, optimizers, dataloader, epoch=None, **
                   gradient_penalty.data[0],
                   errGE.data[0],
                   errEG.data[0],
-                  acc)
+                  float(correct) / total)
             print(msg)
             video_filename = "{}/generated.mjpeg".format(resultDir)
             caption = "Epoch {:02d} iter {:05d}".format(epoch, i)
