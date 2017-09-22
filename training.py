@@ -2,6 +2,7 @@ import time
 import torch
 from torch.autograd import Variable
 from gradient_penalty import calc_gradient_penalty
+from torch.nn.functional import nll_loss
 import imutil
 
 
@@ -9,9 +10,11 @@ def train_adversarial_autoencoder(models, optimizers, dataloader, epoch=None, **
     netD = models['discriminator']
     netG = models['generator']
     netE = models['encoder']
+    netC = models['classifier']
     optimizerD = optimizers['discriminator']
     optimizerG = optimizers['generator']
     optimizerE = optimizers['encoder']
+    optimizerC = optimizers['classifier']
     epochs = params['epochs']
     resultDir = params['resultDir']
     batchSize = params['batchSize']
@@ -25,14 +28,15 @@ def train_adversarial_autoencoder(models, optimizers, dataloader, epoch=None, **
     label_zero = torch.FloatTensor(batchSize).cuda().fill_(0)
     label_minus_one = torch.FloatTensor(batchSize).cuda().fill_(-1)
 
-    for i, img_batch in enumerate(dataloader):
+    for i, data in enumerate(dataloader):
+        images, labels = data
         ############################
         # (1) Update D network
         # WGAN: maximize D(G(z)) - D(x)
         ###########################
         for _ in range(5):
             netD.zero_grad()
-            D_real_output = netD(Variable(img_batch))
+            D_real_output = netD(Variable(images))
             errD_real = D_real_output.mean()
             errD_real.backward(label_one)
 
@@ -43,7 +47,7 @@ def train_adversarial_autoencoder(models, optimizers, dataloader, epoch=None, **
             errD_fake = D_fake_output.mean()
             errD_fake.backward(label_minus_one)
 
-            gradient_penalty = calc_gradient_penalty(netD, img_batch, fake.data)
+            gradient_penalty = calc_gradient_penalty(netD, images, fake.data)
             gradient_penalty.backward()
 
             optimizerD.step()
@@ -68,9 +72,9 @@ def train_adversarial_autoencoder(models, optimizers, dataloader, epoch=None, **
         ############################
         netE.zero_grad()
         netG.zero_grad()
-        encoded = netE(Variable(img_batch))
+        encoded = netE(Variable(images))
         reconstructed = netG(encoded)
-        errGE = torch.mean(torch.abs(reconstructed - Variable(img_batch)))
+        errGE = torch.mean(torch.abs(reconstructed - Variable(images)))
         errGE.backward()
         ############################
         # (4) Update E(G()) network:
@@ -85,22 +89,40 @@ def train_adversarial_autoencoder(models, optimizers, dataloader, epoch=None, **
         optimizerG.step()
         ############################
 
+        ############################
+        # (5) Update C(Z) network:
+        # Categorical Cross-Entropy
+        ############################
+        netE.zero_grad()
+        netC.zero_grad()
+        preds = netC(netE(Variable(images)))
+        errC = nll_loss(preds, Variable(labels))
+        errC.backward()
+        optimizerE.step()
+        optimizerC.step()
+        ############################
+
+        # https://discuss.pytorch.org/t/argmax-with-pytorch/1528/2
+        _, predicted = preds.max(1)
+        acc = sum(predicted.data == labels) * 1.0 / len(predicted)
+
         errD = errD_real + errD_fake
         if i % 25 == 0:
-            msg = '[{}/{}][{}/{}] D:{:=5.3f} G:{:=5.3f} GP:{:=5.3f} GE:{:=5.3f} EG:{:=5.3f}'
+            msg = '[{}/{}][{}/{}] D:{:.3f} G:{:.3f} GP:{:.3f} GE:{:.3f} EG:{:.3f} C_acc:{:.3f}'
             msg = msg.format(
                   epoch, epochs, i, len(dataloader),
                   errD.data[0],
                   errG.data[0],
                   gradient_penalty.data[0],
                   errGE.data[0],
-                  errEG.data[0])
+                  errEG.data[0],
+                  acc)
             print(msg)
             video_filename = "{}/generated.mjpeg".format(resultDir)
             caption = "Epoch {:02d} iter {:05d}".format(epoch, i)
             demo_gen = netG(fixed_noise)
             imutil.show(demo_gen, video_filename=video_filename, caption=caption, display=False)
         if i % 100 == 0:
-            img = torch.cat([img_batch[:12], reconstructed.data[:12], demo_gen.data[:12]])
+            img = torch.cat([images[:12], reconstructed.data[:12], demo_gen.data[:12]])
             filename = "{}/demo_{}.jpg".format(resultDir, int(time.time()))
             imutil.show(img, caption=msg, font_size=8, filename=filename)

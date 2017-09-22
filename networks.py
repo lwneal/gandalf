@@ -4,11 +4,12 @@ import torch
 from torch import optim
 
 
-def build_networks(latentSize, result_dir):
+def build_networks(latent_size, result_dir):
     networks = {}
-    networks['encoder'] = network_definitions.encoderLReLU64(latentSize)
-    networks['generator'] = network_definitions.generatorReLU64(latentSize)
+    networks['encoder'] = network_definitions.encoderLReLU64(latent_size)
+    networks['generator'] = network_definitions.generatorReLU64(latent_size)
     networks['discriminator'] = network_definitions.discriminatorLReLU64()
+    networks['classifier'] = network_definitions.classifierMLP256(num_classes=10, latent_size=latent_size)
 
     for name, net in networks.items():
         pth = get_latest_pth(result_dir, name)

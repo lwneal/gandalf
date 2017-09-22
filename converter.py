@@ -68,11 +68,16 @@ class LabelConverter(Converter):
             label = example.get(label_key)
             unique_labels.add(label)
         self.labels = sorted(list(unique_labels))
-        self.idx = {self.labels[i]: i for i in range(len(self.labels))}
+        self.num_classes = len(self.labels)
+        self.idx = {self.labels[i]: i for i in range(self.num_classes)}
 
     def to_array(self, example):
-        idx = self.idx[example[self.label_key]]
-        return idx
+        return self.idx[example[self.label_key]]
 
     def from_array(self, array):
         return str(np.argmax(array))
+
+    def to_categorical(self, idx):
+        res = np.zeros(self.num_classes)
+        res[idx] = 1
+        return res

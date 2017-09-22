@@ -105,3 +105,22 @@ class encoderLReLU64(nn.Module):
         x = self.conv5(x)
         x = self.fc1(x.squeeze())
         return x
+
+
+class classifierMLP256(nn.Module):
+    def __init__(self, num_classes, latent_size=100):
+        super(self.__class__, self).__init__()
+        self.latent_size = latent_size
+        self.fc1 = nn.Linear(latent_size, 256)
+        self.fc2 = nn.Linear(256, num_classes)
+        self.apply(weights_init)
+        self.cuda()
+
+    def forward(self, x):
+        x = self.fc1(x)
+        x = nn.LeakyReLU(0.2, inplace=True)(x)
+        x = self.fc2(x)
+        x = nn.Softmax()(x)
+        from torch.nn.functional import log_softmax
+        x = log_softmax(x)
+        return x
