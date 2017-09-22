@@ -39,6 +39,7 @@ class generatorReLU64(nn.Module):
         x = nn.ReLU(True)(x)
         x = self.conv4(x)
         x = self.bn4(x)
+        x = nn.ReLU(True)(x)
         x = self.conv5(x)
         x = nn.Sigmoid()(x)
         return x
