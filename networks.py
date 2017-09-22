@@ -4,17 +4,18 @@ import torch
 from torch import optim
 
 
-def build_networks(latent_size, result_dir, image_size, num_classes):
+def build_networks(latent_size, result_dir, image_size, num_classes, discrim_network_name):
 
     networks = {}
     if image_size <= 64:
         networks['encoder'] = network_definitions.encoderLReLU64(latent_size)
         networks['generator'] = network_definitions.generatorReLU64(latent_size)
-        networks['discriminator'] = network_definitions.discriminatorLReLU64()
     else:
         networks['encoder'] = network_definitions.encoderLReLU128(latent_size)
         networks['generator'] = network_definitions.generatorReLU128(latent_size)
-        networks['discriminator'] = network_definitions.discriminatorMultiscale128()
+
+    DiscrimClass = getattr(network_definitions, discrim_network_name)
+    networks['discriminator'] = DiscrimClass(latent_size)
 
     networks['classifier'] = network_definitions.classifierMLP256(num_classes=num_classes, latent_size=latent_size)
 

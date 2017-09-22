@@ -15,7 +15,7 @@ from networks import build_networks, get_optimizers
 parser = argparse.ArgumentParser()
 parser.add_argument('--dataset', required=True, help='Path to a .dataset file')
 parser.add_argument('--batchSize', type=int, default=64, help='Batch size [default: 64]')
-parser.add_argument('--imageSize', type=int, default=64, help='Height / width of images [default: 64]')
+parser.add_argument('--image_size', type=int, default=64, help='Height / width of images [default: 64]')
 parser.add_argument('--latentSize', type=int, default=100, help='Size of the latent z vector [default: 100]')
 parser.add_argument('--epochs', type=int, default=25, help='number of epochs to train for [default: 25]')
 parser.add_argument('--lr', type=float, default=0.0001, help='learning rate, [default: 0.0001]')
@@ -25,6 +25,7 @@ parser.add_argument('--netE', default='', help="path to netE (to continue traini
 parser.add_argument('--netG', default='', help="path to netG (to continue training) [default: None]")
 parser.add_argument('--netD', default='', help="path to netD (to continue training) [default: None]")
 parser.add_argument('--resultDir', default='.', help='Output directory for images and model checkpoints')
+parser.add_argument('--discrim_name', required=True, help='Name of discriminator network')
 
 opt = parser.parse_args()
 print(opt)
@@ -37,14 +38,14 @@ except OSError:
 dataloader = CustomDataloader(
         opt.dataset,
         batch_size=opt.batchSize,
-        height=opt.imageSize,
-        width=opt.imageSize,
+        height=opt.image_size,
+        width=opt.image_size,
         random_horizontal_flip=False,
         torch=True)
 
 num_classes = dataloader.num_classes
 print("Building classifier with {} classes".format(num_classes))
-networks = build_networks(opt.latentSize, opt.resultDir, opt.imageSize, num_classes)
+networks = build_networks(opt.latentSize, opt.resultDir, opt.image_size, num_classes, opt.discrim_name)
 optimizers = get_optimizers(networks, opt.lr, opt.beta1)
 
 
@@ -54,7 +55,7 @@ for epoch in range(opt.epochs):
         'batchSize': opt.batchSize,
         'resultDir': opt.resultDir,
         'epochs': opt.epochs,
-        'imageSize': opt.imageSize,
+        'imageSize': opt.image_size,
     }
     train_adversarial_autoencoder(networks, optimizers, dataloader, epoch=epoch, **params)
 
