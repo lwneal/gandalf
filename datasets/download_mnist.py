@@ -23,7 +23,8 @@ def save_set(fold, x, y, suffix='png'):
                 'is_holy': label in [0, 6, 8, 9],  # numbers with holes in them
                 'is_pointy': label in [1, 4, 7],  # numbers with no curvy parts
                 'is_symmetric': label in [0, 1, 8],  # left-right symmetric numbers
-                'is_vert_symmetric': label in [0, 3, 8],  # left-right symmetric numbers
+                'label': str(label),
+                'fold': fold,
         }
         examples.append(entry)
         fp.write(json.dumps(entry))
