@@ -28,12 +28,12 @@ class Converter(object):
 class ImageConverter(Converter):
     def __init__(self, 
             dataset,
-            width=32,
-            height=32,
+            image_size=32,
             crop_to_bounding_box=False,
             random_horizontal_flip=False,
             torch=False,
             normalize=True):
+        width, height = image_size, image_size
         self.img_shape = (width, height)
         self.bounding_box = crop_to_bounding_box
         self.data_dir = dataset.data_dir

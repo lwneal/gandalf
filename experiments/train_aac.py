@@ -58,18 +58,16 @@ else:
 dataloader = CustomDataloader(
         options['dataset'],
         batch_size=options['batch_size'],
-        height=options['image_size'],
-        width=options['image_size'],
+        image_size=options['image_size'],
         random_horizontal_flip=False,
         torch=True)
 
-num_classes = dataloader.num_classes
-print("Building classifier with {} classes".format(num_classes))
+print("Building classifier with {} classes".format(dataloader.num_classes))
 networks = build_networks(
         options['latent_size'],
         options['result_dir'],
         options['image_size'],
-        num_classes,
+        dataloader.num_classes,
         options['encoder'],
         options['generator'],
         options['discriminator'])
