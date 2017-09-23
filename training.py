@@ -16,22 +16,21 @@ def train_adversarial_autoencoder(models, optimizers, dataloader, epoch=None, **
     optimizerE = optimizers['encoder']
     optimizerC = optimizers['classifier']
     epochs = params['epochs']
-    resultDir = params['resultDir']
-    batchSize = params['batchSize']
-    imageSize = params['imageSize']
-    latentSize = params['latentSize']
+    result_dir = params['result_dir']
+    batch_size = params['batch_size']
+    image_size = params['image_size']
+    latent_size = params['latent_size']
 
-    real_input = torch.FloatTensor(batchSize, 3, imageSize, imageSize).cuda()
-    noise = torch.FloatTensor(batchSize, latentSize).cuda()
-    fixed_noise = Variable(torch.FloatTensor(batchSize, latentSize).normal_(0, 1)).cuda()
-    label_one = torch.FloatTensor(batchSize).cuda().fill_(1)
-    label_zero = torch.FloatTensor(batchSize).cuda().fill_(0)
-    label_minus_one = torch.FloatTensor(batchSize).cuda().fill_(-1)
+    real_input = torch.FloatTensor(batch_size, 3, image_size, image_size).cuda()
+    noise = torch.FloatTensor(batch_size, latent_size).cuda()
+    fixed_noise = Variable(torch.FloatTensor(batch_size, latent_size).normal_(0, 1)).cuda()
+    label_one = torch.FloatTensor(batch_size).cuda().fill_(1)
+    label_zero = torch.FloatTensor(batch_size).cuda().fill_(0)
+    label_minus_one = torch.FloatTensor(batch_size).cuda().fill_(-1)
     correct = 0
     total = 0
 
-    for i, data in enumerate(dataloader):
-        images, labels = data
+    for i, (images, labels) in enumerate(dataloader):
         ############################
         # (1) Update D network
         # WGAN: maximize D(G(z)) - D(x)
@@ -122,11 +121,11 @@ def train_adversarial_autoencoder(models, optimizers, dataloader, epoch=None, **
                   errEG.data[0],
                   float(correct) / total)
             print(msg)
-            video_filename = "{}/generated.mjpeg".format(resultDir)
+            video_filename = "{}/generated.mjpeg".format(result_dir)
             caption = "Epoch {:02d} iter {:05d}".format(epoch, i)
             demo_gen = netG(fixed_noise)
             imutil.show(demo_gen, video_filename=video_filename, caption=caption, display=False)
         if i % 100 == 0:
             img = torch.cat([images[:12], reconstructed.data[:12], demo_gen.data[:12]])
-            filename = "{}/demo_{}.jpg".format(resultDir, int(time.time()))
+            filename = "{}/demo_{}.jpg".format(result_dir, int(time.time()))
             imutil.show(img, caption=msg, font_size=8, filename=filename)

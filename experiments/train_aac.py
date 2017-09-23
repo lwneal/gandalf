@@ -57,11 +57,11 @@ optimizers = get_optimizers(networks, opt.lr, opt.beta1)
 
 for epoch in range(opt.epochs):
     params = {
-        'latentSize': opt.latent_size,
-        'batchSize': opt.batch_size,
-        'resultDir': opt.result_dir,
+        'latent_size': opt.latent_size,
+        'batch_size': opt.batch_size,
+        'result_dir': opt.result_dir,
         'epochs': opt.epochs,
-        'imageSize': opt.image_size,
+        'image_size': opt.image_size,
     }
     train_adversarial_autoencoder(networks, optimizers, dataloader, epoch=epoch, **params)
 
