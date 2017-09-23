@@ -5,10 +5,10 @@ from torchvision import transforms
 
 
 class CustomDataloader(object):
-    def __init__(self, dataset_file, batch_size, fold=None, **kwargs):
-        self.dsf = DatasetFile(dataset_file)
+    def __init__(self, dataset='mnist.dataset', batch_size=16, fold='train', **kwargs):
+        self.dsf = DatasetFile(dataset)
         self.img_conv = ImageConverter(self.dsf, **kwargs)
-        self.lab_conv = LabelConverter(self.dsf)
+        self.lab_conv = LabelConverter(self.dsf, **kwargs)
         self.batch_size = batch_size
         self.fold = fold
         self.num_classes = self.lab_conv.num_classes

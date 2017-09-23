@@ -6,20 +6,20 @@ from torch.nn.functional import nll_loss
 import imutil
 
 
-def train_adversarial_autoencoder(models, optimizers, dataloader, epoch=None, **params):
-    netD = models['discriminator']
-    netG = models['generator']
-    netE = models['encoder']
-    netC = models['classifier']
+def train_adversarial_autoencoder(networks, optimizers, dataloader, epoch=None, **options):
+    netD = networks['discriminator']
+    netG = networks['generator']
+    netE = networks['encoder']
+    netC = networks['classifier']
     optimizerD = optimizers['discriminator']
     optimizerG = optimizers['generator']
     optimizerE = optimizers['encoder']
     optimizerC = optimizers['classifier']
-    epochs = params['epochs']
-    result_dir = params['result_dir']
-    batch_size = params['batch_size']
-    image_size = params['image_size']
-    latent_size = params['latent_size']
+    epochs = options['epochs']
+    result_dir = options['result_dir']
+    batch_size = options['batch_size']
+    image_size = options['image_size']
+    latent_size = options['latent_size']
 
     real_input = torch.FloatTensor(batch_size, 3, image_size, image_size).cuda()
     noise = torch.FloatTensor(batch_size, latent_size).cuda()
@@ -29,7 +29,7 @@ def train_adversarial_autoencoder(models, optimizers, dataloader, epoch=None, **
     label_minus_one = torch.FloatTensor(batch_size).cuda().fill_(-1)
     correct = 0
     total = 0
-
+    
     for i, (images, labels) in enumerate(dataloader):
         ############################
         # (1) Update D network

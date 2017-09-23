@@ -31,8 +31,9 @@ class ImageConverter(Converter):
             image_size=32,
             crop_to_bounding_box=False,
             random_horizontal_flip=False,
-            torch=False,
-            normalize=True):
+            torch=True,
+            normalize=True,
+            **kwargs):
         width, height = image_size, image_size
         self.img_shape = (width, height)
         self.bounding_box = crop_to_bounding_box
@@ -61,7 +62,7 @@ class ImageConverter(Converter):
 
 # LabelConverter converts eg. the MNIST label "2" to the one-hot [00100000000]
 class LabelConverter(Converter):
-    def __init__(self, dataset, label_key="label"):
+    def __init__(self, dataset, label_key="label", **kwargs):
         self.label_key = label_key
         unique_labels = set()
         for example in dataset.examples:

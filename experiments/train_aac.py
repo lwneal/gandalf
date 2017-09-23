@@ -4,14 +4,13 @@ import argparse
 import os
 import sys
 import torch
-import json
 from pprint import pprint
 
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 from dataloader import CustomDataloader
 from training import train_adversarial_autoencoder
 from networks import build_networks, get_optimizers
-
+from options import save_options, load_options
 
 # Dataset (input) and result_dir (output) are always required
 parser = argparse.ArgumentParser()
@@ -36,57 +35,20 @@ parser.add_argument('--decay', type=float, default=0.9, help='Learning rate deca
 options = vars(parser.parse_args())
 
 if os.path.exists(options['result_dir']):
-    # We are resuming an old experiment: load core options from params.json
-    print("Resuming existing experiment at {}".format(options['result_dir']))
-    old_opts = json.load(open(os.path.join(options['result_dir'], 'params.json')))
-    pprint(old_opts)
-    for opt_name in core_options:
-        options[opt_name] = old_opts[opt_name]
-        print("Setting {} to {}".format(opt_name, options[opt_name]))
+    options = load_options(options, core_options)
 else:
-    # We are starting a new experiment: save core options to params.json
-    print("Beginning a new experiment at {}".format(options['result_dir']))
-    for opt_name in core_options:
-        if not options.get(opt_name):
-            print("Error: required option --{} was not specified".format(opt_name))
-            exit()
-    print("Creating directory {}".format(options['result_dir']))
-    os.makedirs(options['result_dir'])
-    with open(os.path.join(options['result_dir'], 'params.json'), 'w') as fp:
-        json.dump(options, fp)
+    save_options(options, core_options)
 
-dataloader = CustomDataloader(
-        options['dataset'],
-        batch_size=options['batch_size'],
-        image_size=options['image_size'],
-        random_horizontal_flip=False,
-        torch=True)
-
-print("Building classifier with {} classes".format(dataloader.num_classes))
-networks = build_networks(
-        options['latent_size'],
-        options['result_dir'],
-        options['image_size'],
-        dataloader.num_classes,
-        options['encoder'],
-        options['generator'],
-        options['discriminator'])
-optimizers = get_optimizers(networks, options['lr'], options['beta1'])
-
+dataloader = CustomDataloader(random_horizontal_flip=False, **options)
+networks = build_networks(dataloader.num_classes, **options)
+optimizers = get_optimizers(networks, **options)
 
 for epoch in range(options['epochs']):
-    params = {
-        'latent_size': options['latent_size'],
-        'batch_size': options['batch_size'],
-        'result_dir': options['result_dir'],
-        'epochs': options['epochs'],
-        'image_size': options['image_size'],
-    }
-    train_adversarial_autoencoder(networks, optimizers, dataloader, epoch=epoch, **params)
+    train_adversarial_autoencoder(networks, optimizers, dataloader, epoch=epoch, **options)
 
     # Apply learning rate decay
     for optimizer in optimizers.values():
-        optimizer.param_groups[0]['lr'] *= .9
+        optimizer.param_groups[0]['lr'] *= options['decay']
 
     # do checkpointing
     for name in networks:
