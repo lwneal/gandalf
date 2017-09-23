@@ -27,7 +27,7 @@ def main():
     download('list_eval_partition.txt', PARTITION_URL)
     download('list_attr_celeba.txt', ANNO_URL)
 
-    images = listdir(DATASET_PATH + '/img_align_celeba')
+    images = listdir('~/data/celeba/img_align_celeba')
 
     # Read training/test split
     is_training = train_test_split('list_eval_partition.txt')
@@ -36,20 +36,11 @@ def main():
     # TODO: Read attributes and add them to the json
     attrs = load_attributes('list_attr_celeba.txt')
 
+    for attr, is_training in zip(attrs, is_training):
+        attr['fold'] = 'train' if is_training else 'test'
+
     # Generate CSV file for the full dataset
     save_image_dataset(images, attrs)
-
-    # Generate train/test split CSV files
-
-    train_images = [img for (img, t) in zip(images, is_training) if t]
-    test_images = [img for (img, t) in zip(images, is_training) if not t]
-    train_attrs = [a for (a, t) in zip(attrs, is_training) if t]
-    test_attrs = [a for (a, t) in zip(attrs, is_training) if not t]
-
-    assert len(train_images) + len(test_images) == len(images)
-    save_image_dataset(train_images, train_attrs, "train")
-    save_image_dataset(test_images, test_attrs, "test")
-
     print("Successfully built dataset {}".format(DATASET_PATH))
 
 
@@ -61,7 +52,7 @@ def mkdir(path):
 
 
 def listdir(path):
-    filenames = os.listdir(path)
+    filenames = os.listdir(os.path.expanduser(path))
     filenames = sorted(filenames)
     return [os.path.join(path, fn) for fn in filenames]
 
@@ -96,11 +87,8 @@ def load_attributes(filename):
     return attrs
 
 
-def save_image_dataset(images, attributes, fold_name=None):
-    if fold_name:
-        output_filename = '{}/{}_{}.dataset'.format(DATA_DIR, DATASET_NAME, fold_name)
-    else:
-        output_filename = '{}/{}.dataset'.format(DATA_DIR, DATASET_NAME)
+def save_image_dataset(images, attributes):
+    output_filename = '{}/{}.dataset'.format(DATA_DIR, DATASET_NAME)
     print("Writing {} items to {}".format(len(images), output_filename))
 
     fp = open(output_filename, 'w')

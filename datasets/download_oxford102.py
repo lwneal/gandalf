@@ -38,8 +38,8 @@ def main():
     labels = imagelabels_mat['labels'][0]
 
     setid_mat = sio.loadmat('setid.mat')
-    test_ids = set(setid_mat['tstid'][0])
-    train_ids = set(setid_mat['trnid'][0])
+    test_ids = set(setid_mat['trnid'][0])
+    train_ids = set(setid_mat['tstid'][0])
     valid_ids = set(setid_mat['valid'][0])
 
     examples = []
