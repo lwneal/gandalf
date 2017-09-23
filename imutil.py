@@ -6,7 +6,7 @@ import subprocess
 from distutils import spawn
 import numpy as np
 from PIL import Image, ImageFont, ImageDraw
-from io import StringIO
+from io import BytesIO
 
 # Should be available on Ubuntu 14.04+
 FONT_FILE = '/usr/share/fonts/truetype/freefont/FreeMonoBold.ttf'
@@ -22,7 +22,7 @@ def encode_jpg(pixels, resize_to=None):
     img = Image.fromarray(pixels.astype(np.uint8))
     if resize_to:
         img = img.resize(resize_to)
-    fp = StringIO()
+    fp = BytesIO()
     img.save(fp, format='JPEG')
     return fp.getvalue()
 
@@ -32,7 +32,7 @@ def encode_jpg(pixels, resize_to=None):
 def decode_jpg(jpg, crop_to_box=None, resize_to=(224,224), pil=False):
     if jpg.startswith('\xFF\xD8'):
         # Input is a JPG buffer
-        img = Image.open(StringIO(jpg))
+        img = Image.open(BytesIO(jpg))
     else:
         # Input is a filename
         try:
@@ -146,7 +146,7 @@ def show(
         filename = tempfile.NamedTemporaryFile(suffix='.jpg').name
 
     # Write the file itself
-    with open(filename, 'w') as fp:
+    with open(filename, 'wb') as fp:
         fp.write(encode_jpg(pixels))
         fp.flush()
 
@@ -167,7 +167,7 @@ def show(
 
     # Output JPG files can be collected into a video with ffmpeg -i *.jpg
     if video_filename:
-        open(video_filename, 'a').write(encode_jpg(pixels))
+        open(video_filename, 'ab').write(encode_jpg(pixels))
 
 
 def combine_images(generated_images):
