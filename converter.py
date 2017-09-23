@@ -42,7 +42,7 @@ class ImageConverter(Converter):
         self.normalize = normalize
 
     def to_array(self, example):
-        filename = os.path.join(self.data_dir, str(example['filename']))
+        filename = os.path.expanduser(example['filename'])
         box = example.get('box') if self.bounding_box else None
         img = imutil.decode_jpg(filename, 
                 resize_to=self.img_shape, 

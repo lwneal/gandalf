@@ -15,8 +15,8 @@ def save_set(fold, x, y, suffix='png'):
     print("Writing MNIST dataset {}".format(fold))
     for i in tqdm(range(len(x))):
         label = y[i]
-        img_filename = 'mnist/{}/{:05d}_{:d}.{}'.format(fold, i, label, suffix)
-        Image.fromarray(x[i]).save(img_filename)
+        img_filename = '~/data/mnist/{}/{:05d}_{:d}.{}'.format(fold, i, label, suffix)
+        Image.fromarray(x[i]).save(os.path.expanduser(img_filename))
         entry = {
                 'filename': img_filename,
                 'label': str(label),
@@ -35,7 +35,7 @@ def save_set(fold, x, y, suffix='png'):
 def download_mnist_data(path='mnist.npz'):
     if not os.path.exists(path):
         response = requests.get('https://s3.amazonaws.com/img-datasets/mnist.npz')
-        open(path, 'w').write(response.content)
+        open(path, 'wb').write(response.content)
     f = np.load(path)
     x_train, y_train = f['x_train'], f['y_train']
     x_test, y_test = f['x_test'], f['y_test']
