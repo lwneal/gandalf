@@ -27,6 +27,13 @@ def build_networks(num_classes, latent_size=10, image_size=32, **options):
     return networks
 
 
+def save_networks(networks, epoch, result_dir):
+    for name in networks:
+        weights = networks[name].state_dict()
+        filename = '{}/{}_epoch_{:02d}.pth'.format(result_dir, name, epoch)
+        torch.save(weights, filename)
+
+
 def get_optimizers(networks, lr=.001, beta1=.5, beta2=.999, **options):
     optimizers = {}
     for name in networks:

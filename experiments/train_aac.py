@@ -3,13 +3,11 @@ from __future__ import print_function
 import argparse
 import os
 import sys
-import torch
-from pprint import pprint
 
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 from dataloader import CustomDataloader
 from training import train_adversarial_autoencoder
-from networks import build_networks, get_optimizers
+from networks import build_networks, save_networks, get_optimizers
 from options import save_options, load_options
 
 # Dataset (input) and result_dir (output) are always required
@@ -52,7 +50,4 @@ for epoch in range(options['epochs']):
     for optimizer in optimizers.values():
         optimizer.param_groups[0]['lr'] *= options['decay']
 
-    # do checkpointing
-    for name in networks:
-        net = networks[name]
-        torch.save(net.state_dict(), '{}/{}_epoch_{:02d}.pth'.format(options['result_dir'], name, epoch))
+    save_networks(networks, epoch, options['result_dir'])
