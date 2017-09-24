@@ -30,13 +30,14 @@ def train_adversarial_autoencoder(networks, optimizers, dataloader, epoch=None, 
     total = 0
     
     for i, (images, labels) in enumerate(dataloader):
+        images = Variable(images)
         ############################
         # (1) Update D network
         # WGAN: maximize D(G(z)) - D(x)
         ###########################
         for _ in range(5):
             netD.zero_grad()
-            D_real_output = netD(Variable(images))
+            D_real_output = netD(images)
             errD_real = D_real_output.mean()
             errD_real.backward(label_one)
 
@@ -47,7 +48,7 @@ def train_adversarial_autoencoder(networks, optimizers, dataloader, epoch=None, 
             errD_fake = D_fake_output.mean()
             errD_fake.backward(label_minus_one)
 
-            gradient_penalty = calc_gradient_penalty(netD, images, fake.data)
+            gradient_penalty = calc_gradient_penalty(netD, images.data, fake.data)
             gradient_penalty.backward()
 
             optimizerD.step()
@@ -72,10 +73,11 @@ def train_adversarial_autoencoder(networks, optimizers, dataloader, epoch=None, 
         ############################
         netE.zero_grad()
         netG.zero_grad()
-        encoded = netE(Variable(images))
+        encoded = netE(images)
         reconstructed = netG(encoded)
-        errGE = torch.mean(torch.abs(reconstructed - Variable(images)))
+        errGE = torch.mean(torch.abs(reconstructed - images))
         errGE.backward()
+
         ############################
         # (4) Update E(G()) network:
         # Inverse Autoencoder: Minimize Z - E(G(Z))
@@ -95,7 +97,7 @@ def train_adversarial_autoencoder(networks, optimizers, dataloader, epoch=None, 
         ############################
         netE.zero_grad()
         netC.zero_grad()
-        latent_points = netE(Variable(images))
+        latent_points = netE(images)
         class_predictions = netC(latent_points)
         errC = nll_loss(class_predictions, Variable(labels))
         errC.backward()
