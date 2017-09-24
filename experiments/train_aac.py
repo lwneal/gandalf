@@ -31,6 +31,7 @@ parser.add_argument('--epochs', type=int, default=25, help='number of epochs to 
 parser.add_argument('--lr', type=float, default=0.0001, help='learning rate, [default: 0.0001]')
 parser.add_argument('--beta1', type=float, default=0.5, help='beta1 for adam. [default: 0.5]')
 parser.add_argument('--decay', type=float, default=0.9, help='Learning rate decay per epoch. [default: 0.9]')
+parser.add_argument('--random_horizontal_flip', type=bool, default=False, help='Flip images during training. [default: False]')
 
 options = vars(parser.parse_args())
 
@@ -39,7 +40,7 @@ if os.path.exists(options['result_dir']):
 else:
     save_options(options, core_options)
 
-dataloader = CustomDataloader(random_horizontal_flip=False, **options)
+dataloader = CustomDataloader(**options)
 networks = build_networks(dataloader.num_classes, **options)
 optimizers = get_optimizers(networks, **options)
 
