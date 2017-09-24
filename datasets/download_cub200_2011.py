@@ -19,10 +19,6 @@ def mkdir(path):
         os.mkdir(path)
 
 
-def filesize(filename):
-    return os.stat(filename).st_size
-
-
 def download(filename, url):
     if os.path.exists(filename):
         print("File {} already exists, skipping".format(filename))
@@ -32,41 +28,17 @@ def download(filename, url):
             os.system('ls *gz | xargs -n 1 tar xzvf')
 
 
-def load_mat_file(filename):
-    import scipy.io as sio
-    mat = sio.loadmat(filename)
-    return mat['seg']
-
-
 def get_width_height(filename):
     from PIL import Image
-    img = Image.open(os.path.join(DATA_DIR, filename))
+    img = Image.open(os.path.expanduser(filename))
     return (img.width, img.height)
 
 
-def save_dataset(images, boxes, attributes, fold_name=None):
-    if fold_name:
-        output_filename = '{}/{}_{}.dataset'.format(DATA_DIR, DATASET_NAME, fold_name)
-    else:
-        output_filename = '{}/{}.dataset'.format(DATA_DIR, DATASET_NAME)
-    print("Writing {} items to {}".format(len(images), output_filename))
+def save_dataset(examples):
+    output_filename = '{}/{}.dataset'.format(DATA_DIR, DATASET_NAME)
+    print("Writing {} items to {}".format(len(examples), output_filename))
     fp = open(output_filename, 'w')
-    for filename, box, attr in zip(images, boxes, attributes):
-        label = filename.lstrip('{}/images/'.format(DATASET_NAME)).split('/')[0].split('.')[-1]
-        filename = DATASET_NAME + '/images/' + filename
-        width, height = get_width_height(filename)
-        left, top, box_width, box_height = box
-        x0 = left / width
-        x1 = (left + box_width) / width
-        y0 = top / height
-        y1 = (top + box_height) / height
-        example = {
-            'filename': filename,
-            'label': label,
-            'box': (x0, x1, y0, y1),
-        }
-        for attr_name in attr:
-            example[attr_name] = attr[attr_name]
+    for example in examples:
         fp.write(json.dumps(example) + '\n')
     fp.close()
 
@@ -128,7 +100,6 @@ if __name__ == '__main__':
     download('images', 'http://www.vision.caltech.edu/visipedia-data/CUB-200-2011/CUB_200_2011.tgz')
     download('segmentations', 'http://www.vision.caltech.edu/visipedia-data/CUB-200-2011/segmentations.tgz')
     download('annotations', 'https://lwneal.com/cub200_2011_txt_annotations.tar.gz')
-    # TODO: download attributes?
 
     if os.path.exists('CUB_200_2011'):
         os.system('mv CUB_200_2011/* . && rmdir CUB_200_2011')
@@ -136,28 +107,39 @@ if __name__ == '__main__':
     # Generate CSV file for the full dataset
     lines = open('images.txt').readlines()
     ids = [int(line.split()[0]) for line in lines]
-    images = [line.split()[1] for line in lines]
+    image_filenames = [line.split()[1] for line in lines]
 
+    print("Loading CUB200 bounding boxes...")
     boxes = open('bounding_boxes.txt').readlines()
     boxes = [[float(w) for w in line.split()[1:]] for line in boxes]
 
+    print("Parsing CUB200 attributes...")
     attributes = parse_attributes('attributes/image_attribute_labels.txt')
 
-    save_dataset(images, boxes, attributes)
-
-    # Generate train/test split CSV files
+    print("Parsing train/test split...")
     is_training = train_test_split()
-    assert len(is_training) == len(images)
 
-    train_images = [img for (img, t) in zip(images, is_training) if t]
-    test_images = [img for (img, t) in zip(images, is_training) if not t]
-    train_boxes = [box for (box, t) in zip(boxes, is_training) if t]
-    test_boxes = [box for (box, t) in zip(boxes, is_training) if not t]
-    train_attrs = [att for (att, t) in zip(attributes, is_training) if t]
-    test_attrs = [att for (att, t) in zip(attributes, is_training) if not t]
+    examples = []
+    for i in range(len(image_filenames)):
+        example = attributes[i].copy()
 
-    assert len(train_images) + len(test_images) == len(images)
-    save_dataset(train_images, train_boxes, train_attrs, "train")
-    save_dataset(test_images, test_boxes, test_attrs, "test")
+        example['filename'] = '~/data/cub200_2011/images/{}'.format(image_filenames[i])
+        example['segmentation'] = '~/data/cub200_2011/segmentations/{}'.format(image_filenames[i]).replace('jpg','png')
+
+        width, height = get_width_height(example['filename'])
+        left, top, box_width, box_height = boxes[i]
+        x0 = left / width
+        x1 = (left + box_width) / width
+        y0 = top / height
+        y1 = (top + box_height) / height
+        example['box'] = (x0, x1, y0, y1)
+
+        example['label'] = image_filenames[i].lstrip('.0123456789').split('/')[0]
+
+        example['fold'] = 'train' if is_training[i] else 'test'
+
+        examples.append(example)
+
+    save_dataset(examples)
 
     print("Finished building CUB200_2011 dataset")
