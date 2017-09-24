@@ -20,8 +20,8 @@ core_options = ['encoder', 'generator', 'discriminator', 'latent_size', 'image_s
 parser.add_argument('--encoder', help='Name of encoder network')
 parser.add_argument('--generator', help='Name of generator network')
 parser.add_argument('--discriminator', help='Name of discriminator network')
-parser.add_argument('--latent_size', type=int, default=100, help='Size of the latent z vector')
-parser.add_argument('--image_size', type=int, default=64, help='Height / width of images')
+parser.add_argument('--latent_size', type=int, default=100, help='Size of the latent z vector [default: 100]')
+parser.add_argument('--image_size', type=int, default=64, help='Height / width of images [default: 64]')
 
 # Other options can change with every run
 parser.add_argument('--batch_size', type=int, default=64, help='Batch size [default: 64]')
