@@ -30,6 +30,8 @@ def load_options(options, core_options):
 def get_current_epoch(result_dir):
     filenames = os.listdir(os.path.expanduser(result_dir))
     model_filenames = [f for f in filenames if f.endswith('.pth')]
+    if not model_filenames:
+        return 0
     def filename_to_epoch(filename):
         tokens = filename.rstrip('.pth').split('_')
         return int(tokens[-1])
