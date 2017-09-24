@@ -11,7 +11,8 @@ def save_options(options, core_options):
             print("Error: required option --{} was not specified".format(opt_name))
             raise ValueError('Required option "{}" not specified'.format(opt_name))
     print("Creating directory {}".format(options['result_dir']))
-    os.makedirs(options['result_dir'])
+    if not os.path.exists(options['result_dir']):
+        os.makedirs(options['result_dir'])
     with open(os.path.join(options['result_dir'], 'params.json'), 'w') as fp:
         json.dump(options, fp)
 
