@@ -23,7 +23,7 @@ def main():
 
     print("Downloading {} dataset files...".format(DATASET_NAME))
 
-    download('img_align_celeba', DOWNLOAD_URL)
+    download('img_align_celeba.zip', DOWNLOAD_URL)
     download('list_eval_partition.txt', PARTITION_URL)
     download('list_attr_celeba.txt', ANNO_URL)
 
