@@ -100,7 +100,8 @@ def train_adversarial_autoencoder(networks, optimizers, dataloader, epoch=None, 
         class_predictions = netC(latent_points)
         errC = nll_loss(class_predictions, Variable(labels))
         errC.backward()
-        optimizerE.step()
+        if options['joint_encoder_classifier']:
+            optimizerE.step()
         optimizerC.step()
         ############################
 
