@@ -15,7 +15,6 @@ def train_adversarial_autoencoder(networks, optimizers, dataloader, epoch=None, 
     optimizerG = optimizers['generator']
     optimizerE = optimizers['encoder']
     optimizerC = optimizers['classifier']
-    epochs = options['epochs']
     result_dir = options['result_dir']
     batch_size = options['batch_size']
     image_size = options['image_size']
@@ -112,9 +111,9 @@ def train_adversarial_autoencoder(networks, optimizers, dataloader, epoch=None, 
 
         errD = errD_real + errD_fake
         if i % 25 == 0:
-            msg = '[{}/{}][{}/{}] D:{:.3f} G:{:.3f} GP:{:.3f} GE:{:.3f} EG:{:.3f} C_acc:{:.3f}'
+            msg = '[{}][{}/{}] D:{:.3f} G:{:.3f} GP:{:.3f} GE:{:.3f} EG:{:.3f} C_acc:{:.3f}'
             msg = msg.format(
-                  epoch, epochs, i, len(dataloader),
+                  epoch, i, len(dataloader),
                   errD.data[0],
                   errG.data[0],
                   gradient_penalty.data[0],
