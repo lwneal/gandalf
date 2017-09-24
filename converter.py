@@ -29,8 +29,9 @@ class ImageConverter(Converter):
     def __init__(self, 
             dataset,
             image_size=32,
-            crop_to_bounding_box=False,
+            crop_to_bounding_box=True,
             random_horizontal_flip=False,
+            delete_background=False,
             torch=True,
             normalize=True,
             **kwargs):
@@ -41,6 +42,7 @@ class ImageConverter(Converter):
         self.random_horizontal_flip = random_horizontal_flip
         self.torch = torch
         self.normalize = normalize
+        self.delete_background = delete_background
 
     def to_array(self, example):
         filename = os.path.expanduser(example['filename'])
@@ -48,6 +50,12 @@ class ImageConverter(Converter):
         img = imutil.decode_jpg(filename, 
                 resize_to=self.img_shape, 
                 crop_to_box=box)
+        if self.delete_background:
+            seg_filename = os.path.expanduser(example['segmentation'])
+            foreground_mask = imutil.decode_jpg(seg_filename,
+                    resize_to=self.img_shape,
+                    crop_to_box=box)
+            img = img * (foreground_mask / 255.)
         if self.random_horizontal_flip and random.getrandbits(1):
             img = np.flip(img, axis=1)
         if self.torch:
