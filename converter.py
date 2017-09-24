@@ -52,10 +52,11 @@ class ImageConverter(Converter):
                 crop_to_box=box)
         if self.delete_background:
             seg_filename = os.path.expanduser(example['segmentation'])
-            foreground_mask = imutil.decode_jpg(seg_filename,
+            segmentation = imutil.decode_jpg(seg_filename,
                     resize_to=self.img_shape,
                     crop_to_box=box)
-            img = img * (foreground_mask / 255.)
+            foreground_mask = segmentation[:,:,0] > 0
+            img = img * np.expand_dims(foreground_mask, axis=-1)
         if self.random_horizontal_flip and random.getrandbits(1):
             img = np.flip(img, axis=1)
         if self.torch:
