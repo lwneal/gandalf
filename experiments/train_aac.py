@@ -32,6 +32,7 @@ parser.add_argument('--decay', type=float, default=0.9, help='Learning rate deca
 parser.add_argument('--random_horizontal_flip', type=bool, default=False, help='Flip images during training. [default: False]')
 parser.add_argument('--delete_background', type=bool, default=False, help='Delete non-foreground pixels from images [default: False]')
 parser.add_argument('--joint_encoder_classifier', type=bool, default=False, help='Train encoder/classifier jointly. [default: False]')
+parser.add_argument('--perceptual_loss', type=bool, default=False, help='Enable P-loss')
 
 options = vars(parser.parse_args())
 

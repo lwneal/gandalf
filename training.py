@@ -54,29 +54,31 @@ def train_adversarial_autoencoder(networks, optimizers, dataloader, epoch=None, 
             optimizerD.step()
         ###########################
 
+        # Zero gradient for all networks
+        netG.zero_grad()
+        netE.zero_grad()
+        netC.zero_grad()
+
         ############################
         # (2) Update G network:
         # WGAN: minimize D(G(z))
         ############################
-        netG.zero_grad()
         noise.normal_(0, 1)
         fake = netG(Variable(noise))
         DG_fake_output = netD(fake)
         errG = DG_fake_output.mean()
         errG.backward(label_one)
-        optimizerG.step()
         ###########################
 
         ############################
         # (3) Update G(E()) network:
         # Autoencoder: Minimize X - G(E(X))
         ############################
-        netE.zero_grad()
-        netG.zero_grad()
         encoded = netE(images)
         reconstructed = netG(encoded)
         errGE = torch.mean(torch.abs(reconstructed - images))
         errGE.backward()
+        ############################
 
         ############################
         # (4) Update E(G()) network:
@@ -87,24 +89,25 @@ def train_adversarial_autoencoder(networks, optimizers, dataloader, epoch=None, 
         reencoded = netE(fake)
         errEG = torch.mean((reencoded - Variable(noise)) ** 2)
         errEG.backward()
-        optimizerE.step()
-        optimizerG.step()
         ############################
+
+        if options['joint_encoder_classifier']:
+            optimizerE.step()
 
         ############################
         # (5) Update C(Z) network:
         # Categorical Cross-Entropy
         ############################
-        netE.zero_grad()
-        netC.zero_grad()
         latent_points = netE(images)
         class_predictions = netC(latent_points)
         errC = nll_loss(class_predictions, Variable(labels))
         errC.backward()
-        if options['joint_encoder_classifier']:
-            optimizerE.step()
-        optimizerC.step()
         ############################
+
+        if not options['joint_encoder_classifier']:
+            optimizerE.step()
+        optimizerG.step()
+        optimizerC.step()
 
         # https://discuss.pytorch.org/t/argmax-with-pytorch/1528/2
         _, predicted = class_predictions.max(1)
