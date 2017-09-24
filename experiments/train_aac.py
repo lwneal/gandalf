@@ -36,12 +36,12 @@ options = vars(parser.parse_args())
 
 if os.path.exists(options['result_dir']):
     options = load_options(options, core_options)
-else:
-    save_options(options, core_options)
 
 dataloader = CustomDataloader(fold='train', **options)
 networks = build_networks(dataloader.num_classes, **options)
 optimizers = get_optimizers(networks, **options)
+
+save_options(options, core_options)
 
 for epoch in range(options['epochs']):
     train_adversarial_autoencoder(networks, optimizers, dataloader, epoch=epoch, **options)

@@ -36,7 +36,7 @@ def get_network_class(name):
             classobj = getattr(network_definitions, net_name)
             if type(classobj) is type and issubclass(classobj, nn.Module):
                 print('\t' + net_name)
-        raise AttributeError
+        exit()
     return getattr(network_definitions, name)
 
 
@@ -56,6 +56,8 @@ def get_optimizers(networks, lr=.001, beta1=.5, beta2=.999, **options):
 
 
 def get_latest_pth(result_dir, name):
+    if not os.path.isdir(result_dir):
+        return None
     files = os.listdir(result_dir)
     files = [f for f in files if f.startswith(name) and f.endswith('.pth')]
     if not files:
