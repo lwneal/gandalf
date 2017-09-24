@@ -29,7 +29,7 @@ def build_networks(num_classes, latent_size=10, image_size=32, **options):
 
 
 def get_network_class(name):
-    if not hasattr(network_definitions, name):
+    if type(name) is not str or not hasattr(network_definitions, name):
         print("Error: could not construct network '{}'".format(name))
         print("Available networks are:")
         for net_name in dir(network_definitions):
