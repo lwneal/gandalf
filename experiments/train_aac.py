@@ -41,7 +41,7 @@ if os.path.exists(options['result_dir']):
 else:
     save_options(options, core_options)
 
-dataloader = CustomDataloader(**options)
+dataloader = CustomDataloader(fold='train', **options)
 networks = build_networks(dataloader.num_classes, **options)
 optimizers = get_optimizers(networks, **options)
 
