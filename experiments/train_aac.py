@@ -15,15 +15,14 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--dataset', required=True, help='Input filename (must be in .dataset format)')
 parser.add_argument('--result_dir', required=True, help='Output directory for images and model checkpoints')
 
-# Core Options: these determine the shape/size of the neural network.
-core_options = ['encoder', 'generator', 'discriminator', 'latent_size', 'image_size']
+# Core Options: these determine the shape/size of the neural network
 parser.add_argument('--encoder', help='Name of encoder network')
 parser.add_argument('--generator', help='Name of generator network')
 parser.add_argument('--discriminator', help='Name of discriminator network')
 parser.add_argument('--latent_size', type=int, default=100, help='Size of the latent z vector [default: 100]')
 parser.add_argument('--image_size', type=int, default=64, help='Height / width of images [default: 64]')
 
-# Other options can change with every run
+# Other options are specific to training
 parser.add_argument('--batch_size', type=int, default=64, help='Batch size [default: 64]')
 parser.add_argument('--epochs', type=int, default=25, help='number of epochs to train for [default: 25]')
 parser.add_argument('--lr', type=float, default=0.0001, help='learning rate, [default: 0.0001]')
@@ -37,13 +36,13 @@ parser.add_argument('--perceptual_loss', type=bool, default=False, help='Enable 
 options = vars(parser.parse_args())
 
 if os.path.exists(options['result_dir']):
-    options = load_options(options, core_options)
+    options = load_options(options)
 
 dataloader = CustomDataloader(fold='train', **options)
 networks = build_networks(dataloader.num_classes, **options)
 optimizers = get_optimizers(networks, **options)
 
-save_options(options, core_options)
+save_options(options)
 
 start_epoch = get_current_epoch(options['result_dir']) + 1
 
