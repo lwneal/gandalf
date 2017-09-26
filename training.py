@@ -116,7 +116,7 @@ def train_adversarial_autoencoder(networks, optimizers, dataloader, epoch=None, 
 
         errD = errD_real + errD_fake
         if i % 25 == 0:
-            msg = '[{}][{}/{}] D:{:.3f} G:{:.3f} GP:{:.3f} GE:{:.3f} EG:{:.3f} C_acc:{:.3f}'
+            msg = '[{}][{}/{}] D:{:.3f} G:{:.3f} GP:{:.3f} GE:{:.3f} EG:{:.3f} EC: {:.3f} C_acc:{:.3f}'
             msg = msg.format(
                   epoch, i, len(dataloader),
                   errD.data[0],
@@ -124,6 +124,7 @@ def train_adversarial_autoencoder(networks, optimizers, dataloader, epoch=None, 
                   gradient_penalty.data[0],
                   errGE.data[0],
                   errEG.data[0],
+                  errC.data[0],
                   float(correct) / total)
             print(msg)
             video_filename = "{}/generated.mjpeg".format(result_dir)
