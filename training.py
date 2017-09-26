@@ -48,7 +48,7 @@ def train_adversarial_autoencoder(networks, optimizers, dataloader, epoch=None, 
             errD_fake = D_fake_output.mean()
             errD_fake.backward(label_minus_one)
 
-            gradient_penalty = calc_gradient_penalty(netD, images.data, fake.data)
+            gradient_penalty = calc_gradient_penalty(netD, images.data, fake.data, options['gradient_penalty_lambda'])
             gradient_penalty.backward()
 
             optimizerD.step()

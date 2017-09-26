@@ -32,6 +32,7 @@ parser.add_argument('--random_horizontal_flip', type=bool, default=False, help='
 parser.add_argument('--delete_background', type=bool, default=False, help='Delete non-foreground pixels from images [default: False]')
 parser.add_argument('--joint_encoder_classifier', type=bool, default=False, help='Train encoder/classifier jointly. [default: False]')
 parser.add_argument('--perceptual_loss', type=bool, default=False, help='Enable P-loss')
+parser.add_argument('--gradient_penalty_lambda', type=float, default=10.0, help='Lambda from Gulranjani et al 2017 [default: 10.0]')
 
 options = vars(parser.parse_args())
 
