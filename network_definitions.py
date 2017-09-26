@@ -1,9 +1,9 @@
 from torch import nn
 
 
-# custom weights initialization called on netG and netD
 def weights_init(m):
     classname = m.__class__.__name__
+    # TODO: what about fully-connected layers?
     if classname.find('Conv') != -1:
         m.weight.data.normal_(0.0, 0.02)
     elif classname.find('BatchNorm') != -1:
@@ -345,7 +345,6 @@ class classifierMLP256(nn.Module):
         x = self.fc1(x)
         x = nn.LeakyReLU(0.2, inplace=True)(x)
         x = self.fc2(x)
-        x = nn.Softmax()(x)
         from torch.nn.functional import log_softmax
         x = log_softmax(x)
         return x
