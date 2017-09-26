@@ -20,6 +20,7 @@ class CustomDataloader(object):
         return images, labels
 
     def __iter__(self):
+        # TODO: Yield each item once, in shuffled order
         for _ in range(len(self)):
             yield self.get_batch()
 
