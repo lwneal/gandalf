@@ -38,9 +38,9 @@ def generate_trajectory(networks, dataloader, **options):
         for _ in range(10):
             cf_loss = nll_loss(netC(z), target_labels)
             dc_dz = autograd.grad(cf_loss, z, cf_loss, retain_graph=True)[0]
-            momentum -= dc_dz * 10.0
+            momentum -= dc_dz * .001
             z += momentum
-            momentum *= .995
+            momentum *= .99
         print("Loss: {}".format(cf_loss.data[0]))
         print("Latent point: {}...".format(z[0].data.cpu().numpy()[:5]))
         print("Gradient: {}...".format(dc_dz[0].data.cpu().numpy()[:5]))
@@ -51,6 +51,7 @@ def generate_trajectory(networks, dataloader, **options):
             break
         if i % 10 == 0:
             imutil.show(netG(z)[:4])
+    imutil.show(netG(z)[:4])
     return to_np(z)
 
 
