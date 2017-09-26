@@ -1,3 +1,4 @@
+import os
 import time
 import torch
 import numpy as np
@@ -7,7 +8,7 @@ from torch.nn.functional import nll_loss, cross_entropy
 import imutil
 
 
-def generate_trajectory(networks, dataloader, **options):
+def generate_trajectory(networks, dataloader, desired_class=0, **options):
     netG = networks['generator']
     netE = networks['encoder']
     netC = networks['classifier']
@@ -28,13 +29,16 @@ def generate_trajectory(networks, dataloader, **options):
 
     # We want to move them so their classification changes
     target_labels = torch.LongTensor(batch_size)
-    desired_class = 0
     target_labels[:] = desired_class
     target_labels = Variable(target_labels).cuda()
 
     momentum = Variable(torch.zeros(z.size())).cuda()
 
+    video_filename = 'counterfactual_{}_{}.mjpeg'.format(desired_class, int(time.time()))
+    video_filename = os.path.join(options['result_dir'], video_filename)
+
     for i in range(1000):
+        imutil.show(netG(z), video_filename=video_filename, display=False)
         for _ in range(10):
             cf_loss = nll_loss(netC(z), target_labels)
             dc_dz = autograd.grad(cf_loss, z, cf_loss, retain_graph=True)[0]
@@ -45,13 +49,12 @@ def generate_trajectory(networks, dataloader, **options):
         print("Latent point: {}...".format(z[0].data.cpu().numpy()[:5]))
         print("Gradient: {}...".format(dc_dz[0].data.cpu().numpy()[:5]))
         print("Momentum: {}...".format(momentum[0].data.cpu().numpy()[:5]))
-        classes = to_np(netC(z).max(1)[1])[:4]
+        classes = to_np(netC(z).max(1)[1])
         print("Class: {}...".format(classes))
         if all(classes == desired_class):
             break
-        if i % 10 == 0:
-            imutil.show(netG(z)[:4])
-    imutil.show(netG(z)[:4])
+    imutil.show(netG(z), video_filename=video_filename, display=False)
+    imutil.encode_video(video_filename)
     return to_np(z)
 
 

@@ -164,6 +164,12 @@ def show(
         open(video_filename, 'ab').write(encode_jpg(pixels))
 
 
+def encode_video(video_filename):
+    output_filename = video_filename.replace('mjpeg', 'mp4')
+    cmd = 'ffmpeg -nostdin -y -i {0} {1} && rm {0}'.format(video_filename, output_filename)
+    os.system(cmd)
+
+
 def combine_images(generated_images):
     num = generated_images.shape[0]
     width = int(math.sqrt(num))
