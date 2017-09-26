@@ -1,5 +1,7 @@
 import time
 import torch
+import torch.nn as nn
+from torchvision import models
 from torch.autograd import Variable
 from gradient_penalty import calc_gradient_penalty
 from torch.nn.functional import nll_loss
@@ -19,6 +21,11 @@ def train_adversarial_autoencoder(networks, optimizers, dataloader, epoch=None, 
     batch_size = options['batch_size']
     image_size = options['image_size']
     latent_size = options['latent_size']
+
+    if options['perceptual_loss']:
+        vgg16 = models.vgg.vgg16(pretrained=True)
+        netP = nn.Sequential(*list(vgg16.features.children())[:5])
+        netP.cuda()
 
     real_input = torch.FloatTensor(batch_size, 3, image_size, image_size).cuda()
     noise = torch.FloatTensor(batch_size, latent_size).cuda()
@@ -77,6 +84,8 @@ def train_adversarial_autoencoder(networks, optimizers, dataloader, epoch=None, 
         encoded = netE(images)
         reconstructed = netG(encoded)
         errGE = torch.mean(torch.abs(reconstructed - images))
+        if options['perceptual_loss']:
+            errGE += torch.mean(torch.abs(netP(reconstructed) - netP(images)))
         errGE.backward()
         ############################
 
