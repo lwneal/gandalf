@@ -1,4 +1,5 @@
 from torch import nn
+from torch.nn.functional import log_softmax
 
 
 def weights_init(m):
@@ -151,7 +152,7 @@ class discriminatorLReLU64(nn.Module):
         x = self.bn3(x)
         x = nn.LeakyReLU(0.2, inplace=True)(x)
         x = self.conv5(x)
-        # Global average pooling for a local critic
+        # Global average pooling
         x = x.mean(-1).mean(-1)
         return x.view(-1, 1).squeeze(1)
 
@@ -345,6 +346,5 @@ class classifierMLP256(nn.Module):
         x = self.fc1(x)
         x = nn.LeakyReLU(0.2, inplace=True)(x)
         x = self.fc2(x)
-        from torch.nn.functional import log_softmax
         x = log_softmax(x)
         return x
