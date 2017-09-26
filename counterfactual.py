@@ -1,4 +1,5 @@
 import os
+import random
 import time
 import torch
 import numpy as np
@@ -8,7 +9,7 @@ from torch.nn.functional import nll_loss, cross_entropy
 import imutil
 
 
-def generate_trajectory(networks, dataloader, desired_class=0, **options):
+def generate_trajectory(networks, dataloader, desired_class=None, **options):
     netG = networks['generator']
     netE = networks['encoder']
     netC = networks['classifier']
@@ -16,6 +17,10 @@ def generate_trajectory(networks, dataloader, desired_class=0, **options):
     batch_size = options['batch_size']
     image_size = options['image_size']
     latent_size = options['latent_size']
+
+    if desired_class is None:
+        desired_class = random.randint(0, dataloader.num_classes - 1)
+    print("Morphing input examples to class {}".format(desired_class))
 
     real_input = torch.FloatTensor(batch_size, 3, image_size, image_size).cuda()
     noise = torch.FloatTensor(batch_size, latent_size).cuda()
@@ -51,7 +56,7 @@ def generate_trajectory(networks, dataloader, desired_class=0, **options):
         print("Momentum: {}...".format(momentum[0].data.cpu().numpy()[:5]))
         classes = to_np(netC(z).max(1)[1])
         print("Class: {}...".format(classes))
-        if all(classes == desired_class):
+        if i > 48 and all(classes == desired_class):
             break
     imutil.show(netG(z), video_filename=video_filename, display=False)
     imutil.encode_video(video_filename)
