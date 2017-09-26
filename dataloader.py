@@ -13,12 +13,16 @@ class CustomDataloader(object):
         self.fold = fold
         self.num_classes = self.lab_conv.num_classes
 
+    def get_batch(self):
+        batch = self.dsf.get_batch(fold=self.fold, batch_size=self.batch_size)
+        images = torch.FloatTensor(self.img_conv(batch)).cuda()
+        labels = torch.LongTensor(self.lab_conv(batch)).cuda()
+        return images, labels
+
     def __iter__(self):
         for _ in range(len(self)):
-            batch = self.dsf.get_batch(fold=self.fold, batch_size=self.batch_size)
-            images = torch.FloatTensor(self.img_conv(batch)).cuda()
-            labels = torch.LongTensor(self.lab_conv(batch)).cuda()
-            yield images, labels
+            yield self.get_batch()
 
     def __len__(self):
+        # TODO: Count only the items in self.fold
         return self.dsf.count() // self.batch_size
