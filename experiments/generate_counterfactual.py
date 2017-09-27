@@ -12,16 +12,17 @@ from options import save_options, load_options, get_current_epoch
 
 # Dataset (input) and result_dir (output) are always required
 parser = argparse.ArgumentParser()
-parser.add_argument('--dataset', required=True, help='Input filename (must be in .dataset format)')
 parser.add_argument('--result_dir', required=True, help='Output directory for images and model checkpoints')
 
 # Other options can change with every run
 parser.add_argument('--batch_size', type=int, default=64, help='Batch size [default: 64]')
+parser.add_argument('--fold', type=str, default='test', help='Fold [default: test]')
+parser.add_argument('--desired_class', type=int, help='Desired class number')
 
 options = vars(parser.parse_args())
 options = load_options(options)
 
-dataloader = CustomDataloader(fold='test', **options)
+dataloader = CustomDataloader(**options)
 networks = build_networks(dataloader.num_classes, **options)
 
 start_epoch = get_current_epoch(options['result_dir'])

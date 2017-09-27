@@ -24,7 +24,6 @@ parser.add_argument('--image_size', type=int, default=64, help='Height / width o
 
 # Other options are specific to training
 parser.add_argument('--batch_size', type=int, default=64, help='Batch size [default: 64]')
-parser.add_argument('--epochs', type=int, default=25, help='number of epochs to train for [default: 25]')
 parser.add_argument('--lr', type=float, default=0.0001, help='learning rate, [default: 0.0001]')
 parser.add_argument('--beta1', type=float, default=0.5, help='beta1 for adam. [default: 0.5]')
 parser.add_argument('--decay', type=float, default=0.9, help='Learning rate decay per epoch. [default: 0.9]')
@@ -36,6 +35,10 @@ parser.add_argument('--perceptual_loss', type=bool, default=False, help='Enable 
 parser.add_argument('--perceptual_depth', type=int, default=9, help='Number of layers of perceptual loss [default: 9]')
 # Gradient penalty lambda defaults to 10 following Gulrajani et al https://arxiv.org/abs/1704.00028
 parser.add_argument('--gradient_penalty_lambda', type=float, default=10.0, help='Magnitude of discriminator regularization [default: 10.0]')
+parser.add_argument('--autoencoder_lambda', type=float, default=1.0, help='Autoencoder training weight')
+
+# This might change with each run
+parser.add_argument('--epochs', type=int, default=25, help='number of epochs to train for [default: 25]')
 
 options = vars(parser.parse_args())
 
