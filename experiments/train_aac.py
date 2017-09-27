@@ -12,10 +12,10 @@ from options import save_options, load_options, get_current_epoch
 
 # Dataset (input) and result_dir (output) are always required
 parser = argparse.ArgumentParser()
-parser.add_argument('--dataset', required=True, help='Input filename (must be in .dataset format)')
 parser.add_argument('--result_dir', required=True, help='Output directory for images and model checkpoints')
 
 # Core Options: these determine the shape/size of the neural network
+parser.add_argument('--dataset', help='Input filename (must be in .dataset format)')
 parser.add_argument('--encoder', help='Name of encoder network')
 parser.add_argument('--generator', help='Name of generator network')
 parser.add_argument('--discriminator', help='Name of discriminator network')
