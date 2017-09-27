@@ -85,9 +85,10 @@ def train_adversarial_autoencoder(networks, optimizers, dataloader, epoch=None, 
         ############################
         encoded = netE(images)
         reconstructed = netG(encoded)
-        errGE = torch.mean(torch.abs(reconstructed - images))
+        weight = options['autoencoder_lambda']
+        errGE = weight * torch.mean(torch.abs(reconstructed - images))
         if options['perceptual_loss']:
-            errGE += torch.mean(torch.abs(netP(reconstructed) - netP(images)))
+            errGE += weight * torch.mean(torch.abs(netP(reconstructed) - netP(images)))
         errGE.backward()
         ############################
 
