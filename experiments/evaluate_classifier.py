@@ -18,7 +18,7 @@ options = vars(parser.parse_args())
 
 options = load_options(options)
 
-dataloader = CustomDataloader(**options)
+dataloader = CustomDataloader(last_batch=True, **options)
 networks = build_networks(dataloader.num_classes, **options)
 
 evaluate_classifier(networks, dataloader, **options)

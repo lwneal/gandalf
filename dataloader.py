@@ -6,12 +6,13 @@ from torchvision import transforms
 
 
 class CustomDataloader(object):
-    def __init__(self, dataset='mnist.dataset', batch_size=16, fold='train', shuffle=True, **kwargs):
+    def __init__(self, dataset='mnist.dataset', batch_size=16, fold='train', shuffle=True, last_batch=False, **kwargs):
         self.dsf = DatasetFile(dataset)
         self.img_conv = ImageConverter(self.dsf, **kwargs)
         self.lab_conv = LabelConverter(self.dsf, **kwargs)
         self.batch_size = batch_size
         self.fold = fold
+        self.last_batch = last_batch
         self.shuffle = shuffle
         self.num_classes = self.lab_conv.num_classes
 
@@ -22,7 +23,12 @@ class CustomDataloader(object):
         return images, labels
 
     def __iter__(self):
-        for batch in self.dsf.get_all_batches(fold=self.fold, batch_size=self.batch_size, shuffle=self.shuffle):
+        batcher = self.dsf.get_all_batches(
+                fold=self.fold,
+                batch_size=self.batch_size,
+                shuffle=self.shuffle,
+                last_batch=self.last_batch)
+        for batch in batcher:
             images = torch.FloatTensor(self.img_conv(batch)).cuda()
             labels = torch.LongTensor(self.lab_conv(batch)).cuda()
             yield images, labels

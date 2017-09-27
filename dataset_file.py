@@ -71,7 +71,7 @@ class DatasetFile(object):
             examples.append(self.get_example(fold))
         return examples
 
-    def get_all_batches(self, fold='train', batch_size=16, shuffle=True):
+    def get_all_batches(self, fold='train', batch_size=16, shuffle=True, last_batch=False):
         examples = self.folds[fold]
         indices = list(range(len(examples)))
         if shuffle:
@@ -82,7 +82,8 @@ class DatasetFile(object):
             if len(batch) == batch_size:
                 yield batch
                 batch = []
-        #yield batch
+        if last_batch and len(batch) > 0:
+            yield batch
 
 
 def get_folds(examples):
