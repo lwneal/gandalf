@@ -11,11 +11,14 @@
  By convention, "filename" is a relative path to a JPG/PNG file in the DATA_DIR directory
  Any boolean property should start with "is_" or "has_"
 """
+import random
 import os
 import json
 import numpy as np
 import imutil
 import copy
+
+DEFAULT_FOLD = 'train'
 
 
 class DatasetFile(object):
@@ -30,10 +33,10 @@ class DatasetFile(object):
             data = data.decode('zlib')
         lines = data.splitlines()
         self.examples = [json.loads(l) for l in lines]
-        print("Dataset {} contains {} examples:".format(self.name, len(self.examples)))
         self.folds = get_folds(self.examples)
-        for name, count in self.folds.items():
-            print("\tFold '{}': {} examples".format(name, count))
+        print("Dataset {} contains {} examples:".format(self.name, self.count()))
+        for name in self.folds:
+            print("\tFold '{}': {} examples".format(name, self.count(name)))
 
     def __add__(self, other):
         summed = copy.copy(self)
@@ -44,44 +47,49 @@ class DatasetFile(object):
             summed.name, len(summed.examples)))
         return summed
 
-    def _random_idx(self):
-        return np.random.randint(0, len(self.examples))
+    def _random_idx(self, fold):
+        example_count = len(self.folds[fold])
+        return np.random.randint(0, example_count)
 
-    def count(self):
+    def count(self, fold=None):
+        if fold:
+            return len(self.folds[fold])
         return len(self.examples)
 
-    def get_example(self, requirements=None, fold=None):
-        # TODO: Index instead of rejection sampling
-        while True:
-            example = self.examples[self._random_idx()]
-            if fold and fold != example.get('fold'):
-                continue
-            if requirements and not all(r in example for r in requirements):
-                continue
-            return example
+    def get_example(self, fold='train', idx=None):
+        if idx is None:
+            idx = self._random_idx(fold)
+        return self.folds[fold][idx]
 
-    def get_all_examples(self, requirements=None, fold=None):
-        for example in self.examples:
-            if fold and fold != example.get('fold'):
-                continue
-            if requirements and not all(r in example for r in requirements):
-                continue
+    def get_all_examples(self, fold='train'):
+        for example in self.folds[fold]:
             yield example
 
-    def get_batch(self, requirements=None, fold=None, batch_size=16):
+    def get_batch(self, fold='train', batch_size=16):
         examples = []
         for i in range(batch_size):
-            examples.append(self.get_example(requirements, fold))
+            examples.append(self.get_example(fold))
         return examples
+
+    def get_all_batches(self, fold='train', batch_size=16, shuffle=True):
+        examples = self.folds[fold]
+        indices = list(range(len(examples)))
+        if shuffle:
+            random.shuffle(indices)
+        batch = []
+        for idx in indices:
+            batch.append(self.get_example(fold, idx))
+            if len(batch) == batch_size:
+                yield batch
+                batch = []
+        yield batch
 
 
 def get_folds(examples):
-    items_per_fold = {}
+    folds = {}
     for e in examples:
-        fold = e.get('fold')
-        if not fold:
-            continue
-        if fold not in items_per_fold:
-            items_per_fold[fold] = 0
-        items_per_fold[fold] += 1
-    return items_per_fold
+        fold = e.get('fold', DEFAULT_FOLD)
+        if fold not in folds:
+            folds[fold] = []
+        folds[fold].append(e)
+    return folds
