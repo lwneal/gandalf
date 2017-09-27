@@ -8,6 +8,8 @@ from torch.autograd import Variable
 from torch.nn.functional import nll_loss, cross_entropy
 import imutil
 
+CF_VIDEO_FRAMES = 48  # Two seconds of video
+
 
 def generate_trajectory(networks, dataloader, desired_class=None, **options):
     netG = networks['generator']
@@ -56,7 +58,7 @@ def generate_trajectory(networks, dataloader, desired_class=None, **options):
         print("Momentum: {}...".format(momentum[0].data.cpu().numpy()[:5]))
         classes = to_np(netC(z).max(1)[1])
         print("Class: {}...".format(classes))
-        if i > 48 and all(classes == desired_class):
+        if i > CF_VIDEO_FRAMES and all(classes == desired_class):
             break
     imutil.show(netG(z), video_filename=video_filename, display=False)
     imutil.encode_video(video_filename)
