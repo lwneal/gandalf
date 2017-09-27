@@ -40,6 +40,7 @@ def train_adversarial_autoencoder(networks, optimizers, dataloader, epoch=None, 
     
     for i, (images, labels) in enumerate(dataloader):
         images = Variable(images)
+        labels = Variable(labels)
         ############################
         # (1) Update D network
         # WGAN: maximize D(G(z)) - D(x)
@@ -112,7 +113,7 @@ def train_adversarial_autoencoder(networks, optimizers, dataloader, epoch=None, 
         ############################
         latent_points = netE(images)
         class_predictions = netC(latent_points)
-        errC = nll_loss(class_predictions, Variable(labels))
+        errC = nll_loss(class_predictions, labels)
         errC.backward()
         ############################
 
@@ -123,7 +124,7 @@ def train_adversarial_autoencoder(networks, optimizers, dataloader, epoch=None, 
 
         # https://discuss.pytorch.org/t/argmax-with-pytorch/1528/2
         _, predicted = class_predictions.max(1)
-        correct += sum(predicted.data == labels)
+        correct += sum(predicted.data == labels.data)
         total += len(predicted)
 
         errD = errD_real + errD_fake
