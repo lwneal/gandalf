@@ -27,3 +27,11 @@ def evaluate_classifier(networks, dataloader, **options):
         total += len(predicted)
 
         print("Accuracy: {:.4f} ({: >12} / {: <12} correct)".format(float(correct) / total, correct, total))
+
+    return {
+        options['fold']: {
+            'correct': correct,
+            'total': total,
+            'accuracy': float(correct) / total,
+        }
+    }
