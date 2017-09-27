@@ -14,8 +14,6 @@ def evaluate_classifier(networks, dataloader, **options):
     image_size = options['image_size']
     latent_size = options['latent_size']
 
-    real_input = torch.FloatTensor(batch_size, 3, image_size, image_size).cuda()
-
     correct = 0
     total = 0
     
