@@ -24,7 +24,9 @@ def train_adversarial_autoencoder(networks, optimizers, dataloader, epoch=None, 
 
     if options['perceptual_loss']:
         vgg16 = models.vgg.vgg16(pretrained=True)
-        netP = nn.Sequential(*list(vgg16.features.children())[:5])
+        P_layers = list(vgg16.features.children())
+        P_layers = P_layers[:options['perceptual_depth']]
+        netP = nn.Sequential(*P_layers)
         netP.cuda()
 
     real_input = torch.FloatTensor(batch_size, 3, image_size, image_size).cuda()

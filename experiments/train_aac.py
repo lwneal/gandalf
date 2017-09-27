@@ -31,8 +31,11 @@ parser.add_argument('--decay', type=float, default=0.9, help='Learning rate deca
 parser.add_argument('--random_horizontal_flip', type=bool, default=False, help='Flip images during training. [default: False]')
 parser.add_argument('--delete_background', type=bool, default=False, help='Delete non-foreground pixels from images [default: False]')
 parser.add_argument('--joint_encoder_classifier', type=bool, default=False, help='Train encoder/classifier jointly. [default: False]')
+# Perceptual loss at 9 layers (VGG16 relu_2_2) following Johnson et al https://arxiv.org/abs/1603.08155
 parser.add_argument('--perceptual_loss', type=bool, default=False, help='Enable P-loss')
-parser.add_argument('--gradient_penalty_lambda', type=float, default=10.0, help='Lambda from Gulranjani et al 2017 [default: 10.0]')
+parser.add_argument('--perceptual_depth', type=int, default=9, help='Number of layers of perceptual loss [default: 9]')
+# Gradient penalty lambda defaults to 10 following Gulrajani et al https://arxiv.org/abs/1704.00028
+parser.add_argument('--gradient_penalty_lambda', type=float, default=10.0, help='Magnitude of discriminator regularization [default: 10.0]')
 
 options = vars(parser.parse_args())
 
