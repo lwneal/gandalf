@@ -82,7 +82,7 @@ class DatasetFile(object):
             if len(batch) == batch_size:
                 yield batch
                 batch = []
-        yield batch
+        #yield batch
 
 
 def get_folds(examples):
