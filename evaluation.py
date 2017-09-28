@@ -20,14 +20,13 @@ def evaluate_classifier(networks, dataloader, **options):
     image_size = options['image_size']
     latent_size = options['latent_size']
 
-    latent_points = []
     correct = 0
     total = 0
     mae = 0
     mse = 0
     
     for i, (images, labels) in enumerate(dataloader):
-        images = Variable(images)
+        images = Variable(images, volatile=True)
         class_predictions = netC(netE(images))
 
         # https://discuss.pytorch.org/t/argmax-with-pytorch/1528/2
@@ -36,7 +35,6 @@ def evaluate_classifier(networks, dataloader, **options):
         total += len(predicted)
 
         z = netE(images)
-        latent_points.extend(z)
         reconstructed = netG(z)
         mae += torch.mean(torch.abs(reconstructed - images))
         mse += torch.mean((reconstructed - images) ** 2)
