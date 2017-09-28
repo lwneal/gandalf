@@ -5,7 +5,7 @@ from torch import optim
 from torch import nn
 
 
-def build_networks(num_classes, latent_size=10, image_size=32, **options):
+def build_networks(num_classes, epoch=None, latent_size=10, **options):
     networks = {}
 
     EncoderClass = get_network_class(options['encoder'])
@@ -21,7 +21,12 @@ def build_networks(num_classes, latent_size=10, image_size=32, **options):
     networks['classifier'] = ClassifierClass(latent_size, num_classes=num_classes)
 
     for name, net in networks.items():
-        pth = get_latest_pth(options['result_dir'], name)
+        if epoch:
+            # Evaluate a particular epoch
+            pth = get_pth_by_epoch(options['result_dir'], name, epoch)
+        else:
+            # Evaluate the last completed epoch
+            pth = get_latest_pth(options['result_dir'], name)
         if pth:
             print("Loading {} from checkpoint {}".format(name, pth))
             net.load_state_dict(torch.load(pth))
@@ -43,7 +48,7 @@ def get_network_class(name):
 def save_networks(networks, epoch, result_dir):
     for name in networks:
         weights = networks[name].state_dict()
-        filename = '{}/{}_epoch_{:02d}.pth'.format(result_dir, name, epoch)
+        filename = '{}/{}_epoch_{:04d}.pth'.format(result_dir, name, epoch)
         torch.save(weights, filename)
 
 
@@ -66,3 +71,11 @@ def get_latest_pth(result_dir, name):
     ordered_by_mtime = sorted(files, key=lambda x: os.stat(x).st_mtime)
     return ordered_by_mtime[-1]
     
+
+def get_pth_by_epoch(result_dir, name, epoch):
+    files = os.listdir(result_dir)
+    suffix = 'epoch_{:04d}.pth'.format(epoch)
+    files = [f for f in files if f.startswith(name) and f.endswith(suffix)]
+    if not files:
+        raise ValueError("No file available for network {} epoch {}".format(name, epoch))
+    return os.path.join(result_dir, files[0])

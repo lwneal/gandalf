@@ -141,7 +141,7 @@ def train_adversarial_autoencoder(networks, optimizers, dataloader, epoch=None, 
                   float(correct) / total)
             print(msg)
             video_filename = "{}/generated.mjpeg".format(result_dir)
-            caption = "Epoch {:02d} iter {:05d}".format(epoch, i)
+            caption = "Epoch {:04d} iter {:05d}".format(epoch, i)
             demo_gen = netG(fixed_noise)
             imutil.show(demo_gen, video_filename=video_filename, caption=caption, display=False)
         if i % 100 == 0:

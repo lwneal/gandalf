@@ -14,6 +14,7 @@ from evaluation import evaluate_classifier
 parser = argparse.ArgumentParser()
 parser.add_argument('--result_dir', required=True, help='Output directory for images and model checkpoints')
 parser.add_argument('--fold', default="test", help='Name of evaluation fold [default: test]')
+parser.add_argument('--epoch', type=int, help='Epoch to evaluate (latest epoch if none chosen)')
 
 options = vars(parser.parse_args())
 
@@ -25,7 +26,7 @@ epoch = get_current_epoch(options['result_dir'])
 
 new_results = evaluate_classifier(networks, dataloader, **options)
 
-filename = 'eval_epoch_{:03d}.json'.format(epoch)
+filename = 'eval_epoch_{:04d}.json'.format(epoch)
 filename = os.path.join(options['result_dir'], filename)
 
 old_results = {}
