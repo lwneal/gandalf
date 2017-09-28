@@ -9,6 +9,7 @@ from dataloader import CustomDataloader
 from training import train_adversarial_autoencoder
 from networks import build_networks, save_networks, get_optimizers
 from options import save_options, load_options, get_current_epoch
+from locking import acquire_lock, release_lock
 
 # Dataset (input) and result_dir (output) are always required
 parser = argparse.ArgumentParser()
@@ -49,14 +50,18 @@ dataloader = CustomDataloader(fold='train', **options)
 networks = build_networks(dataloader.num_classes, **options)
 optimizers = get_optimizers(networks, **options)
 
-save_options(options)
+acquire_lock(options['result_dir'])
+try:
+    save_options(options)
 
-start_epoch = get_current_epoch(options['result_dir']) + 1
+    start_epoch = get_current_epoch(options['result_dir']) + 1
 
-for epoch in range(start_epoch, start_epoch + options['epochs']):
-    # Apply learning rate decay
-    for optimizer in optimizers.values():
-        optimizer.param_groups[0]['lr'] = options['lr'] * (options['decay'] ** epoch)
-    # Train for one epoch
-    train_adversarial_autoencoder(networks, optimizers, dataloader, epoch=epoch, **options)
-    save_networks(networks, epoch, options['result_dir'])
+    for epoch in range(start_epoch, start_epoch + options['epochs']):
+        # Apply learning rate decay
+        for optimizer in optimizers.values():
+            optimizer.param_groups[0]['lr'] = options['lr'] * (options['decay'] ** epoch)
+        # Train for one epoch
+        train_adversarial_autoencoder(networks, optimizers, dataloader, epoch=epoch, **options)
+        save_networks(networks, epoch, options['result_dir'])
+finally:
+    release_lock(options['result_dir'])
