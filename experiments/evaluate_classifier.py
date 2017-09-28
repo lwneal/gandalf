@@ -28,6 +28,7 @@ new_results = evaluate_classifier(networks, dataloader, **options)
 
 filename = 'eval_epoch_{:04d}.json'.format(epoch)
 filename = os.path.join(options['result_dir'], filename)
+filename = os.path.expanduser(filename)
 
 old_results = {}
 
