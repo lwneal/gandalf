@@ -16,7 +16,8 @@ def save_set(fold, x, y, suffix='png'):
     for i in tqdm(range(len(x))):
         label = y[i]
         img_filename = '~/data/mnist/{}/{:05d}_{:d}.{}'.format(fold, i, label, suffix)
-        Image.fromarray(x[i]).save(os.path.expanduser(img_filename))
+        if not os.path.exists(img_filename):
+            Image.fromarray(x[i]).save(os.path.expanduser(img_filename))
         entry = {
                 'filename': img_filename,
                 'label': str(label),
@@ -42,18 +43,24 @@ def download_mnist_data(path='mnist.npz'):
     x_test, y_test = f['x_test'], f['y_test']
     f.close()
     return (x_train, y_train), (x_test, y_test)
-    
+
+
+def mkdir(dirname):
+    import errno
+    try:
+        os.makedirs(dirname)
+    except OSError as e:
+        if e.errno != errno.EEXIST:
+            raise
+        if not os.path.isdir(dirname):
+            raise
+
 
 if __name__ == '__main__':
     os.chdir(DATA_DIR)
-    try:
-        os.mkdir('mnist')
-        os.mkdir('mnist/train')
-        os.mkdir('mnist/test')
-    except OSError:
-        print("MNIST dataset exists at {}/mnist".format(DATA_DIR))
-        if '--force' not in sys.argv:
-            exit()
+    mkdir('mnist')
+    mkdir('mnist/train')
+    mkdir('mnist/test')
     (train_x, train_y), (test_x, test_y) = download_mnist_data()
 
     train = save_set('train', train_x, train_y)
