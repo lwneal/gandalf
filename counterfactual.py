@@ -15,6 +15,7 @@ def generate_trajectory(networks, dataloader, desired_class=None, **options):
     netG = networks['generator']
     netE = networks['encoder']
     netC = networks['classifier']
+    netD = networks['discriminator']
     result_dir = options['result_dir']
     batch_size = options['batch_size']
     image_size = options['image_size']
@@ -33,6 +34,7 @@ def generate_trajectory(networks, dataloader, desired_class=None, **options):
     # We start with vectors in the latent space Z
     z = to_np(netE(real_images))
     z = Variable(torch.FloatTensor(z), requires_grad=True).cuda()
+    D_real = netD(real_images).data.cpu().numpy().mean()
 
     # We want to move them so their classification changes
     target_labels = torch.LongTensor(batch_size)
@@ -44,23 +46,28 @@ def generate_trajectory(networks, dataloader, desired_class=None, **options):
     video_filename = 'counterfactual_{}_{}.mjpeg'.format(desired_class, int(time.time()))
     video_filename = os.path.join(options['result_dir'], video_filename)
 
-    for i in range(1000):
-        imutil.show(netG(z), video_filename=video_filename, display=False)
-        for _ in range(10):
-            cf_loss = nll_loss(netC(z), target_labels)
-            dc_dz = autograd.grad(cf_loss, z, cf_loss, retain_graph=True)[0]
-            momentum -= dc_dz * .001
-            z += momentum
-            momentum *= .99
+    for i in range(100):
+        hallucinations = netG(z)
+        cf_loss = nll_loss(netC(z), target_labels)
+        dc_dz = autograd.grad(cf_loss, z, cf_loss, retain_graph=True)[0]
+        momentum -= dc_dz * .01
+        z += momentum
+        momentum *= .99
         print("Loss: {}".format(cf_loss.data[0]))
         print("Latent point: {}...".format(z[0].data.cpu().numpy()[:5]))
         print("Gradient: {}...".format(dc_dz[0].data.cpu().numpy()[:5]))
         print("Momentum: {}...".format(momentum[0].data.cpu().numpy()[:5]))
         classes = to_np(netC(z).max(1)[1])
         print("Class: {}...".format(classes))
-        if i > CF_VIDEO_FRAMES and all(classes == desired_class):
-            break
-    imutil.show(netG(z), video_filename=video_filename, display=False)
+
+        D_halluc = netD(hallucinations).data.cpu().numpy().mean()
+
+        caption = "DR {:.04f}  DG {:.04f}".format(D_real, D_halluc)
+        imutil.show(hallucinations,
+                video_filename=video_filename,
+                caption=caption,
+                font_size=12,
+                display=False)
     imutil.encode_video(video_filename)
     return to_np(z)
 
