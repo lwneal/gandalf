@@ -92,6 +92,9 @@ def show(
             pixels = pixels.transpose((0,2,3,1))
         elif len(pixels.shape) == 3 and pixels.shape[0] in (1, 3):
             pixels = pixels.transpose((1,2,0))
+    elif type(data).__name__ == 'AxesSubplot':
+        data.get_figure().savefig('/tmp/plot.jpg')
+        pixels = np.array(Image.open('/tmp/plot.jpg'))
     elif hasattr(data, 'startswith'):
         pixels = decode_jpg(data, resize_to=resize_to)
     else:
