@@ -50,7 +50,8 @@ def evaluate_classifier(networks, dataloader, **options):
     latent_vectors = np.array(latent_vectors)
     filename = 'z_{}_epoch_{:04d}.npy'.format(options['fold'], options['epoch'])
     filename = os.path.join(result_dir, filename)
-    np.save(filename, latent_vectors)
+    if options.get('save_latent_vectors'):
+        np.save(filename, latent_vectors)
 
     # Run PCA on the latent vectors to generate a 2d visualization
     pca_vectors = pca(latent_vectors)

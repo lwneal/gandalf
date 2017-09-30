@@ -15,6 +15,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--result_dir', required=True, help='Output directory for images and model checkpoints')
 parser.add_argument('--fold', default="test", help='Name of evaluation fold [default: test]')
 parser.add_argument('--epoch', type=int, help='Epoch to evaluate (latest epoch if none chosen)')
+parser.add_argument('--save_latent_vectors', default=False, help='Save Z in .npy format for later visualization')
 
 options = vars(parser.parse_args())
 
