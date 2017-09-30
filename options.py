@@ -30,4 +30,4 @@ def get_current_epoch(result_dir):
     def filename_to_epoch(filename):
         tokens = filename.rstrip('.pth').split('_')
         return int(tokens[-1])
-    return max(filename_to_epoch(f) for f in model_filenames) + 1
+    return max(filename_to_epoch(f) for f in model_filenames)
