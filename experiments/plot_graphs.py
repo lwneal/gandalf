@@ -13,6 +13,7 @@ from evaluation import evaluate_classifier
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--result_dir', required=True, help='Output directory for images and model checkpoints')
+parser.add_argument('--fold', default='test', help='One of: train, test')
 
 options = vars(parser.parse_args())
 
@@ -24,25 +25,21 @@ filenames = sorted(filenames)
 filenames = [os.path.join(result_dir, f) for f in filenames]
 
 
+fold = options['fold']
+
 data = {
-        "test_accuracy": [],
-        "test_mae": [],
-        "test_mse": [],
-        "train_accuracy": [],
-        "train_mae": [],
-        "train_mse": [],
+        fold + "_accuracy": [],
+        fold + "_mae": [],
+        fold + "_mse": [],
 }
 
 for f in filenames:
     d = json.load(open(f))
     print(f)
     print(d)
-    data['train_accuracy'].append(d['train']['accuracy'])
-    data['train_mae'].append(d['train']['mae'])
-    data['train_mse'].append(d['train']['mse'])
-    data['test_accuracy'].append(d['test']['accuracy'])
-    data['test_mae'].append(d['test']['mae'])
-    data['test_mse'].append(d['test']['mse'])
+    data[fold + '_accuracy'].append(d[fold]['accuracy'])
+    data[fold + '_mae'].append(d[fold]['mae'])
+    data[fold +'_mse'].append(d[fold]['mse'])
 
 import pandas as pd
 df = pd.DataFrame(data)
