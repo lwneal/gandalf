@@ -16,6 +16,7 @@ parser.add_argument('--result_dir', required=True, help='Output directory for im
 parser.add_argument('--fold', default='test', help='One of: train, test')
 
 options = vars(parser.parse_args())
+options = load_options(options)
 
 result_dir = options['result_dir']
 
@@ -52,7 +53,12 @@ import matplotlib.pyplot as plt
 
 
 from imutil import show
-for title in data:
-    plot = df.plot(y=title)
-    plot.set_title('{} per epoch'.format(title))
+for statistic in data:
+    plot = df.plot(y=statistic)
+    dataset_name = options['dataset'].split('/')[-1].replace(".dataset", '')
+    statistic_label = statistic.replace('_', ' ').title()
+    name = 'Dataset: {}  Latent Size: {}'.format(dataset_name, options['latent_size'])
+    plot.set_title('{}\n{} per epoch'.format(name, statistic_label))
+    plot.set_ylabel(statistic_label)
+    plot.set_xlabel("Epoch")
     show(plot)
