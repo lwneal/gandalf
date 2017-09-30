@@ -18,6 +18,7 @@ def load_options(options, core_options=None):
     print("Resuming existing experiment at {} with options:".format(options['result_dir']))
     old_opts = json.load(open(os.path.join(options['result_dir'], 'params.json')))
     options.update(old_opts)
+    options['result_dir'] = os.path.expanduser(options['result_dir'])
     pprint(options)
     return options
 
