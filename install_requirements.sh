@@ -11,5 +11,8 @@ pip install scipy
 pip install Pillow
 pip install tqdm
 pip install scipy
+pip install sklearn
+pip install matplotlib
+pip install seaborn
 pip install $TORCH_URL 
 pip install torchvision
