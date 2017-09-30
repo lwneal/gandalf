@@ -14,7 +14,7 @@ def save_options(options):
         json.dump(options, fp)
 
 
-def load_options(options, core_options=None):
+def load_options(options):
     print("Resuming existing experiment at {} with options:".format(options['result_dir']))
     old_opts = json.load(open(os.path.join(options['result_dir'], 'params.json')))
     options.update(old_opts)
