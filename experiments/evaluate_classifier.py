@@ -22,13 +22,12 @@ options = load_options(options)
 
 dataloader = CustomDataloader(last_batch=True, shuffle=False, **options)
 networks = build_networks(dataloader.num_classes, **options)
-epoch = options.get('epoch')
-if epoch is None:
-    epoch = get_current_epoch(options['result_dir'])
+if 'epoch' not in options:
+    options['epoch'] = get_current_epoch(options['result_dir'])
 
 new_results = evaluate_classifier(networks, dataloader, **options)
 
-filename = 'eval_epoch_{:04d}.json'.format(epoch)
+filename = 'eval_epoch_{:04d}.json'.format(options['epoch'])
 filename = os.path.join(options['result_dir'], filename)
 filename = os.path.expanduser(filename)
 
