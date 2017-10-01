@@ -28,6 +28,7 @@ def evaluate_classifier(networks, dataloader, **options):
     mae = 0
     mse = 0
     latent_vectors = []
+    plot_labels = []
     
     for i, (images, labels) in enumerate(dataloader):
         images = Variable(images, volatile=True)
@@ -40,6 +41,7 @@ def evaluate_classifier(networks, dataloader, **options):
         total += len(predicted)
 
         latent_vectors.extend(z.data.cpu().numpy())
+        plot_labels.extend(labels.cpu().numpy())
 
         reconstructed = netG(z)
         mae += torch.mean(torch.abs(reconstructed - images))
@@ -58,7 +60,7 @@ def evaluate_classifier(networks, dataloader, **options):
     plot_filename = 'plot_pca_{}_epoch{:04d}.png'.format(options['fold'], options['epoch'])
     plot_filename = os.path.join(result_dir, plot_filename)
     title = 'PCA: {} epoch {}'.format(options['fold'], options['epoch'])
-    plot(pca_vectors, plot_filename, title=title)
+    plot(pca_vectors, plot_filename, title=title, labels=plot_labels)
 
     mse = float(to_np(mse / i)[0])
     mae = float(to_np(mae / i)[0])
@@ -85,7 +87,7 @@ def pca(vectors):
 
 
 # Plots a list of 2d points
-def plot(dots, output_filename, title):
+def plot(dots, output_filename, title=None, labels=None):
     # Incantation to enable headless mode
     import matplotlib
     matplotlib.use('Agg')
@@ -97,6 +99,8 @@ def plot(dots, output_filename, title):
     import pandas as pd
     df = pd.DataFrame(dots)
     df.columns = ['Z_1', 'Z_2']
-    plot = sns.pairplot(df)
-    plot.fig.suptitle(title)
+    df['label'] = labels
+    plot = sns.pairplot(df, size=4, hue='label', plot_kws={'s':12})
+    if title:
+        plot.fig.suptitle(title)
     plot.savefig(output_filename)
