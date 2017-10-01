@@ -32,9 +32,12 @@ def evaluate_classifier(networks, dataloader, **options):
     for i, (images, labels) in enumerate(dataloader):
         images = Variable(images, volatile=True)
         z = netE(images)
-        class_predictions = netC(z)
 
-        # https://discuss.pytorch.org/t/argmax-with-pytorch/1528/2
+        reconstructed = netG(z)
+        mae += torch.mean(torch.abs(reconstructed - images))
+        mse += torch.mean((reconstructed - images) ** 2)
+
+        class_predictions = netC(z)
         _, predicted = class_predictions.max(1)
         correct += sum(predicted.data == labels)
         total += len(predicted)
@@ -42,10 +45,8 @@ def evaluate_classifier(networks, dataloader, **options):
         latent_vectors.extend(z.data.cpu().numpy())
         plot_labels.extend(labels.cpu().numpy())
 
-        reconstructed = netG(z)
-        mae += torch.mean(torch.abs(reconstructed - images))
-        mse += torch.mean((reconstructed - images) ** 2)
         print("Accuracy: {:.4f} ({: >12} / {: <12} correct)".format(float(correct) / total, correct, total))
+
 
     # Save latent vectors for later visualization
     latent_vectors = np.array(latent_vectors)
@@ -56,7 +57,7 @@ def evaluate_classifier(networks, dataloader, **options):
 
     # Run PCA on the latent vectors to generate a 2d visualization
     pca_vectors = pca(latent_vectors)
-    plot_filename = 'plot_pca_{}_epoch{:04d}.png'.format(options['fold'], options['epoch'])
+    plot_filename = 'plot_pca_{}_epoch_{:04d}.png'.format(options['fold'], options['epoch'])
     plot_filename = os.path.join(result_dir, plot_filename)
     title = 'PCA: {} epoch {}'.format(options['fold'], options['epoch'])
     plot(pca_vectors, plot_filename, title=title, labels=plot_labels)
