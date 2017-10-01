@@ -7,7 +7,6 @@ import sys
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--result_dir', required=True, help='Output directory for images and model checkpoints')
-parser.add_argument('--fold', default='test', help='One of: train, test')
 
 options = vars(parser.parse_args())
 
