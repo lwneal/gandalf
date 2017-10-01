@@ -61,4 +61,6 @@ for statistic in data:
     plot.set_title('{}\n{} per epoch'.format(name, statistic_label))
     plot.set_ylabel(statistic_label)
     plot.set_xlabel("Epoch")
-    show(plot)
+    filename = "plot_{}".format(statistic)
+    filename = os.path.join(result_dir, filename)
+    plot.figure.savefig(filename)
