@@ -47,4 +47,4 @@ else:
     old_results = {}
 old_results.update(new_results)
 with open(filename, 'w') as fp:
-    json.dump(old_results, fp)
+    json.dump(old_results, fp, indent=2)

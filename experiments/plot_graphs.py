@@ -17,6 +17,15 @@ from dataloader import CustomDataloader
 from networks import build_networks
 from options import load_options, get_current_epoch
 from evaluation import evaluate_classifier
+import pandas as pd
+
+# Hack to apply sane defaults to matplotlib
+import matplotlib
+matplotlib.use('Agg')
+import seaborn as sns
+sns.set_style('darkgrid')
+import matplotlib.pyplot as plt
+
 
 options = load_options(options)
 
@@ -27,35 +36,31 @@ filenames = [f for f in filenames if f.startswith('eval') and f.endswith('.json'
 filenames = sorted(filenames)
 filenames = [os.path.join(result_dir, f) for f in filenames]
 
-
-fold = options['fold']
-
-data = {
-        fold + "_accuracy": [],
-        fold + "_mae": [],
-        fold + "_mse": [],
-}
-
+evals = []
 for f in filenames:
-    d = json.load(open(f))
-    print(f)
-    print(d)
-    data[fold + '_accuracy'].append(d[fold]['accuracy'])
-    data[fold + '_mae'].append(d[fold]['mae'])
-    data[fold +'_mse'].append(d[fold]['mse'])
+    evals.append(json.load(open(f)))
 
-import pandas as pd
-df = pd.DataFrame(data)
+print("Loaded {} evaluation reports".format(len(evals)))
+folds = []
+statistics = []
+data = {}
+for e in evals:
+    for fold in e.keys():
+        folds.append(fold)
+        for statistic in e[fold]:
+            statistics.append(statistic)
+            key = '{}_{}'.format(fold, statistic)
+            if key not in data:
+                data[key] = []
+            data[key].append(e[fold][statistic])
 
-import matplotlib
-matplotlib.use('Agg')
-import seaborn as sns
-sns.set_style('darkgrid')
-import matplotlib.pyplot as plt
+unique_folds = set(folds)
+unique_statistics = set(statistics)
+print("Got data for {} folds and {} statistics".format(len(unique_folds), len(unique_statistics)))
 
 
-from imutil import show
-for statistic in data:
+def plot(sequence, statistic):
+    df = pd.DataFrame({statistic: sequence})
     plot = df.plot(y=statistic)
     dataset_name = options['dataset'].split('/')[-1].replace(".dataset", '')
     statistic_label = statistic.replace('_', ' ').title()
@@ -66,3 +71,9 @@ for statistic in data:
     filename = "plot_{}".format(statistic)
     filename = os.path.join(result_dir, filename)
     plot.figure.savefig(filename)
+
+
+max_len = max([len(v) for v in data.values()])
+for k in data:
+    plot(data[k], k)
+

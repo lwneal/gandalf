@@ -17,6 +17,7 @@ def evaluate_classifier(networks, dataloader, **options):
     netE = networks['encoder']
     netG = networks['generator']
     netC = networks['classifier']
+    netD = networks['discriminator']
     result_dir = options['result_dir']
     batch_size = options['batch_size']
     image_size = options['image_size']
@@ -28,6 +29,7 @@ def evaluate_classifier(networks, dataloader, **options):
     mse = 0
     latent_vectors = []
     plot_labels = []
+    discriminator_scores = []
     
     for i, (images, labels) in enumerate(dataloader):
         images = Variable(images, volatile=True)
@@ -45,15 +47,17 @@ def evaluate_classifier(networks, dataloader, **options):
         latent_vectors.extend(z.data.cpu().numpy())
         plot_labels.extend(labels.cpu().numpy())
 
+        discriminator_scores.extend(netD(images).data.cpu().numpy())
+
         print("Accuracy: {:.4f} ({: >12} / {: <12} correct)".format(float(correct) / total, correct, total))
 
 
     # Save latent vectors for later visualization
     latent_vectors = np.array(latent_vectors)
-    filename = 'z_{}_epoch_{:04d}.npy'.format(options['fold'], options['epoch'])
-    filename = os.path.join(result_dir, filename)
+    z_filename = 'z_{}_epoch_{:04d}.npy'.format(options['fold'], options['epoch'])
+    z_filename = os.path.join(result_dir, z_filename)
     if options.get('save_latent_vectors'):
-        np.save(filename, latent_vectors)
+        np.save(z_filename, latent_vectors)
 
     # Run PCA on the latent vectors to generate a 2d visualization
     pca_vectors = pca(latent_vectors)
@@ -67,16 +71,21 @@ def evaluate_classifier(networks, dataloader, **options):
     print("Reconstruction per-pixel MSE: {}".format(mse))
     print("Reconstruction per-pixel MAE: {}".format(mae))
 
-    return {
+    discriminator_mean = float(np.array(discriminator_scores).mean())
+
+    stats = {
         options['fold']: {
             'correct': correct,
             'total': total,
             'mse': mse,
             'mae': mae,
             'accuracy': float(correct) / total,
-            'latent_vectors': filename,
+            'discriminator_mean': discriminator_mean,
         }
     }
+    if options['save_latent_vectors']:
+        stats[options['fold']]['latent_vectors'] = z_filename
+    return stats
 
 
 def pca(vectors):
