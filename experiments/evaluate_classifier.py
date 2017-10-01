@@ -1,23 +1,23 @@
 #!/usr/bin/env python
-from __future__ import print_function
-import json
 import argparse
+import json
 import os
 import sys
 
-sys.path.append(os.path.dirname(os.path.dirname(__file__)))
-from dataloader import CustomDataloader
-from networks import build_networks
-from options import load_options, get_current_epoch
-from evaluation import evaluate_classifier
-
+# Print --help message before importing the rest of the project
 parser = argparse.ArgumentParser()
 parser.add_argument('--result_dir', required=True, help='Output directory for images and model checkpoints')
 parser.add_argument('--fold', default="test", help='Name of evaluation fold [default: test]')
 parser.add_argument('--epoch', type=int, help='Epoch to evaluate (latest epoch if none chosen)')
 parser.add_argument('--save_latent_vectors', default=False, help='Save Z in .npy format for later visualization')
-
 options = vars(parser.parse_args())
+
+# Import the rest of the project
+sys.path.append(os.path.dirname(os.path.dirname(__file__)))
+from dataloader import CustomDataloader
+from networks import build_networks
+from options import load_options, get_current_epoch
+from evaluation import evaluate_classifier
 
 options = load_options(options)
 

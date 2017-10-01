@@ -6,7 +6,6 @@ import torch
 from torch.autograd import Variable
 from gradient_penalty import calc_gradient_penalty
 from torch.nn.functional import nll_loss
-from sklearn.decomposition import PCA
 import imutil
 
 
