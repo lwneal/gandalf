@@ -23,7 +23,7 @@ options = load_options(options)
 
 dataloader = CustomDataloader(last_batch=True, shuffle=False, **options)
 networks = build_networks(dataloader.num_classes, **options)
-if 'epoch' not in options:
+if not options.get('epoch'):
     options['epoch'] = get_current_epoch(options['result_dir'])
 
 new_results = evaluate_classifier(networks, dataloader, **options)
