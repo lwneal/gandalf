@@ -4,13 +4,6 @@ import argparse
 import os
 import sys
 
-sys.path.append(os.path.dirname(os.path.dirname(__file__)))
-from dataloader import CustomDataloader
-from training import train_adversarial_autoencoder
-from networks import build_networks, save_networks, get_optimizers
-from options import save_options, load_options, get_current_epoch
-from locking import acquire_lock, release_lock
-
 # Dataset (input) and result_dir (output) are always required
 parser = argparse.ArgumentParser()
 parser.add_argument('--result_dir', required=True, help='Output directory for images and model checkpoints')
@@ -42,6 +35,15 @@ parser.add_argument('--autoencoder_lambda', type=float, default=1.0, help='Autoe
 parser.add_argument('--epochs', type=int, default=25, help='number of epochs to train for [default: 25]')
 
 options = vars(parser.parse_args())
+
+
+sys.path.append(os.path.dirname(os.path.dirname(__file__)))
+from dataloader import CustomDataloader
+from training import train_adversarial_autoencoder
+from networks import build_networks, save_networks, get_optimizers
+from options import save_options, load_options, get_current_epoch
+from locking import acquire_lock, release_lock
+
 
 if os.path.exists(options['result_dir']):
     options = load_options(options)

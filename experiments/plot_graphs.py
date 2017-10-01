@@ -5,17 +5,19 @@ import argparse
 import os
 import sys
 
+parser = argparse.ArgumentParser()
+parser.add_argument('--result_dir', required=True, help='Output directory for images and model checkpoints')
+parser.add_argument('--fold', default='test', help='One of: train, test')
+
+options = vars(parser.parse_args())
+
+
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 from dataloader import CustomDataloader
 from networks import build_networks
 from options import load_options, get_current_epoch
 from evaluation import evaluate_classifier
 
-parser = argparse.ArgumentParser()
-parser.add_argument('--result_dir', required=True, help='Output directory for images and model checkpoints')
-parser.add_argument('--fold', default='test', help='One of: train, test')
-
-options = vars(parser.parse_args())
 options = load_options(options)
 
 result_dir = options['result_dir']
