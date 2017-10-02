@@ -46,7 +46,7 @@ def generate_trajectory(networks, dataloader, desired_class=None, **options):
     video_filename = 'counterfactual_{}_{}.mjpeg'.format(desired_class, int(time.time()))
     video_filename = os.path.join(options['result_dir'], video_filename)
 
-    for i in range(100):
+    for i in range(200):
         hallucinations = netG(z)
         cf_loss = nll_loss(netC(z), target_labels)
         dc_dz = autograd.grad(cf_loss, z, cf_loss, retain_graph=True)[0]
