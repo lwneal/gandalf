@@ -5,17 +5,17 @@ from torch import optim
 from torch import nn
 
 
-def build_networks(num_classes, epoch=None, latent_size=10, **options):
+def build_networks(num_classes, epoch=None, latent_size=10, batch_size=64, **options):
     networks = {}
 
     EncoderClass = get_network_class(options['encoder'])
-    networks['encoder'] = EncoderClass(latent_size)
+    networks['encoder'] = EncoderClass(latent_size=latent_size, batch_size=batch_size)
 
     GeneratorClass = get_network_class(options['generator'])
-    networks['generator'] = GeneratorClass(latent_size)
+    networks['generator'] = GeneratorClass(latent_size=latent_size)
 
     DiscrimClass = get_network_class(options['discriminator'])
-    networks['discriminator'] = DiscrimClass(latent_size)
+    networks['discriminator'] = DiscrimClass(latent_size=latent_size)
 
     ClassifierClass = network_definitions.classifierMLP256
     networks['classifier'] = ClassifierClass(latent_size, num_classes=num_classes)

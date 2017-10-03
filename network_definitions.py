@@ -1,3 +1,4 @@
+import torch
 from torch import nn
 from torch.nn.functional import log_softmax
 
@@ -13,7 +14,7 @@ def weights_init(m):
 
 
 class generator28(nn.Module):
-    def __init__(self, latent_size=10):
+    def __init__(self, latent_size=10, **kwargs):
         super(self.__class__, self).__init__()
         Z = latent_size
         # in_channels, out_channels, kernel_size, stride, padding
@@ -39,7 +40,7 @@ class generator28(nn.Module):
 
 
 class discriminator28(nn.Module):
-    def __init__(self, latent_size=100):
+    def __init__(self, latent_size=100, **kwargs):
         super(self.__class__, self).__init__()
         # 3x28x28
         self.conv1 = nn.Conv2d(3,       64,      4, 2, 1, bias=False)
@@ -74,7 +75,7 @@ class discriminator28(nn.Module):
 
 
 class encoder28(nn.Module):
-    def __init__(self, latent_size=100):
+    def __init__(self, latent_size=100, **kwargs):
         super(self.__class__, self).__init__()
         # 3x28x28
         self.conv1 = nn.Conv2d(3,       64,      4, 2, 1, bias=False)
@@ -107,7 +108,7 @@ class encoder28(nn.Module):
 
 
 class generator32(nn.Module):
-    def __init__(self, latent_size=100):
+    def __init__(self, latent_size=100, **kwargs):
         super(self.__class__, self).__init__()
         self.conv1 = nn.ConvTranspose2d(latent_size, 512, 4, 1, 0, bias=False)
         self.conv2 = nn.ConvTranspose2d(   512,    256, 4, 2, 1, bias=False)
@@ -136,7 +137,7 @@ class generator32(nn.Module):
 
 
 class generatorReLU64(nn.Module):
-    def __init__(self, latent_size=100):
+    def __init__(self, latent_size=100, **kwargs):
         super(self.__class__, self).__init__()
         self.conv1 = nn.ConvTranspose2d(latent_size, 512, 4, 1, 0, bias=False)
         self.conv2 = nn.ConvTranspose2d(   512,    256, 4, 2, 1, bias=False)
@@ -170,7 +171,7 @@ class generatorReLU64(nn.Module):
 
 
 class generatorReLU128(nn.Module):
-    def __init__(self, latent_size=100):
+    def __init__(self, latent_size=100, **kwargs):
         super(self.__class__, self).__init__()
         Z = latent_size
         self.conv1 = nn.ConvTranspose2d(     Z,   1024, 4, 1, 0, bias=False)
@@ -210,7 +211,7 @@ class generatorReLU128(nn.Module):
 
 #LeakyReLU
 class generatorLeakyReLU128(nn.Module):
-    def __init__(self, latent_size=100):
+    def __init__(self, latent_size=100, **kwargs):
         super(self.__class__, self).__init__()
         Z = latent_size
         self.conv1 = nn.ConvTranspose2d(     Z,   1024, 4, 1, 0, bias=False)
@@ -250,7 +251,7 @@ class generatorLeakyReLU128(nn.Module):
 
 
 class discriminator32(nn.Module):
-    def __init__(self, latent_size=100):
+    def __init__(self, latent_size=100, **kwargs):
         super(self.__class__, self).__init__()
         self.conv1 = nn.Conv2d(3,      128,     4, 2, 1, bias=False)
         self.conv2 = nn.Conv2d(128,     256,     4, 2, 1, bias=False)
@@ -277,7 +278,7 @@ class discriminator32(nn.Module):
 
 
 class discriminatorLReLU64(nn.Module):
-    def __init__(self, latent_size=100):
+    def __init__(self, latent_size=100, **kwargs):
         super(self.__class__, self).__init__()
         self.conv1 = nn.Conv2d(3,       64,      4, 2, 1, bias=False)
         self.conv2 = nn.Conv2d(64,      128,     4, 2, 1, bias=False)
@@ -309,7 +310,7 @@ class discriminatorLReLU64(nn.Module):
 
 
 class discriminatorMultiscale128With4Critics(nn.Module):
-    def __init__(self, latent_size=100):
+    def __init__(self, latent_size=100, **kwargs):
         super(self.__class__, self).__init__()
         self.conv1 = nn.Conv2d(3,       64,      4, 2, 1, bias=False)
         self.conv2 = nn.Conv2d(64,      128,     4, 2, 1, bias=False)
@@ -359,7 +360,7 @@ class discriminatorMultiscale128With4Critics(nn.Module):
 
 
 class discriminatorMultiscale128(nn.Module):
-    def __init__(self, latent_size=100):
+    def __init__(self, latent_size=100, **kwargs):
         super(self.__class__, self).__init__()
         self.conv1 = nn.Conv2d(3,       64,      4, 2, 1, bias=False)
         self.conv2 = nn.Conv2d(64,      128,     4, 2, 1, bias=False)
@@ -409,7 +410,7 @@ class discriminatorMultiscale128(nn.Module):
 
 
 class encoderLReLU64(nn.Module):
-    def __init__(self, latent_size=100):
+    def __init__(self, latent_size=100, **kwargs):
         super(self.__class__, self).__init__()
         self.latent_size = latent_size
         self.conv1 = nn.Conv2d(3,       64,     4, 2, 1, bias=False)
@@ -444,7 +445,7 @@ class encoderLReLU64(nn.Module):
 
 
 class encoder32(nn.Module):
-    def __init__(self, latent_size=100):
+    def __init__(self, latent_size=100, **kwargs):
         super(self.__class__, self).__init__()
         self.latent_size = latent_size
         self.conv1 = nn.Conv2d(3,      128,    4, 2, 1, bias=False)
@@ -472,8 +473,42 @@ class encoder32(nn.Module):
         return x
 
 
+class encoder32sphere(nn.Module):
+    def __init__(self, latent_size=100, batch_size=64, **kwargs):
+        super(self.__class__, self).__init__()
+        self.latent_size = latent_size
+        self.batch_size = batch_size
+        self.conv1 = nn.Conv2d(3,      128,    4, 2, 1, bias=False)
+        self.conv2 = nn.Conv2d(128,     256,    4, 2, 1, bias=False)
+        self.conv3 = nn.Conv2d(256,     512,    4, 2, 1, bias=False)
+        self.conv4 = nn.Conv2d(512,     1024,   4, 1, 0, bias=False)
+        self.bn1 = nn.BatchNorm2d(256)
+        self.bn2 = nn.BatchNorm2d(512)
+        self.fc1 = nn.Linear(1024, self.latent_size, bias=False)
+        self.apply(weights_init)
+        self.cuda()
+
+    def forward(self, x):
+        x = self.conv1(x)
+        x = nn.LeakyReLU(0.2, inplace=True)(x)
+        x = self.conv2(x)
+        x = self.bn1(x)
+        x = nn.LeakyReLU(0.2, inplace=True)(x)
+        x = self.conv3(x)
+        x = self.bn2(x)
+        x = nn.LeakyReLU(0.2, inplace=True)(x)
+        x = self.conv4(x)
+        x = x.squeeze()
+        x = self.fc1(x)
+        xnorm = torch.norm(x, p=2, dim=1).detach()
+        xnorm = xnorm.expand(1, self.batch_size)
+        xnorm = xnorm.transpose(1,0)
+        x = x.div(xnorm)
+        return x
+
+
 class encoderLReLU128(nn.Module):
-    def __init__(self, latent_size=100):
+    def __init__(self, latent_size=100, **kwargs):
         super(self.__class__, self).__init__()
         self.latent_size = latent_size
         # in_channels, out_channels, kernel_size, stride, padding, dilation
@@ -514,7 +549,7 @@ class encoderLReLU128(nn.Module):
 
 
 class classifierMLP256(nn.Module):
-    def __init__(self, latent_size=100, num_classes=2):
+    def __init__(self, latent_size=100, num_classes=2, **kwargs):
         super(self.__class__, self).__init__()
         self.latent_size = latent_size
         self.fc1 = nn.Linear(latent_size, 256)
