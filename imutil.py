@@ -147,18 +147,11 @@ def show(
         fp.write(encode_jpg(pixels))
         fp.flush()
 
-    # Display the image directly in the terminal, if supported
-    if display:
-        for prog in ['imgcat', 'catimg', 'feh', 'display']:
-            if spawn.find_executable(prog):
-                tmux_hack = 'TMUX' in os.environ
-                if tmux_hack:
-                    print('\n' * 4)
-                    print('\033[4F')
-                subprocess.check_call([prog, filename])
-                if tmux_hack:
-                    print('\033[4B')
-                break
+    if display and 'TMUX' in os.environ and spawn.find_executable('imgcat'):
+        print('\n' * 4)
+        print('\033[4F')
+        subprocess.check_call(['imgcat', filename])
+        print('\033[4B')
     elif verbose:
         print("Saved image size {} as {}".format(pixels.shape, filename))
 
