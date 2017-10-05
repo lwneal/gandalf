@@ -104,7 +104,7 @@ class encoder28(nn.Module):
         x = nn.LeakyReLU(0.2, inplace=True)(x)
 
         x = self.conv4(x)
-        return x.squeeze()
+        return x.squeeze(-1).squeeze(-1)
 
 
 class generator32(nn.Module):
