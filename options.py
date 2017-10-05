@@ -11,7 +11,7 @@ def save_options(options):
     filename = os.path.join(options['result_dir'], 'params.json')
     with open(filename, 'w') as fp:
         print("Saving options to {}".format(filename))
-        json.dump(options, fp)
+        json.dump(options, fp, indent=2)
 
 
 def load_options(options):
