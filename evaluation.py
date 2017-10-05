@@ -137,26 +137,30 @@ def evaluate_openset(networks, dataloader_on, dataloader_off, **options):
     y_mse = np.concatenate([mse_scores_on, mse_scores_off])
     y_softmax = np.concatenate([c_scores_on, c_scores_off])
 
-    y_combined = combine_scores([y_discriminator, y_mae, y_softmax])
+    y_combined2 = combine_scores([y_discriminator, y_mae])
+    y_combined3 = combine_scores([y_discriminator, y_mae, y_softmax])
 
     auc_d, plot_d = plot_roc(y_true, y_discriminator, 'Discriminator ROC vs {}'.format(dataloader_off.dsf.name))
     auc_mae, plot_mae = plot_roc(y_true, y_mae, 'Reconstruction MAE ROC vs {}'.format(dataloader_off.dsf.name))
     auc_mse, plot_mse = plot_roc(y_true, y_mse, 'Reconstruction MSE ROC vs {}'.format(dataloader_off.dsf.name))
     auc_softmax, plot_softmax = plot_roc(y_true, y_softmax, 'Softmax ROC vs {}'.format(dataloader_off.dsf.name))
-    auc_combined, plot_combined = plot_roc(y_true, y_combined, 'Combined-3 ROC vs {}'.format(dataloader_off.dsf.name))
+    auc_combined2, plot_combined2 = plot_roc(y_true, y_combined2, 'Combined-2 ROC vs {}'.format(dataloader_off.dsf.name))
+    auc_combined3, plot_combined3 = plot_roc(y_true, y_combined3, 'Combined-3 ROC vs {}'.format(dataloader_off.dsf.name))
 
     save_plot(plot_d, 'roc_discriminator', **options)
     save_plot(plot_mae, 'roc_mae', **options)
     save_plot(plot_mse, 'roc_mse', **options)
     save_plot(plot_softmax, 'roc_softmax', **options)
-    save_plot(plot_combined, 'roc_combined3', **options)
+    save_plot(plot_combined2, 'roc_combined2', **options)
+    save_plot(plot_combined3, 'roc_combined3', **options)
 
     return {
         'auc_discriminator': auc_d,
         'auc_mae': auc_mae,
         'auc_mse': auc_mse,
         'auc_softmax': auc_softmax,
-        'auc_combined3': auc_combined,
+        'auc_combined2': auc_combined2,
+        'auc_combined3': auc_combined3,
     }
 
 
@@ -166,12 +170,10 @@ def combine_scores(score_list):
 
     normalized_scores = np.ones(example_count)
     for score in score_list:
-        print("Normalizing score from range {} {}".format(score.min(), score.max()))
         score -= score.min()
         score /= score.max()
         normalized_scores *= score
         normalized_scores /= normalized_scores.max()
-        print(normalized_scores)
     return normalized_scores
 
 
