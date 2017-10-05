@@ -55,8 +55,23 @@ def main():
         examples.append(example)
 
     print("Saving .dataset file...")
-    save_image_dataset(examples)
+    output_filename = '{}/{}.dataset'.format(DATA_DIR, DATASET_NAME)
+    save_image_dataset(examples, output_filename)
     print("Dataset convertion finished")
+
+    # Add zero-through-five and six-through-nine sets for open set testing
+    on_manifold = []
+    off_manifold = []
+    for e in examples:
+        if int(e['label']) <= 5:
+            on_manifold.append(e)
+        else:
+            off_manifold.append(e)
+    output_filename = '{}/{}-05.dataset'.format(DATA_DIR, DATASET_NAME)
+    save_image_dataset(on_manifold, output_filename)
+    output_filename = '{}/{}-69.dataset'.format(DATA_DIR, DATASET_NAME)
+    save_image_dataset(off_manifold, output_filename)
+    print("Finished writing datasets")
 
 
 def make_example(label, filename, data):
@@ -99,8 +114,7 @@ def train_test_split(filename):
     return [line.strip().endswith('0') for line in open(filename)]
 
 
-def save_image_dataset(examples):
-    output_filename = '{}/{}.dataset'.format(DATA_DIR, DATASET_NAME)
+def save_image_dataset(examples, output_filename):
     fp = open(output_filename, 'w')
     for line in examples:
         fp.write(json.dumps(line) + '\n')
