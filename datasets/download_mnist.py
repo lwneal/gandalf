@@ -72,3 +72,12 @@ if __name__ == '__main__':
     with open('mnist.dataset', 'w') as fp:
         for example in train + test:
             fp.write(json.dumps(example) + '\n')
+
+    with open('mnist-05.dataset', 'w') as fp:
+        for example in train + test:
+            if int(example['label']) < 6:
+                fp.write(json.dumps(example) + '\n')
+    with open('mnist-69.dataset', 'w') as fp:
+        for example in train + test:
+            if int(example['label']) >= 6:
+                fp.write(json.dumps(example) + '\n')
