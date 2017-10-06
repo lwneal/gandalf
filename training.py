@@ -29,7 +29,6 @@ def train_adversarial_autoencoder(networks, optimizers, dataloader, epoch=None, 
         netP = nn.Sequential(*P_layers)
         netP.cuda()
 
-    real_input = torch.FloatTensor(batch_size, 3, image_size, image_size).cuda()
     noise = torch.FloatTensor(batch_size, latent_size).cuda()
     fixed_noise = Variable(torch.FloatTensor(batch_size, latent_size).normal_(0, 1)).cuda()
     label_one = torch.FloatTensor(batch_size).cuda().fill_(1)
@@ -148,3 +147,50 @@ def train_adversarial_autoencoder(networks, optimizers, dataloader, epoch=None, 
             img = torch.cat([images[:12], reconstructed.data[:12], demo_gen.data[:12]])
             filename = "{}/demo_{}.jpg".format(result_dir, int(time.time()))
             imutil.show(img, caption=msg, font_size=8, filename=filename)
+
+
+def train_classifier(networks, optimizers, dataloader, epoch=None, **options):
+    netD = networks['discriminator']
+    netG = networks['generator']
+    netE = networks['encoder']
+    netC = networks['classifier']
+    optimizerD = optimizers['discriminator']
+    optimizerG = optimizers['generator']
+    optimizerE = optimizers['encoder']
+    optimizerC = optimizers['classifier']
+    result_dir = options['result_dir']
+    batch_size = options['batch_size']
+    image_size = options['image_size']
+    latent_size = options['latent_size']
+
+    correct = 0
+    total = 0
+    
+    for i, (images, labels) in enumerate(dataloader):
+        images = Variable(images)
+        labels = Variable(labels)
+
+        ############################
+        # Update C(Z) network:
+        # Categorical Cross-Entropy
+        ############################
+        latent_points = netE(images)
+        class_predictions = netC(latent_points)
+        errC = nll_loss(class_predictions, labels)
+        errC.backward()
+        optimizerC.step()
+        ############################
+
+        _, predicted = class_predictions.max(1)
+        correct += sum(predicted.data == labels.data)
+        total += len(predicted)
+
+        if i % 25 == 0 or i == len(dataloader) - 1:
+            msg = '[{}][{}/{}] EC: {:.3f} C_acc:{:.3f}'
+            msg = msg.format(
+                  epoch, i, len(dataloader),
+                  errC.data[0],
+                  float(correct) / total)
+            print(msg)
+            video_filename = "{}/generated.mjpeg".format(result_dir)
+            caption = "Epoch {:04d} iter {:05d}".format(epoch, i)

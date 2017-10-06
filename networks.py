@@ -5,7 +5,7 @@ from torch import optim
 from torch import nn
 
 
-def build_networks(num_classes, epoch=None, latent_size=10, batch_size=64, **options):
+def build_networks(num_classes, epoch=None, latent_size=10, batch_size=64, load_classifier=True, **options):
     networks = {}
 
     EncoderClass = get_network_class(options['encoder'])
@@ -29,6 +29,8 @@ def build_networks(num_classes, epoch=None, latent_size=10, batch_size=64, **opt
             pth = get_latest_pth(options['result_dir'], name)
         if pth:
             print("Loading {} from checkpoint {}".format(name, pth))
+            if name is 'classifier' and load_classifier is False:
+                continue
             net.load_state_dict(torch.load(pth))
     return networks
 

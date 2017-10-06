@@ -17,12 +17,13 @@ import json
 import numpy as np
 import imutil
 import copy
+import random
 
 DEFAULT_FOLD = 'train'
 
 
 class DatasetFile(object):
-    def __init__(self, input_filename):
+    def __init__(self, input_filename, example_count=None):
         input_filename = os.path.expanduser(input_filename)
         self.data_dir = os.path.dirname(input_filename)
         self.name = os.path.split(input_filename)[-1].replace('.dataset', '')
@@ -33,7 +34,14 @@ class DatasetFile(object):
             data = data.decode('zlib')
         lines = data.splitlines()
         self.examples = [json.loads(l) for l in lines]
+
         self.folds = get_folds(self.examples)
+        if example_count:
+            print("Randomly selecting {} examples".format(example_count))
+            for fold in self.folds:
+                random.shuffle(self.folds[fold])
+                self.folds[fold] = self.folds[fold][:example_count]
+
         print("Dataset {} contains {} examples:".format(self.name, self.count()))
         for name in self.folds:
             print("\tFold '{}': {} examples".format(name, self.count(name)))
