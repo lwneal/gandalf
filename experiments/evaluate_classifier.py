@@ -18,7 +18,7 @@ sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 from dataloader import CustomDataloader
 from networks import build_networks
 from options import load_options, get_current_epoch
-from evaluation import evaluate_classifier
+from evaluation import evaluate_classifier, save_evaluation
 
 options = load_options(options)
 if not options.get('epoch'):
@@ -38,13 +38,5 @@ if options['comparison_dataset']:
 
 new_results = evaluate_classifier(networks, dataloader, **options)
 
-filename = 'eval_epoch_{:04d}.json'.format(options['epoch'])
-filename = os.path.join(options['result_dir'], filename)
-filename = os.path.expanduser(filename)
-if os.path.exists(filename):
-    old_results = json.load(open(filename))
-else:
-    old_results = {}
-old_results.update(new_results)
-with open(filename, 'w') as fp:
-    json.dump(old_results, fp, indent=2)
+save_evaluation(new_results, options['result_dir'], options['epoch'])
+

@@ -13,7 +13,7 @@ def to_np(v):
     return v.data.cpu().numpy()
 
 
-def evaluate_classifier(networks, dataloader, **options):
+def evaluate_classifier(networks, dataloader, verbose=True, **options):
     netE = networks['encoder']
     netG = networks['generator']
     netC = networks['classifier']
@@ -49,22 +49,24 @@ def evaluate_classifier(networks, dataloader, **options):
 
         discriminator_scores.extend(netD(images).data.cpu().numpy())
 
-        print("Accuracy: {:.4f} ({: >12} / {: <12} correct)".format(float(correct) / total, correct, total))
+        if verbose:
+            print("Accuracy: {:.4f} ({: >12} / {: <12} correct)".format(float(correct) / total, correct, total))
 
 
     # Save latent vectors for later visualization
     latent_vectors = np.array(latent_vectors)
-    z_filename = 'z_{}_epoch_{:04d}.npy'.format(options['fold'], options['epoch'])
-    z_filename = os.path.join(result_dir, z_filename)
     if options.get('save_latent_vectors'):
+        z_filename = 'z_{}_epoch_{:04d}.npy'.format(options['fold'], options['epoch'])
+        z_filename = os.path.join(result_dir, z_filename)
         np.save(z_filename, latent_vectors)
 
-    # Run PCA on the latent vectors to generate a 2d visualization
-    pca_vectors = pca(latent_vectors)
-    plot_filename = 'plot_pca_{}_epoch_{:04d}.png'.format(options['fold'], options['epoch'])
-    plot_filename = os.path.join(result_dir, plot_filename)
-    title = 'PCA: {} epoch {}'.format(options['fold'], options['epoch'])
-    plot(pca_vectors, plot_filename, title=title, labels=plot_labels)
+    if verbose:
+        # Run PCA on the latent vectors to generate a 2d visualization
+        pca_vectors = pca(latent_vectors)
+        plot_filename = 'plot_pca_{}_epoch_{:04d}.png'.format(options['fold'], options['epoch'])
+        plot_filename = os.path.join(result_dir, plot_filename)
+        title = 'PCA: {} epoch {}'.format(options['fold'], options['epoch'])
+        plot(pca_vectors, plot_filename, title=title, labels=plot_labels)
 
     mse = float(to_np(mse / i)[0])
     mae = float(to_np(mae / i)[0])
@@ -83,7 +85,7 @@ def evaluate_classifier(networks, dataloader, **options):
             'discriminator_mean': discriminator_mean,
         }
     }
-    if options['save_latent_vectors']:
+    if options.get('save_latent_vectors'):
         stats[options['fold']]['latent_vectors'] = z_filename
     return stats
 
@@ -230,3 +232,16 @@ def plot_roc(y_true, y_score, title="Receiver Operating Characteristic"):
     from plotting import plot_xy
     plot = plot_xy(fpr, tpr, x_axis="False Positive Rate", y_axis="True Positive Rate", title=title)
     return auc_score, plot
+
+
+def save_evaluation(new_results, result_dir, epoch):
+    filename = 'eval_epoch_{:04d}.json'.format(epoch)
+    filename = os.path.join(result_dir, filename)
+    filename = os.path.expanduser(filename)
+    if os.path.exists(filename):
+        old_results = json.load(open(filename))
+    else:
+        old_results = {}
+    old_results.update(new_results)
+    with open(filename, 'w') as fp:
+        json.dump(old_results, fp, indent=2)
