@@ -36,6 +36,11 @@ def run_eval(result_dir, epoch, fold='test'):
     os.system(cmd)
 
 
+def run_plots(result_dir):
+    cmd = 'python experiments/plot_graphs.py --result_dir {}'.format(result_dir)
+    os.system(cmd)
+
+
 def epoch_from_filename(filename):
     numbers = filename.split('epoch_')[-1].rstrip('.pth')
     return int(numbers)
@@ -56,15 +61,17 @@ def main():
         encoder_checkpoints.sort()
 
         for fold in ['test']:
+            print("Checking evaluations for fold {}".format(fold))
             for checkpoint_file in encoder_checkpoints:
-                print("Reading {}".format(checkpoint_file))
                 epoch = epoch_from_filename(checkpoint_file)
                 if get_eval(result_dir, epoch, fold) is None:
                     print("Evaluation has not been done for {} epoch {} fold {}".format(
                         result_dir, epoch, fold))
                     run_eval(result_dir, epoch, fold)
-                    print("Finished running evaulation {} {} {}".format(result_dir, epoch, fold))
-                    exit()
+                print("Finished running evaulation {} {} {}".format(result_dir, epoch, fold))
+        print("All evaluations are completed for {}".format(r))
+        run_plots(result_dir)
+
 
 if __name__ == '__main__':
     args = docopt(__doc__)
