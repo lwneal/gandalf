@@ -162,7 +162,7 @@ def show(
 
 def encode_video(video_filename):
     output_filename = video_filename.replace('mjpeg', 'mp4')
-    cmd = 'ffmpeg -nostdin -y -i {0} {1} && rm {0}'.format(video_filename, output_filename)
+    cmd = 'ffmpeg -hide_banner -nostdin -y -i {0} {1} && rm {0}'.format(video_filename, output_filename)
     os.system(cmd)
 
 
