@@ -18,7 +18,7 @@ options = vars(parser.parse_args())
 
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 from dataloader import CustomDataloader
-from counterfactual import generate_trajectory
+from counterfactual import generate_trajectory_batch
 from networks import build_networks, save_networks, get_optimizers
 from options import save_options, load_options, get_current_epoch
 
@@ -32,4 +32,4 @@ start_epoch = get_current_epoch(options['result_dir'])
 print("Loaded model at epoch {}".format(start_epoch))
 
 # Generate a counterfactual
-generate_trajectory(networks, dataloader, **options)
+generate_trajectory_batch(networks, dataloader, **options)

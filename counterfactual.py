@@ -11,7 +11,8 @@ import imutil
 CF_VIDEO_FRAMES = 48  # Two seconds of video
 
 
-def generate_trajectory(networks, dataloader, desired_class=None, **options):
+# Morphs an entire batch of input examples into a given desired_class
+def generate_trajectory_batch(networks, dataloader, desired_class=None, **options):
     netG = networks['generator']
     netE = networks['encoder']
     netC = networks['classifier']
@@ -43,8 +44,16 @@ def generate_trajectory(networks, dataloader, desired_class=None, **options):
 
     momentum = Variable(torch.zeros(z.size())).cuda()
 
-    video_filename = 'counterfactual_{}_{}.mjpeg'.format(desired_class, int(time.time()))
+    # Write all counterfactuals to the trajectories/ subdirectory
+    trajectory_id = 'batch_{}_{}'.format(dataloader.dsf.name, int(time.time() * 1000))
+    video_filename = 'counterfactual_{}_{}.mjpeg'.format(trajectory_id, desired_class)
+    video_filename = os.path.join('trajectories', video_filename)
     video_filename = os.path.join(options['result_dir'], video_filename)
+
+    path = os.path.join(options['result_dir'], 'trajectories')
+    if not os.path.exists(path):
+        print("Creating trajectories directory {}".format(path))
+        os.mkdir(path)
 
     for i in range(200):
         hallucinations = netG(z)
