@@ -137,7 +137,7 @@ def generate_trajectory_active(networks, dataloader, **options):
         dc_dz = autograd.grad(cf_loss, z, cf_loss, retain_graph=True)[0]
         momentum -= dc_dz * .0001
         z += momentum
-        momentum *= .90
+        momentum *= .50
         print("Loss: {}".format(cf_loss.data[0]))
         print("Latent point: {}...".format(z[0].data.cpu().numpy()[:5]))
         print("Gradient: {}...".format(dc_dz[0].data.cpu().numpy()[:5]))
