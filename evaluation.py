@@ -245,4 +245,4 @@ def save_evaluation(new_results, result_dir, epoch):
         old_results = {}
     old_results.update(new_results)
     with open(filename, 'w') as fp:
-        json.dump(old_results, fp, indent=2)
+        json.dump(old_results, fp, indent=2, sort_keys=True)
