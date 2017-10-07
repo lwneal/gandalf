@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 import numpy as np
+import hashlib
 import sys
 import requests
 import os
@@ -7,7 +8,10 @@ import json
 from PIL import Image
 from tqdm import tqdm
 
-DATA_DIR = os.path.expanduser('~/data')
+DATA_DIR = '/mnt/data'
+DOWNLOAD_URL = 'https://s3.amazonaws.com/img-datasets/mnist.npz'
+LATEST_MD5 = '93239478658c70ba5f2dcc6cc6fb0f3f'
+
 
 def save_set(fold, x, y, suffix='png'):
     examples = []
@@ -15,7 +19,8 @@ def save_set(fold, x, y, suffix='png'):
     print("Writing MNIST dataset {}".format(fold))
     for i in tqdm(range(len(x))):
         label = y[i]
-        img_filename = '~/data/mnist/{}/{:05d}_{:d}.{}'.format(fold, i, label, suffix)
+        img_filename = 'mnist/{}/{:05d}_{:d}.{}'.format(fold, i, label, suffix)
+        img_filename = os.path.join(DATA_DIR, img_filename)
         if not os.path.exists(img_filename):
             Image.fromarray(x[i]).save(os.path.expanduser(img_filename))
         entry = {
@@ -36,7 +41,7 @@ def save_set(fold, x, y, suffix='png'):
 
 def download_mnist_data(path='mnist.npz'):
     if not os.path.exists(path):
-        response = requests.get('https://s3.amazonaws.com/img-datasets/mnist.npz')
+        response = requests.get(DOWNLOAD_URL)
         open(path, 'wb').write(response.content)
     f = np.load(path)
     x_train, y_train = f['x_train'], f['y_train']
@@ -56,11 +61,24 @@ def mkdir(dirname):
             raise
 
 
-if __name__ == '__main__':
-    os.chdir(DATA_DIR)
-    mkdir('mnist')
-    mkdir('mnist/train')
-    mkdir('mnist/test')
+def is_latest_version(latest_md5):
+    dataset_file = os.path.join(DATA_DIR, 'mnist.dataset')
+    if not os.path.exists(dataset_file):
+        return False
+    data = open(dataset_file, 'rb').read()
+    current_md5 = hashlib.md5(data).hexdigest()
+    if current_md5 == latest_md5:
+        print("Have latest version of MNIST: {}".format(current_md5))
+        return True
+    else:
+        print("Have old version {} of MNIST, downloading version {}".format(current_md5, latest_md5))
+        return False
+
+def download_mnist(latest_md5):
+    if is_latest_version(latest_md5):
+        print("Already have the latest version of mnist.dataset, not downloading")
+        return
+
     (train_x, train_y), (test_x, test_y) = download_mnist_data()
 
     train = save_set('train', train_x, train_y)
@@ -71,8 +89,9 @@ if __name__ == '__main__':
         example['fold'] = 'test'
     with open('mnist.dataset', 'w') as fp:
         for example in train + test:
-            fp.write(json.dumps(example) + '\n')
+            fp.write(json.dumps(example, sort_keys=True) + '\n')
 
+    # For open set classification experiments
     with open('mnist-05.dataset', 'w') as fp:
         for example in train + test:
             if int(example['label']) < 6:
@@ -81,3 +100,11 @@ if __name__ == '__main__':
         for example in train + test:
             if int(example['label']) >= 6:
                 fp.write(json.dumps(example) + '\n')
+
+
+if __name__ == '__main__':
+    os.chdir(DATA_DIR)
+    mkdir('mnist')
+    mkdir('mnist/train')
+    mkdir('mnist/test')
+    download_mnist(LATEST_MD5)
