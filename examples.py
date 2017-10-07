@@ -5,9 +5,9 @@ import numpy as np
 from imutil import show
 
 
-def run_example_code(dataloader, nets, **options):
-    netE = nets['netE']
-    netG = nets['netG']
+def run_example_code(nets, dataloader, **options):
+    netE = nets['encoder']
+    netG = nets['generator']
 
     print("My favorite number is {}".format(options['example_parameter']))
     
@@ -16,22 +16,27 @@ def run_example_code(dataloader, nets, **options):
 
     print("This is what a random image looks like:")
     image_size = options['image_size']
-    image = np.random.rand((3, image_size, image_size))
-    show(image)
+    # Torch uses <channels, height, width>
+    image = np.random.rand(3, image_size, image_size)
+    x = np.expand_dims(image, 0)
+    x = torch.autograd.Variable(torch.FloatTensor(x))
+    x = x.cuda()
+    show(x)
 
     print("Encoding the image down to {} dimensions...".format(options['latent_size']))
-    image_tensor = torch.autograd.Variable(torch.FloatTensor(np.expand_dims(image, 0)))
-    z = netE(image_tensor)
-    z = z.data.cpu().numpy()
-    print(z)
+    z = netE(x)
+    z = torch_to_np(z)
 
-    print("Decoding the image back to the manifold")
-    z = torch.autograd.Variable(torch.FloatTensor(z))
-    reconstructed = netG(z)
-    reconstructed = reconstructed.data.cpu().numpy()
+    print("Latent vector is: {}".format(z))
+
+    print("Decoding the latent vector back to an image...")
+    z = np_to_torch(z)
+    outputs = netG(z)
+    reconstructed = torch_to_np(outputs[0])
 
     print("This is what the image looks like after it's been autoencoded:")
-    show(reconstructed)
+    # Shuffle it back to <height, width, channels>
+    show(reconstructed.transpose((1,2,0)))
 
     r_error = np.mean((image - reconstructed) ** 2)
 
@@ -40,3 +45,11 @@ def run_example_code(dataloader, nets, **options):
             'dataset_size': len(dataloader),
     }
     return my_results
+
+
+def np_to_torch(x):
+    return torch.autograd.Variable(torch.FloatTensor(x)).cuda()
+
+
+def torch_to_np(x):
+    return x.data.cpu().numpy()

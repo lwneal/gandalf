@@ -3,6 +3,7 @@ import argparse
 import json
 import os
 import sys
+from pprint import pprint
 
 # Print --help message before importing the rest of the project
 parser = argparse.ArgumentParser()
@@ -38,16 +39,16 @@ examples.run_example_code(nets, dataloader, **options)
 
 
 print("Evaluating the accuracy of the classifier on the {} fold".format(options['fold']))
-new_results = evaluate_classifier(nets, dataloader, **options)
+new_results = evaluate_classifier(nets, dataloader, verbose=False, **options)
 
 print("Results from evaluate_classifier:")
 pprint(new_results)
 
-acquire_lock()
+acquire_lock(options['result_dir'])
 try:
     print("Saving results in {}".format(options['result_dir']))
     filename = os.path.join(options['result_dir'], 'example_results.json')
     with open(filename, 'w') as fp:
         fp.write(json.dumps(new_results, indent=2))
 finally:
-    release_lock()
+    release_lock(options['result_dir'])
