@@ -10,7 +10,7 @@ app = flask.Flask(__name__)
 # TODO: Select a result_dir
 RESULT_ID = 'mnist_28x28_8dim_unsupervised'
 
-RESULT_DIR = os.path.expanduser('~/results/{}'.format(RESULT_ID))
+RESULT_DIR = '/mnt/results/{}'.format(RESULT_ID)
 LABEL_DIR = os.path.join(RESULT_DIR, 'labels')
 TRAJECTORY_DIR = os.path.join(RESULT_DIR, 'trajectories')
 
