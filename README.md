@@ -19,6 +19,14 @@ By choosing an appropriate classifier and target, counterfactual examples can be
 
 ### Code Structure
 
+To add an experiment, first run:
+
+    `./test.sh`
+
+Then edit the things that say "example" in `experiments/example.py` and run `test.sh` again.
+
+### Requirements
+
 Runs on Ubuntu, under Python 3.5. Requires CUDA and PyTorch 0.2 or higher. For other requirements, run `install_requirements.sh`.
 
 #### Datasets
