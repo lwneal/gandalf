@@ -5,14 +5,16 @@ Usage:
     evaluate_bot.py
     
 Finds a result_dir that hasn't been fully evaluated.
-Runs evaluate_classifier.py on that result_dir.
+Runs evaluate_classifier.py and plot_graph.py on that result_dir.
 """
 import os
 import random
 import json
 from docopt import docopt
+from subprocess import check_call
 
-RESULTS_DIR = os.path.expanduser('~/results')
+
+RESULTS_DIR = '/mnt/results'
 
 
 def get_eval(result_dir, epoch, fold='test'):
@@ -30,10 +32,12 @@ def get_eval(result_dir, epoch, fold='test'):
 
 
 def run_eval(result_dir, epoch, fold='test'):
-    # TODO: security lol
-    cmd = 'python experiments/evaluate_classifier.py --result_dir {} --epoch {} --fold {}'.format(
-            result_dir, epoch, fold)
-    os.system(cmd)
+    cmd = ['python', 'experiments/evaluate_classifier.py',
+        '--result_dir', result_dir,
+        '--epoch', str(epoch),
+        '--fold', str(fold),
+    ]
+    check_call(cmd)
 
 
 def run_plots(result_dir):
@@ -46,31 +50,38 @@ def epoch_from_filename(filename):
     return int(numbers)
 
 
+def is_valid_directory(result_dir):
+    # Can also check that params.json exists and has valid values
+    result_dir = os.path.join(RESULTS_DIR, result_dir)
+    return os.path.exists(result_dir) and os.path.isdir(result_dir)
+
+
 def main():
-    result_dir_listing = os.listdir(RESULTS_DIR)
-    random.shuffle(result_dir_listing)
-    for r in result_dir_listing:
-        result_dir = os.path.join(RESULTS_DIR, r)
-        if not os.path.isdir(result_dir):
-            print("Skipping non-directory file {}".format(result_dir))
-            continue
-        files = os.listdir(result_dir)
+    result_dirs = os.listdir(RESULTS_DIR)
+    result_dirs = [r for r in result_dirs if is_valid_directory(r)]
+    if len(result_dirs) == 0:
+        print("Could not find any valid result_dir in {}".format(RESULTS_DIR))
+        return
 
-        print("Reading checkpoints in {}".format(result_dir))
-        encoder_checkpoints = [f for f in files if f.startswith('generator') and f.endswith('.pth')]
-        encoder_checkpoints.sort()
+    result_dir = random.choice(result_dirs)
+    result_dir = os.path.join(RESULTS_DIR, result_dir)
+    print("Found valid result directory {}".format(result_dir))
 
-        for fold in ['test']:
-            print("Checking evaluations for fold {}".format(fold))
-            for checkpoint_file in encoder_checkpoints:
-                epoch = epoch_from_filename(checkpoint_file)
-                if get_eval(result_dir, epoch, fold) is None:
-                    print("Evaluation has not been done for {} epoch {} fold {}".format(
-                        result_dir, epoch, fold))
-                    run_eval(result_dir, epoch, fold)
-                print("Finished running evaulation {} {} {}".format(result_dir, epoch, fold))
-        print("All evaluations are completed for {}".format(r))
-        run_plots(result_dir)
+    print("Reading checkpoints in {}".format(result_dir))
+    files = os.listdir(result_dir)
+    encoder_checkpoints = [f for f in files if f.startswith('encoder') and f.endswith('.pth')]
+    encoder_checkpoints.sort()
+
+    for fold in ['test']:
+        print("Checking evaluations for fold {}".format(fold))
+        for checkpoint_file in encoder_checkpoints:
+            epoch = epoch_from_filename(checkpoint_file)
+            if get_eval(result_dir, epoch, fold) is None:
+                print("Evaluation has not been done for {} epoch {} fold {}".format(
+                    result_dir, epoch, fold))
+                run_eval(result_dir, epoch, fold)
+    print("All evaluations are completed for {}".format(result_dir))
+    run_plots(result_dir)
 
 
 if __name__ == '__main__':
