@@ -53,7 +53,7 @@ try:
         train_classifier(networks, optimizers, train_dataloader, epoch=classifier_epoch, **options)
 
     # Evaluate
-    foldname = 'semisupervised_{}_example_count_{:06d}'.format(test_dataloader.dsf.name, options['example_count'])
+    foldname = '{}_example_count_{:06d}'.format(test_dataloader.dsf.name, options['example_count'])
     classifier_options = options.copy()
     classifier_options['fold'] = foldname
 
