@@ -186,11 +186,7 @@ def train_classifier(networks, optimizers, dataloader, epoch=None, **options):
         total += len(predicted)
 
         if i % 25 == 0 or i == len(dataloader) - 1:
-            msg = '[{}][{}/{}] EC: {:.3f} C_acc:{:.3f}'
-            msg = msg.format(
-                  epoch, i, len(dataloader),
-                  errC.data[0],
-                  float(correct) / total)
-            print(msg)
-            video_filename = "{}/generated.mjpeg".format(result_dir)
-            caption = "Epoch {:04d} iter {:05d}".format(epoch, i)
+            print('[{}/{}] EC: {:.3f} C_acc:{:.3f}'.format(
+                i, len(dataloader), errC.data[0], float(correct) / total))
+    print("Finished training classifier with {} labels, got training accuracy {}".format(
+        len(dataloader), float(correct) / total))
