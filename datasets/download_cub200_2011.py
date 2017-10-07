@@ -7,7 +7,7 @@ import json
 from subprocess import check_output
 
 
-DATA_DIR = os.path.expanduser('~/data')
+DATA_DIR = '/mnt/data'
 CUB_DIR = os.path.join(DATA_DIR, 'cub200_2011')
 DATASET_NAME = 'cub200_2011'
 

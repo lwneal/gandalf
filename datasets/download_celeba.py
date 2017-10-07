@@ -10,7 +10,7 @@ DOWNLOAD_URL = 'https://www.dropbox.com/sh/8oqt9vytwxb3s4r/AADIKlz8PR9zr6Y20qbku
 PARTITION_URL =  'https://www.dropbox.com/sh/8oqt9vytwxb3s4r/AADxLE5t6HqyD8sQCmzWJRcHa/Eval/list_eval_partition.txt?dl=1'
 ANNO_URL = 'https://www.dropbox.com/sh/8oqt9vytwxb3s4r/AAC7-uCaJkmPmvLX2_P5qy0ga/Anno/list_attr_celeba.txt?dl=1'
 
-DATA_DIR = os.path.expanduser('~/data')
+DATA_DIR = '/mnt/data'
 DATASET_NAME = 'celeba'
 DATASET_PATH = os.path.join(DATA_DIR, DATASET_NAME)
 

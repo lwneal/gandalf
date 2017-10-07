@@ -6,7 +6,7 @@ import json
 from subprocess import check_output
 from scipy import io as sio
 
-DATA_DIR = os.path.expanduser('~/data')
+DATA_DIR = '/mnt/data'
 DATASET_NAME = 'oxford102'
 DATASET_PATH = os.path.join(DATA_DIR, DATASET_NAME)
 
