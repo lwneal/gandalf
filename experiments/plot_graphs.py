@@ -59,6 +59,7 @@ print("Got data for {} folds and {} statistics".format(len(unique_folds), len(un
 
 
 def plot(sequence, statistic):
+    print("Plotting {}".format(statistic))
     df = pd.DataFrame({statistic: sequence})
     plot = df.plot(y=statistic)
     dataset_name = options['dataset'].split('/')[-1].replace(".dataset", '')
@@ -67,7 +68,7 @@ def plot(sequence, statistic):
     plot.set_title('{}\n{} per epoch'.format(name, statistic_label))
     plot.set_ylabel(statistic_label)
     plot.set_xlabel("Epoch")
-    filename = "plot_{}".format(statistic)
+    filename = "plot_{}.png".format(statistic)
     filename = os.path.join(result_dir, filename)
     plot.figure.savefig(filename)
 

@@ -58,6 +58,7 @@ try:
     classifier_options['fold'] = foldname
 
     new_results = evaluate_classifier(networks, test_dataloader, verbose=False, **classifier_options)
+    new_results = {'test': {'accuracy', new_results['test']['accuracy']}}
     acc = list(new_results.values())[0]['accuracy']
 
     print("Test set accuracy with {} labels: {:.3f}".format(options['example_count'], acc))
