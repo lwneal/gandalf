@@ -2,6 +2,7 @@
 from __future__ import print_function
 import argparse
 import os
+from pprint import pprint
 import sys
 
 # Dataset (input) and result_dir (output) are always required
@@ -31,10 +32,12 @@ if not options['evaluation_epoch']:
     options['evaluation_epoch'] = get_current_epoch(options['result_dir'])
 
 # A limited-size training dataset
+print("Loading a training dataset with only {} random examples".format(options['example_count']))
 train_dataloader = CustomDataloader(fold='train', **options)
 
 # A larger test dataset for evaluation
 # TODO: This should be the validation fold, or a hold-out set from fold='train'
+print("Loading a full-sized test dataset...")
 test_dataloader_options = options.copy()
 del test_dataloader_options['example_count']
 test_dataloader = CustomDataloader(fold='test', **test_dataloader_options)
@@ -42,26 +45,28 @@ test_dataloader = CustomDataloader(fold='test', **test_dataloader_options)
 networks = build_networks(train_dataloader.num_classes, load_classifier=False, **options)
 optimizers = get_optimizers(networks, **options)
 
-acquire_lock(options['result_dir'])
-try:
-    test_accuracy = 0
-    for classifier_epoch in range(options['classifier_epochs']):
-        # Apply learning rate decay
-        for optimizer in optimizers.values():
-            optimizer.param_groups[0]['lr'] = options['lr'] * (options['decay'] ** classifier_epoch)
-        # Train for one epoch
-        train_classifier(networks, optimizers, train_dataloader, epoch=classifier_epoch, **options)
+print("Training classifier using {} labels".format(train_dataloader.dsf.count()))
+for classifier_epoch in range(options['classifier_epochs']):
+    # Apply learning rate decay
+    for optimizer in optimizers.values():
+        optimizer.param_groups[0]['lr'] = options['lr'] * (options['decay'] ** classifier_epoch)
+    # Train for one epoch
+    train_classifier(networks, optimizers, train_dataloader, epoch=classifier_epoch, **options)
 
-    # Evaluate
-    foldname = '{}_example_count_{:06d}'.format(test_dataloader.dsf.name, options['example_count'])
-    classifier_options = options.copy()
-    classifier_options['fold'] = foldname
+foldname = '{}_example_count_{:06d}'.format(test_dataloader.dsf.name, options['example_count'])
+classifier_options = options.copy()
+classifier_options['fold'] = foldname
 
-    new_results = evaluate_classifier(networks, test_dataloader, verbose=False, **classifier_options)
-    new_results = {'test': {'accuracy', new_results['test']['accuracy']}}
-    acc = list(new_results.values())[0]['accuracy']
+print("Evaluating classifier and saving evaluation as {}".format(foldname))
+new_results = evaluate_classifier(networks, test_dataloader, verbose=False, **classifier_options)
 
-    print("Test set accuracy with {} labels: {:.3f}".format(options['example_count'], acc))
-    save_evaluation(new_results, options['result_dir'], options['evaluation_epoch'])
-finally:
-    release_lock(options['result_dir'])
+print("Parsing relevant statistics from evaluation run...")
+interesting_statistics = ['accuracy']
+for fold in new_results:
+    for key in list(new_results[fold]):
+        if key not in interesting_statistics:
+            del new_results[fold][key]
+
+print("Saving evaluation statistics:")
+pprint(new_results)
+save_evaluation(new_results, options['result_dir'], options['evaluation_epoch'])

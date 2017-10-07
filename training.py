@@ -189,4 +189,4 @@ def train_classifier(networks, optimizers, dataloader, epoch=None, **options):
             print('[{}/{}] EC: {:.3f} C_acc:{:.3f}'.format(
                 i, len(dataloader), errC.data[0], float(correct) / total))
     print("Finished training classifier with {} labels, got training accuracy {}".format(
-        len(dataloader), float(correct) / total))
+        dataloader.dsf.count(), float(correct) / total))
