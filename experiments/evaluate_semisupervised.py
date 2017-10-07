@@ -10,6 +10,7 @@ parser.add_argument('--result_dir', required=True, help='Output directory for im
 
 # Core Options: these determine the shape/size of the neural network
 parser.add_argument('--dataset', help='Input filename (must be in .dataset format)')
+parser.add_argument('--evaluation_epoch', type=int, help='Epoch to load for training')
 parser.add_argument('--example_count', type=int, default=100, help='Number of labels to train with')
 parser.add_argument('--classifier_epochs', type=int, default=25, help='Max number of training epochs [default: 50]')
 
@@ -26,6 +27,8 @@ from locking import acquire_lock, release_lock
 
 
 loaded_options = load_options(options)
+if not options['evaluation_epoch']:
+    options['evaluation_epoch'] = get_current_epoch(options['result_dir'])
 
 # A limited-size training dataset
 train_dataloader = CustomDataloader(fold='train', **options)
@@ -58,6 +61,6 @@ try:
     acc = list(new_results.values())[0]['accuracy']
 
     print("Test set accuracy with {} labels: {:.3f}".format(options['example_count'], acc))
-    save_evaluation(new_results, options['result_dir'], get_current_epoch(options['result_dir']))
+    save_evaluation(new_results, options['result_dir'], options['evaluation_epoch'])
 finally:
     release_lock(options['result_dir'])
