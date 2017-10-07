@@ -28,9 +28,9 @@ from locking import acquire_lock, release_lock
 
 
 loaded_options = load_options(options)
-if not options['evaluation_epoch']:
-    options['evaluation_epoch'] = get_current_epoch(options['result_dir'])
-
+evaluation_epoch = options['evaluation_epoch']
+if not evaluation_epoch:
+    evaluation_epoch = get_current_epoch(options['result_dir'])
 # A limited-size training dataset
 print("Loading a training dataset with only {} random examples".format(options['example_count']))
 train_dataloader = CustomDataloader(fold='train', **options)
@@ -42,7 +42,7 @@ test_dataloader_options = options.copy()
 del test_dataloader_options['example_count']
 test_dataloader = CustomDataloader(fold='test', **test_dataloader_options)
 
-networks = build_networks(train_dataloader.num_classes, load_classifier=False, **options)
+networks = build_networks(train_dataloader.num_classes, epoch=evaluation_epoch, load_classifier=False, **options)
 optimizers = get_optimizers(networks, **options)
 
 print("Training classifier using {} labels".format(train_dataloader.dsf.count()))
@@ -69,4 +69,4 @@ for fold in new_results:
 
 print("Saving evaluation statistics:")
 pprint(new_results)
-save_evaluation(new_results, options['result_dir'], options['evaluation_epoch'])
+save_evaluation(new_results, options['result_dir'], evaluation_epoch)
