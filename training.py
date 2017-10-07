@@ -149,7 +149,7 @@ def train_adversarial_autoencoder(networks, optimizers, dataloader, epoch=None, 
             imutil.show(img, caption=msg, font_size=8, filename=filename)
 
 
-def train_classifier(networks, optimizers, dataloader, epoch=None, **options):
+def train_classifier(networks, optimizers, dataloader, **options):
     netD = networks['discriminator']
     netG = networks['generator']
     netE = networks['encoder']
@@ -186,7 +186,6 @@ def train_classifier(networks, optimizers, dataloader, epoch=None, **options):
         total += len(predicted)
 
         if i % 25 == 0 or i == len(dataloader) - 1:
-            print('[{}/{}] EC: {:.3f} C_acc:{:.3f}'.format(
+            print('[{}/{}] Classifier Loss: {:.3f} Classifier Accuracy:{:.3f}'.format(
                 i, len(dataloader), errC.data[0], float(correct) / total))
-    print("Finished training classifier with {} labels, got training accuracy {}".format(
-        dataloader.dsf.count(), float(correct) / total))
+    return float(correct) / total
