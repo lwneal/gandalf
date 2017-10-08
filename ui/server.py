@@ -26,20 +26,35 @@ def save_active_label(label):
         json.dump(label, fp, indent=2)
     return filename
 
+
+def is_labeled(filename):
+    key = filename.split('-')[1]
+    labels = os.path.join(RESULT_DIR, 'labels')
+    label_keys = [l.replace('.json', '') for l in os.listdir(labels)]
+    print(key)
+    print(label_keys)
+    return key in label_keys
+
+
 def select_random_trajectory():
-    # TODO: Instead of selecting a random trajectory, select an unlabeled one
     if not os.path.exists(TRAJECTORY_DIR):
         raise ValueError("Error: Trajectory directory {} does not exist")
     filenames = os.listdir(TRAJECTORY_DIR)
     filenames = [f for f in filenames if f.startswith('active') and f.endswith('.mp4')]
     if len(filenames) == 0:
         raise ValueError("Error: No active_learning .mp4 files available")
-    filename = random.choice(filenames)
+    unlabeled_filenames = [f for f in filenames if not is_labeled(f)]
+    if len(unlabeled_filenames) == 0:
+        print("Warning: All counterfactuals are labeled")
+        return filenames[0]
+    filename = random.choice(unlabeled_filenames)
     return filename
+
 
 @app.route('/')
 def route_main_page():
     filename = select_random_trajectory()
+    print("Labeling {}".format(filename))
     trajectory_id = filename.split('-')[-3]
     target_class = filename.split('-')[-1].replace('.mp4', '')
     start_class = filename.split('-')[-2].replace('.mp4', '')
