@@ -7,8 +7,8 @@ from pprint import pprint
 
 app = flask.Flask(__name__)
 
-# TODO: Select a result_dir
-RESULT_ID = 'mnist_28x28_8dim_unsupervised'
+# TODO: Select a result_dir in the UI
+RESULT_ID = 'mnist_28x28_4dim'
 
 RESULT_DIR = '/mnt/results/{}'.format(RESULT_ID)
 LABEL_DIR = os.path.join(RESULT_DIR, 'labels')
@@ -30,9 +30,10 @@ def save_active_label(label):
 def is_labeled(filename):
     key = filename.split('-')[1]
     labels = os.path.join(RESULT_DIR, 'labels')
+    if not os.path.exists(labels):
+        print("Labels directory does not exist, creating it")
+        os.mkdir(labels)
     label_keys = [l.replace('.json', '') for l in os.listdir(labels)]
-    print(key)
-    print(label_keys)
     return key in label_keys
 
 
