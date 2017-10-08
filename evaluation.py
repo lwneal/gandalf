@@ -69,6 +69,13 @@ def evaluate_classifier(networks, dataloader, verbose=True, **options):
         title = 'PCA: {} epoch {}'.format(options['fold'], options['epoch'])
         plot(pca_vectors, plot_filename, title=title, labels=plot_labels)
 
+        # Also visualize the first two dimensions of the latent space
+        latent_2d = latent_vectors[:, :2]
+        plot_filename = 'plot_latent2_{}_epoch_{:04d}.png'.format(options['fold'], options['epoch'])
+        plot_filename = os.path.join(result_dir, plot_filename)
+        title = 'Latent Dim #0 vs #1: {} epoch {}'.format(options['fold'], options['epoch'])
+        plot(latent_2d, plot_filename, title=title, labels=plot_labels)
+
     mse = float(to_np(mse / i)[0])
     mae = float(to_np(mae / i)[0])
     print("Reconstruction per-pixel MSE: {}".format(mse))
