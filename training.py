@@ -95,7 +95,17 @@ def train_adversarial_autoencoder(networks, optimizers, dataloader, epoch=None, 
         ############################
 
         ############################
-        # (4) Update E(G()) network:
+        # (4) Make reconstructed examples realistic
+        # WGAN: minimize D(G(E(x)))
+        ############################
+        encoded_real = encoded.detach()
+        DGE_output = netD(netG(encoded_real))
+        errDGE = DGE_output.mean()
+        errDGE.backward(label_one)
+        ###########################
+
+        ############################
+        # (5) Update E(G()) network:
         # Inverse Autoencoder: Minimize Z - E(G(Z))
         ############################
         noise.normal_(0, 1)
@@ -109,7 +119,7 @@ def train_adversarial_autoencoder(networks, optimizers, dataloader, epoch=None, 
             optimizerE.step()
 
         ############################
-        # (5) Update C(Z) network:
+        # (6) Update C(Z) network:
         # Categorical Cross-Entropy
         ############################
         latent_points = netE(images)
@@ -130,7 +140,7 @@ def train_adversarial_autoencoder(networks, optimizers, dataloader, epoch=None, 
 
         errD = errD_real + errD_fake
         if i % 25 == 0:
-            msg = '[{}][{}/{}] D:{:.3f} G:{:.3f} GP:{:.3f} GE:{:.3f} EG:{:.3f} EC: {:.3f} C_acc:{:.3f}'
+            msg = '[{}][{}/{}] D:{:.3f} G:{:.3f} GP:{:.3f} GE:{:.3f} EG:{:.3f} EC: {:.3f} C_acc:{:.3f} DGE: {:.3f}'
             msg = msg.format(
                   epoch, i, len(dataloader),
                   errD.data[0],
@@ -139,7 +149,8 @@ def train_adversarial_autoencoder(networks, optimizers, dataloader, epoch=None, 
                   errGE.data[0],
                   errEG.data[0],
                   errC.data[0],
-                  float(correct) / total)
+                  float(correct) / total,
+                  errDGE.data[0])
             print(msg)
             video_filename = "{}/generated.mjpeg".format(result_dir)
             caption = "Epoch {:04d} iter {:05d}".format(epoch, i)
