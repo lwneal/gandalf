@@ -1,6 +1,8 @@
 import time
 import torch
 import torch.nn as nn
+import random
+import numpy as np
 from torchvision import models
 from torch.autograd import Variable
 from gradient_penalty import calc_gradient_penalty
@@ -188,4 +190,59 @@ def train_classifier(networks, optimizers, dataloader, **options):
         if i % 25 == 0 or i == len(dataloader) - 1:
             print('[{}/{}] Classifier Loss: {:.3f} Classifier Accuracy:{:.3f}'.format(
                 i, len(dataloader), errC.data[0], float(correct) / total))
+    return float(correct) / total
+
+
+def shuffle(a, b):
+    rng_state = np.random.get_state()
+    np.random.shuffle(a)
+    np.random.set_state(rng_state)
+    np.random.shuffle(b)
+
+
+def train_active_learning(networks, optimizers, active_points, active_labels, **options):
+    netC = networks['classifier']
+    optimizerC = optimizers['classifier']
+    result_dir = options['result_dir']
+    latent_size = options['latent_size']
+    batch_size = options['batch_size']
+
+    correct = 0
+    total = 0
+
+    def generator():
+        assert len(active_points) == len(active_labels)
+        i = 0
+        shuffle(active_points, active_labels)
+        while i < len(active_points):
+            x = torch.FloatTensor(active_points[i:i+batch_size])
+            y = torch.LongTensor(active_labels[i:i+batch_size])
+            yield x.squeeze(1), y
+            i += batch_size
+    dataloader = generator()
+
+    
+    for i, (latent_points, labels) in enumerate(dataloader):
+        latent_points = Variable(latent_points)
+        labels = Variable(labels)
+
+        latent_points = latent_points.cuda()
+        labels = labels.cuda()
+
+        ############################
+        # Update C(Z) network:
+        # Categorical Cross-Entropy
+        ############################
+        class_predictions = netC(latent_points)
+        errC = nll_loss(class_predictions, labels)
+        errC.backward()
+        optimizerC.step()
+        ############################
+
+        _, predicted = class_predictions.max(1)
+        correct += sum(predicted.data == labels.data)
+        total += len(predicted)
+
+    print('[{}/{}] Classifier Loss: {:.3f} Classifier Accuracy:{:.3f}'.format(
+        i, len(active_points) / batch_size, errC.data[0], float(correct) / total))
     return float(correct) / total
