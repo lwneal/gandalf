@@ -8,7 +8,7 @@ from pprint import pprint
 app = flask.Flask(__name__)
 
 # TODO: Select a result_dir in the UI
-RESULT_ID = 'mnist_28x28_4dim'
+RESULT_ID = 'mnist_28x28_16dim_log_lambda10'
 
 RESULT_DIR = '/mnt/results/{}'.format(RESULT_ID)
 LABEL_DIR = os.path.join(RESULT_DIR, 'labels')
