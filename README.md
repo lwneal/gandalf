@@ -19,6 +19,17 @@ By choosing an appropriate classifier and target, counterfactual examples can be
 
 ### Code Structure
 
+Each model and its results is saved in a result directory, referred to as a `result_dir`.
+A `result_dir` includes a configuration file `params.json`, saved weights with the extension `.pth`, and a variety of `.jpg`, `.mp4`, and `.png` files created during evaluation and testing.
+
+Each file in `experiments/` is an executable job that takes the parameter `--result_dir`.
+
+The experiment `train_aac.py` is special: it creates the `result_dir` if it does not already exist.
+
+Other experiments require `result_dir` to exist already, and perform some task using it.
+
+### Getting Started
+
 To add an experiment, first run:
 
     `./test.sh`
