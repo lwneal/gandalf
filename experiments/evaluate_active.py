@@ -68,11 +68,20 @@ for label in labels:
     start_class = test_dataloader.lab_conv.idx[label['start_class']]
     target_class = test_dataloader.lab_conv.idx[label['target_class']]
 
-    active_points.extend(points[:split_point])
+    active_points.extend(np.squeeze(points[:split_point], axis=1))
     active_labels.extend([start_class] * split_point)
 
-    active_points.extend(points[split_point:])
+    active_points.extend(np.squeeze(points[split_point:], axis=1))
     active_labels.extend([target_class] * (len(points) - split_point))
+
+train_dataloader = CustomDataloader(fold='train', **options)
+netE = networks['encoder']
+from torch.autograd import Variable
+print("Encoding training data...")
+for images, labels in train_dataloader:
+    z = netE(Variable(images))
+    active_points.extend(z.data.cpu().numpy())
+    active_labels.extend(labels.cpu().numpy())
 
 print("Loaded {} points and {} labels".format(len(active_points), len(active_labels)))
 pprint({x: active_labels.count(x) for x in set(active_labels)})
@@ -88,9 +97,9 @@ for classifier_epoch in range(options['classifier_epochs']):
     # Train for one epoch
     train_active_learning(networks, optimizers, active_points, active_labels, **options)
 
-print("Evaluating classifier")
-new_results = evaluate_classifier(networks, test_dataloader, verbose=False, fold='active_learning', **options)
+    print("Evaluating classifier")
+    new_results = evaluate_classifier(networks, test_dataloader, verbose=False, fold='active_learning', **options)
 
-print("Results from training with {} trajectories".format(len(trajectory_filenames)))
-pprint(new_results)
+    print("Results from training with {} trajectories".format(len(trajectory_filenames)))
+    pprint(new_results)
 #save_evaluation(new_results, options['result_dir'], options['evaluation_epoch'])
