@@ -18,7 +18,7 @@ sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 from dataloader import CustomDataloader
 from networks import build_networks
 from options import load_options, get_current_epoch
-from evaluation import evaluate_openset
+from evaluation import evaluate_openset, save_evaluation
 
 options = load_options(options)
 if not options.get('epoch'):
@@ -38,13 +38,7 @@ pprint(statistics)
 
 fold_name = 'openset_{}_comparison_{}'.format(options['fold'], dataloader_off.dsf.name)
 
-filename = 'eval_epoch_{:04d}.json'.format(options['epoch'])
-filename = os.path.join(options['result_dir'], filename)
-filename = os.path.expanduser(filename)
-if os.path.exists(filename):
-    old_results = json.load(open(filename))
-else:
-    old_results = {}
-old_results[fold_name] = statistics
-with open(filename, 'w') as fp:
-    json.dump(old_results, fp, indent=2)
+results = {fold_name: statistics}
+print("Saving evaluation statistics:")
+pprint(results)
+save_evaluation(results, options['result_dir'], options['epoch'])
