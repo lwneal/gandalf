@@ -135,9 +135,9 @@ def generate_trajectory_active(networks, dataloader, **options):
         hallucinations = netG(z)
         cf_loss = nll_loss(netC(z), target_label)
         dc_dz = autograd.grad(cf_loss, z, cf_loss, retain_graph=True)[0]
-        momentum -= dc_dz * .0001
+        momentum -= dc_dz * .0002
         z += momentum
-        momentum *= .50
+        momentum *= .80
         print("Loss: {}".format(cf_loss.data[0]))
         print("Latent point: {}...".format(z[0].data.cpu().numpy()[:5]))
         print("Gradient: {}...".format(dc_dz[0].data.cpu().numpy()[:5]))
