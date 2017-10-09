@@ -3,6 +3,7 @@ import argparse
 import json
 import os
 import sys
+from pprint import pprint
 
 # Print --help message before importing the rest of the project
 parser = argparse.ArgumentParser()
@@ -33,6 +34,7 @@ dataloader_off = CustomDataloader(last_batch=True, shuffle=False, **off_manifold
 networks = build_networks(dataloader_on.num_classes, **options)
 
 statistics = evaluate_openset(networks, dataloader_on, dataloader_off, **options)
+pprint(statistics)
 
 fold_name = 'openset_{}_comparison_{}'.format(options['fold'], dataloader_off.dsf.name)
 
