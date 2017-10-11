@@ -5,31 +5,28 @@ import random
 from pprint import pprint
 
 
+FILES_URL = 'http://files.deeplearninggroup.com'
+RESULTS_PATH = '/mnt/results/'
 app = flask.Flask(__name__)
 
-# TODO: Select a result_dir in the UI
-RESULT_ID = 'mnist_28x28_16dim_log_lambda10'
 
-RESULT_DIR = '/mnt/results/{}'.format(RESULT_ID)
-LABEL_DIR = os.path.join(RESULT_DIR, 'labels')
-TRAJECTORY_DIR = os.path.join(RESULT_DIR, 'trajectories')
-
-
-def save_active_label(label):
-    if not os.path.exists(LABEL_DIR):
-        print("Creating directory {}".format(LABEL_DIR))
-        os.mkdir(LABEL_DIR)
-    print("Saving label to {}".format(LABEL_DIR))
+def save_active_label(label, result_dir):
+    result_dir = os.path.join(RESULTS_PATH, result_dir)
+    label_dir = os.path.join(result_dir, 'labels')
+    if not os.path.exists(label_dir):
+        print("Creating directory {}".format(label_dir))
+        os.mkdir(label_dir)
+    print("Saving label to {}".format(label_dir))
     pprint(label)
-    filename = os.path.join(LABEL_DIR, '{}.json'.format(label['trajectory_id']))
+    filename = os.path.join(label_dir, '{}.json'.format(label['trajectory_id']))
     with open(filename, 'w') as fp:
         json.dump(label, fp, indent=2)
     return filename
 
 
-def is_labeled(filename):
+def is_labeled(filename, result_dir):
     key = filename.split('-')[1]
-    labels = os.path.join(RESULT_DIR, 'labels')
+    labels = os.path.join(result_dir, 'labels')
     if not os.path.exists(labels):
         print("Labels directory does not exist, creating it")
         os.mkdir(labels)
@@ -37,55 +34,85 @@ def is_labeled(filename):
     return key in label_keys
 
 
-def select_random_trajectory():
-    if not os.path.exists(TRAJECTORY_DIR):
-        raise ValueError("Error: Trajectory directory {} does not exist")
-    filenames = os.listdir(TRAJECTORY_DIR)
-    filenames = [f for f in filenames if f.startswith('active') and f.endswith('.mp4')]
+def get_count(result_dir):
+    result_dir = os.path.join(RESULTS_PATH, result_dir)
+    labeled_count = len()
+
+
+def get_unlabeled_trajectories(result_dir, fold='active'):
+    result_dir = os.path.join(RESULTS_PATH, result_dir)
+    if not os.path.exists(result_dir):
+        raise ValueError("Could not load result directory {}".format(result_dir))
+
+    trajectory_dir = os.path.join(result_dir, 'trajectories')
+    if not os.path.exists(trajectory_dir):
+        print("Trajectory directory {} does not exist, creating it".format(trajectory_dir))
+        os.mkdir(trajectory_dir)
+
+    filenames = os.listdir(trajectory_dir)
+    filenames = [f for f in filenames if f.startswith(fold) and f.endswith('.mp4')]
     if len(filenames) == 0:
-        raise ValueError("Error: No active_learning .mp4 files available")
-    unlabeled_filenames = [f for f in filenames if not is_labeled(f)]
+        print("No active_learning .mp4 files available")
+        return []
+
+    unlabeled_filenames = [f for f in filenames if not is_labeled(f, result_dir)]
     if len(unlabeled_filenames) == 0:
-        print("Warning: All counterfactuals are labeled")
-        return filenames[0]
-    filename = random.choice(unlabeled_filenames)
-    return filename
+        print("All {} trajectories have been labeled".format(len(unlabeled_filenames)))
+    return unlabeled_filenames
 
 
 @app.route('/')
 def route_main_page():
-    filename = select_random_trajectory()
-    print("Labeling {}".format(filename))
+    result_dirs = os.listdir(RESULTS_PATH)
+    args = {
+            'result_count': len(result_dirs),
+            'result_dirs': result_dirs
+    }
+    return flask.render_template('index.html', **args)
+
+
+def args_for_filename(filename, result_dir):
     trajectory_id = filename.split('-')[-3]
     target_class = filename.split('-')[-1].replace('.mp4', '')
     start_class = filename.split('-')[-2].replace('.mp4', '')
-    file_url = 'http://files.deeplearninggroup.com/{}/trajectories/{}'.format(RESULT_ID, filename)
-    args = {
+    file_url = '{}/{}/trajectories/{}'.format(FILES_URL, result_dir, filename)
+    return {
+            'result_dir': result_dir,
             'filename': filename,
             'file_url': file_url,
             'start_class': start_class,
             'target_class': target_class,
             'trajectory_id': trajectory_id,
     }
-    return flask.render_template('index.html', **args)
 
-@app.route('/static/<path:path>')
-def serve_static():
-    return send_from_directory('static', path)
+@app.route('/active/<result_dir>')
+def route_label_slider(result_dir):
+    filenames = get_unlabeled_trajectories(result_dir)
+    if filenames:
+        filename = random.choice(filenames)
+        args = args_for_filename(filename, result_dir)
+        args['unlabeled_count'] = len(filenames)
+    else:
+        args = {'unlabeled_count': 0}
+    return flask.render_template('label_slider.html', **args)
 
-@app.route('/submit', methods=['POST'])
-def submit_value():
-    print("Submitted value:")
-    for k, v in flask.request.form.items():
-        print("\t{}: {}".format(k, v))
+
+@app.route('/submit/<result_dir>', methods=['POST'])
+def submit_value(result_dir):
     label = {
         'trajectory_id': flask.request.form['trajectory_id'],
         'start_class': flask.request.form['start_class'],
         'target_class': flask.request.form['target_class'],
         'label_point': flask.request.form['frame'],
     }
-    save_active_label(label)
-    return flask.redirect('/')
+    save_active_label(label, result_dir)
+    return flask.redirect(flask.request.referer)
+
+
+@app.route('/static/<path:path>')
+def serve_static():
+    return send_from_directory('static', path)
+
 
 if __name__ == '__main__':
     app.run('0.0.0.0', debug=True)
