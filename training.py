@@ -127,7 +127,7 @@ def train_adversarial_autoencoder(networks, optimizers, dataloader, epoch=None, 
         errEG.backward()
         ############################
 
-        if options['joint_encoder_classifier']:
+        if not options['joint_classifier_training']:
             optimizerE.step()
 
         ############################
@@ -140,7 +140,7 @@ def train_adversarial_autoencoder(networks, optimizers, dataloader, epoch=None, 
         errC.backward()
         ############################
 
-        if not options['joint_encoder_classifier']:
+        if options['joint_classifier_training']:
             optimizerE.step()
         optimizerG.step()
         optimizerC.step()

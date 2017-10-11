@@ -23,7 +23,7 @@ parser.add_argument('--beta1', type=float, default=0.5, help='beta1 for adam. [d
 parser.add_argument('--decay', type=float, default=0.9, help='Learning rate decay per epoch. [default: 0.9]')
 parser.add_argument('--random_horizontal_flip', type=bool, default=False, help='Flip images during training. [default: False]')
 parser.add_argument('--delete_background', type=bool, default=False, help='Delete non-foreground pixels from images [default: False]')
-parser.add_argument('--joint_encoder_classifier', type=bool, default=False, help='Train encoder/classifier jointly. [default: False]')
+parser.add_argument('--joint_classifier_training', type=bool, default=True, help='Train encoder/classifier jointly. [default: True]')
 # Perceptual loss at 9 layers (VGG16 relu_2_2) following Johnson et al https://arxiv.org/abs/1603.08155
 parser.add_argument('--perceptual_loss', type=bool, default=False, help='Enable P-loss [default: False]')
 parser.add_argument('--perceptual_depth', type=int, default=9, help='Number of layers of perceptual loss [default: 9]')
