@@ -81,7 +81,6 @@ def get_result_dirs():
 def route_main_page():
     table_contents = []
     for result_dir in get_result_dirs():
-        print(result_dir)
         row = {
             'result_dir': result_dir
         }
