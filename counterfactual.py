@@ -142,12 +142,15 @@ def generate_trajectory_active(networks, dataloader, **options):
         print("Latent point: {}...".format(z[0].data.cpu().numpy()[:5]))
         print("Gradient: {}...".format(dc_dz[0].data.cpu().numpy()[:5]))
         print("Momentum: {}...".format(momentum[0].data.cpu().numpy()[:5]))
-        classes = to_np(netC(z).max(1)[1])
-        print("Class: {}...".format(classes))
+        preds = netC(z)
+        predicted_class = to_np(preds.max(1)[1])[0]
+        pred_confidence = to_np(preds.max(1)[0])[0]
+        print("Class: {} ({:.3f} confidence)...".format(predicted_class, pred_confidence))
 
         D_halluc = netD(hallucinations).data.cpu().numpy().mean()
 
-        caption = "DR {:.04f}  DG {:.04f}".format(D_real, D_halluc)
+        caption = "DR {:.04f}  DG {:.04f} C {} {:.3f}".format(
+                D_real, D_halluc, predicted_class, pred_confidence)
         imutil.show(hallucinations,
                 video_filename=video_filename,
                 caption=caption,
