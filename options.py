@@ -1,10 +1,15 @@
 import os
+import subprocess
 import json
 import argparse
 from pprint import pprint
 
 
 def save_options(options):
+    # Include the version of the code that saved the options
+    # (in case the meaning of an option changes in the future)
+    if 'version' not in options:
+        options['version'] = get_code_version()
     if not os.path.exists(options['result_dir']):
         print("Creating result directory {}".format(options['result_dir']))
         os.makedirs(options['result_dir'])
@@ -33,3 +38,9 @@ def get_current_epoch(result_dir):
         tokens = filename.rstrip('.pth').split('_')
         return int(tokens[-1])
     return max(filename_to_epoch(f) for f in model_filenames)
+
+
+def get_code_version():
+    cwd = os.path.dirname(__file__)
+    output = subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=cwd)
+    return output.strip().decode('utf-8')
