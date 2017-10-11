@@ -12,7 +12,7 @@ parser.add_argument('--result_dir', required=True, help='Output directory for im
 # Core Options: these determine the shape/size of the neural network
 parser.add_argument('--dataset', help='Input filename (must be in .dataset format)')
 parser.add_argument('--evaluation_epoch', type=int, help='Epoch to load for training')
-parser.add_argument('--example_count', type=int, default=100, help='Number of labels to train with [default: 100]')
+parser.add_argument('--example_count', type=int, default=1000, help='Number of labels to train with [default: 1000]')
 parser.add_argument('--classifier_epochs', type=int, default=50, help='Max number of training epochs [default: 50]')
 
 options = vars(parser.parse_args())
