@@ -34,9 +34,21 @@ def is_labeled(filename, result_dir):
     return key in label_keys
 
 
-def get_count(result_dir):
+def get_counts(result_dir):
     result_dir = os.path.join(RESULTS_PATH, result_dir)
-    labeled_count = len()
+    trajectories_dir = os.path.join(result_dir, 'trajectories')
+    labels_dir = os.path.join(result_dir, 'labels')
+    
+    if os.path.isdir(trajectories_dir):
+        trajectory_count = len([f for f in os.listdir(trajectories_dir) if f.endswith('.npy')])
+    else:
+        trajectory_count = 0
+
+    if os.path.isdir(labels_dir):
+        label_count = len([f for f in os.listdir(labels_dir) if f.endswith('.json')])
+    else:
+        label_count = 0
+    return trajectory_count, label_count
 
 
 def get_unlabeled_trajectories(result_dir, fold='active'):
@@ -61,12 +73,24 @@ def get_unlabeled_trajectories(result_dir, fold='active'):
     return unlabeled_filenames
 
 
+def get_result_dirs():
+    return [f for f in os.listdir(RESULTS_PATH) if os.path.isdir(os.path.join(RESULTS_PATH, f))]
+
+
 @app.route('/')
 def route_main_page():
-    result_dirs = os.listdir(RESULTS_PATH)
+    table_contents = []
+    for result_dir in get_result_dirs():
+        print(result_dir)
+        row = {
+            'result_dir': result_dir
+        }
+        row['trajectory_count'], row['labeled_count'] = get_counts(result_dir)
+        row['unlabeled_count'] = row['trajectory_count'] - row['labeled_count']
+        table_contents.append(row)
     args = {
-            'result_count': len(result_dirs),
-            'result_dirs': result_dirs
+            'table_contents': table_contents,
+            'result_count': len(table_contents),
     }
     return flask.render_template('index.html', **args)
 
@@ -106,7 +130,7 @@ def submit_value(result_dir):
         'label_point': flask.request.form['frame'],
     }
     save_active_label(label, result_dir)
-    return flask.redirect(flask.request.referer)
+    return flask.redirect(flask.request.referrer)
 
 
 @app.route('/static/<path:path>')

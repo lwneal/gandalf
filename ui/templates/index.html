@@ -3,10 +3,29 @@
 
 <style>
 body {
-  color: white;
   font-size: 30px;
-  font-family: sans-serif;
-  background-color: black;
+}
+.models_table {
+    font-family: "Trebuchet MS", Arial, Helvetica, sans-serif;
+    border-collapse: collapse;
+    width: 100%;
+}
+
+.models_table td, .models_table th {
+    border: 1px solid #ddd;
+    padding: 8px;
+}
+
+.models_table tr:nth-child(even){background-color: #f2f2f2;}
+
+.models_table tr:hover {background-color: #ddd;}
+
+.models_table th {
+    padding-top: 12px;
+    padding-bottom: 12px;
+    text-align: left;
+    background-color: #4CAF50;
+    color: white;
 }
 </style>
 
@@ -18,17 +37,29 @@ body {
   <p>
     There are {{result_count}} trained models to label
   </p>
-  {% for result_dir in result_dirs: %}
-  <div>
-      <a href="/active/{{result_dir}}">{{result_dir}}</a>
-  </div>
+  <table class=models_table sortable=true>
+      <tr>
+          <th>Name</th>
+          <th>Labeled Trajectories</th>
+          <th>Unlabeled Trajectories</th>
+      </tr>
+  {% for row in table_contents: %}
+  <tr>
+      <td>
+          <a href="/active/{{row['result_dir']}}">{{row['result_dir']}}</a>
+      </td>
+      <td>
+          {{row['labeled_count']}}
+      </td>
+      <td>
+          {{row['unlabeled_count']}}
+      </td>
+  </tr>
   {% endfor %}
+  </table>
   <p>
   Labeling is fun!
   </p>
 </center>
 </body>
-
-<script>
-</script>
 </html>
