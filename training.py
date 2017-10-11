@@ -31,8 +31,14 @@ def train_adversarial_autoencoder(networks, optimizers, dataloader, epoch=None, 
         netP = nn.Sequential(*P_layers)
         netP.cuda()
 
-    noise = torch.FloatTensor(batch_size, latent_size).cuda()
+    # By convention, if it ends with 'sphere' it uses the unit sphere
+    spherical_noise = type(netE).__name__.endswith('sphere')
+
+    noise = Variable(torch.FloatTensor(batch_size, latent_size).cuda())
     fixed_noise = Variable(torch.FloatTensor(batch_size, latent_size).normal_(0, 1)).cuda()
+    if spherical_noise:
+        clamp_to_unit_sphere(fixed_noise)
+
     label_one = torch.FloatTensor(batch_size).cuda().fill_(1)
     label_zero = torch.FloatTensor(batch_size).cuda().fill_(0)
     label_minus_one = torch.FloatTensor(batch_size).cuda().fill_(-1)
@@ -52,8 +58,10 @@ def train_adversarial_autoencoder(networks, optimizers, dataloader, epoch=None, 
             errD_real = D_real_output.mean()
             errD_real.backward(label_one)
 
-            noise.normal_(0, 1)
-            fake = netG(Variable(noise))
+            noise.data.normal_(0, 1)
+            if spherical_noise:
+                noise = clamp_to_unit_sphere(noise)
+            fake = netG(noise)
             fake = fake.detach()
             D_fake_output = netD(fake)
             errD_fake = D_fake_output.mean()
@@ -74,8 +82,10 @@ def train_adversarial_autoencoder(networks, optimizers, dataloader, epoch=None, 
         # (2) Update G network:
         # WGAN: minimize D(G(z))
         ############################
-        noise.normal_(0, 1)
-        fake = netG(Variable(noise))
+        noise.data.normal_(0, 1)
+        if spherical_noise:
+            noise = clamp_to_unit_sphere(noise)
+        fake = netG(noise)
         DG_fake_output = netD(fake)
         errG = DG_fake_output.mean()
         errG.backward(label_one)
@@ -108,10 +118,12 @@ def train_adversarial_autoencoder(networks, optimizers, dataloader, epoch=None, 
         # (5) Update E(G()) network:
         # Inverse Autoencoder: Minimize Z - E(G(Z))
         ############################
-        noise.normal_(0, 1)
-        fake = netG(Variable(noise))
+        noise.data.normal_(0, 1)
+        if spherical_noise:
+            noise = clamp_to_unit_sphere(noise)
+        fake = netG(noise)
         reencoded = netE(fake)
-        errEG = torch.mean((reencoded - Variable(noise)) ** 2)
+        errEG = torch.mean((reencoded - noise) ** 2)
         errEG.backward()
         ############################
 
@@ -160,6 +172,12 @@ def train_adversarial_autoencoder(networks, optimizers, dataloader, epoch=None, 
             img = torch.cat([images[:12], reconstructed.data[:12], demo_gen.data[:12]])
             filename = "{}/demo_{}.jpg".format(result_dir, int(time.time()))
             imutil.show(img, caption=msg, font_size=8, filename=filename)
+
+
+def clamp_to_unit_sphere(x):
+    norm = torch.norm(x, p=2, dim=1)
+    norm = norm.expand(1, x.size()[0])
+    return torch.mul(x, 1/norm.t())
 
 
 def train_classifier(networks, optimizers, dataloader, **options):
