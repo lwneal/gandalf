@@ -118,7 +118,9 @@ def generate_trajectory_active(networks, dataloader, **options):
 
     # Write all counterfactuals to the trajectories/ subdirectory
     trajectory_id = '{}_{}'.format(dataloader.dsf.name, int(time.time() * 1000))
-    video_filename = 'active-{}-{}-{}.mjpeg'.format(trajectory_id, start_class, target_class)
+    start_class_name = dataloader.lab_conv.labels[start_class]
+    target_class_name = dataloader.lab_conv.labels[target_class]
+    video_filename = 'active-{}-{}-{}.mjpeg'.format(trajectory_id, start_class_name, target_class_name)
     video_filename = os.path.join('trajectories', video_filename)
     video_filename = os.path.join(options['result_dir'], video_filename)
 
