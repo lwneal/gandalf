@@ -253,7 +253,7 @@ def shuffle(a, b):
     np.random.shuffle(b)
 
 
-def train_active_learning(networks, optimizers, active_points, active_labels, **options):
+def train_active_learning(networks, optimizers, active_points, active_labels, complementary_points, complementary_labels, **options):
     netC = networks['classifier']
     optimizerC = optimizers['classifier']
     result_dir = options['result_dir']
@@ -262,32 +262,43 @@ def train_active_learning(networks, optimizers, active_points, active_labels, **
 
     correct = 0
     total = 0
-
-    def generator():
-        assert len(active_points) == len(active_labels)
+    def generator(points, labels):
+        assert len(points) == len(labels)
         i = 0
-        shuffle(active_points, active_labels)
-        while i < len(active_points):
-            x = torch.FloatTensor(active_points[i:i+batch_size])
-            y = torch.LongTensor(active_labels[i:i+batch_size])
+        shuffle(points, labels)
+        while i < len(points) - batch_size:
+            x = torch.FloatTensor(points[i:i+batch_size])
+            y = torch.LongTensor(labels[i:i+batch_size])
             yield x.squeeze(1), y
             i += batch_size
-    dataloader = generator()
+    dataloader = generator(active_points, active_labels)
+    c_dataloader = generator(complementary_points, complementary_labels)
 
-    
-    for i, (latent_points, labels) in enumerate(dataloader):
-        latent_points = Variable(latent_points)
-        labels = Variable(labels)
+    # Train on combined normal and complementary
+    for i, (xy, comp_xy) in enumerate(zip(dataloader, c_dataloader)):
+        latent_points, labels = xy
+        latent_points = Variable(latent_points).cuda()
+        labels = Variable(labels).cuda()
 
-        latent_points = latent_points.cuda()
-        labels = labels.cuda()
+        c_points, c_labels = comp_xy
+        c_points = Variable(c_points).cuda()
+        c_labels = Variable(c_labels).cuda()
 
         ############################
         # Update C(Z) network:
-        # Categorical Cross-Entropy
+        # 
         ############################
         class_predictions = netC(latent_points)
+        # Standard Categorical Cross-Entropy
         errC = nll_loss(class_predictions, labels)
+
+        # Pairwise Comparison Complementary Loss
+        # https://arxiv.org/pdf/1705.07541.pdf
+        # Naive implementation to test
+        N, K = class_predictions.size()
+        for n in range(N):
+            for k in range(K):
+                errC += torch.sigmoid(class_predictions[n][k] - class_predictions[n][c_labels[n]])
         errC.backward()
         optimizerC.step()
         ############################
@@ -295,7 +306,7 @@ def train_active_learning(networks, optimizers, active_points, active_labels, **
         _, predicted = class_predictions.max(1)
         correct += sum(predicted.data == labels.data)
         total += len(predicted)
+        print('[{}/{}] Classifier Loss: {:.3f} Classifier Accuracy:{:.3f}'.format(
+            i, len(active_points) / batch_size, errC.data[0], float(correct) / total))
 
-    print('[{}/{}] Classifier Loss: {:.3f} Classifier Accuracy:{:.3f}'.format(
-        i, len(active_points) / batch_size, errC.data[0], float(correct) / total))
     return float(correct) / total

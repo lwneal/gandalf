@@ -56,6 +56,8 @@ def get_trajectory_filename(trajectory_id):
 
 active_points = []
 active_labels = []
+complementary_points = []
+complementary_labels = []
 for label in labels:
     trajectory_filename = get_trajectory_filename(label['trajectory_id'])
     trajectory_filename = os.path.join(trajectory_dir, trajectory_filename)
@@ -68,17 +70,20 @@ for label in labels:
     start_class = test_dataloader.lab_conv.idx[label['start_class']]
     target_class = test_dataloader.lab_conv.idx[label['target_class']]
 
+    # These are normal labels, eg "this picture is a cat"
     active_points.extend(np.squeeze(points[:split_point], axis=1))
     active_labels.extend([start_class] * split_point)
 
-    active_points.extend(np.squeeze(points[split_point:], axis=1))
-    active_labels.extend([target_class] * (len(points) - split_point))
+    # Complementary labels eg. "this picture is not a cat"
+    # Might be a dog, might be a freight train, might be an adversarial image
+    complementary_points.extend(np.squeeze(points[split_point:], axis=1))
+    complementary_labels.extend([start_class] * (len(points) - split_point))
 
 train_dataloader = CustomDataloader(fold='train', **options)
 netE = networks['encoder']
 from torch.autograd import Variable
 print("Encoding training data...")
-for images, labels in train_dataloader:
+for images, labels, _ in train_dataloader:
     z = netE(Variable(images))
     active_points.extend(z.data.cpu().numpy())
     active_labels.extend(labels.cpu().numpy())
@@ -88,6 +93,8 @@ pprint({x: active_labels.count(x) for x in set(active_labels)})
 
 active_points = np.array(active_points)
 active_labels = np.array(active_labels)
+complementary_points = np.array(complementary_points)
+complementary_labels = np.array(complementary_labels)
 
 print("Training classifier using active-learning labels")
 for classifier_epoch in range(options['classifier_epochs']):
@@ -95,7 +102,7 @@ for classifier_epoch in range(options['classifier_epochs']):
     for optimizer in optimizers.values():
         optimizer.param_groups[0]['lr'] = .01 * (.9 ** classifier_epoch)
     # Train for one epoch
-    train_active_learning(networks, optimizers, active_points, active_labels, **options)
+    train_active_learning(networks, optimizers, active_points, active_labels, complementary_points, complementary_labels, **options)
 
     print("Evaluating classifier")
     new_results = evaluate_classifier(networks, test_dataloader, verbose=False, fold='active_learning', **options)
