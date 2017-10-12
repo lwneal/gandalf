@@ -13,32 +13,6 @@ def weights_init(m):
         m.bias.data.fill_(0)
 
 
-class generator28(nn.Module):
-    def __init__(self, latent_size=10, **kwargs):
-        super(self.__class__, self).__init__()
-        Z = latent_size
-        # in_channels, out_channels, kernel_size, stride, padding
-        self.conv1 = nn.ConvTranspose2d(     Z,    256, 7, 1, 0, bias=False)
-        self.conv2 = nn.ConvTranspose2d(   256,    128, 4, 2, 1, bias=False)
-        self.conv3 = nn.ConvTranspose2d(   128,      3, 4, 2, 1, bias=False)
-        self.bn1 = nn.BatchNorm2d(256)
-        self.bn2 = nn.BatchNorm2d(128)
-        self.apply(weights_init)
-        self.cuda()
-
-    def forward(self, x):
-        x = x.unsqueeze(-1).unsqueeze(-1)
-        x = self.conv1(x)
-        x = self.bn1(x)
-        x = nn.LeakyReLU(0.2, True)(x)
-        x = self.conv2(x)
-        x = self.bn2(x)
-        x = nn.LeakyReLU(0.2, True)(x)
-        x = self.conv3(x)
-        x = nn.Sigmoid()(x)
-        return x
-
-
 class discriminator28(nn.Module):
     def __init__(self, latent_size=100, **kwargs):
         super(self.__class__, self).__init__()
@@ -150,72 +124,30 @@ class discriminator28log(nn.Module):
         return x
 
 
-class encoder28(nn.Module):
-    def __init__(self, latent_size=100, **kwargs):
+class generator28(nn.Module):
+    def __init__(self, latent_size=10, **kwargs):
         super(self.__class__, self).__init__()
-        # 3x28x28
-        self.conv1 = nn.Conv2d(3,       64,      4, 2, 1, bias=False)
-        # 64x14x14
-        self.conv2 = nn.Conv2d(64,      128,     4, 2, 1, bias=False)
-        # 128x7x7
-        self.conv3 = nn.Conv2d(128,     256,     4, 2, 1, bias=False)
-        # 256x3x3
-        self.conv4 = nn.Conv2d(256,     latent_size,     3, 1, 0, bias=False)
-        # 1x1x1
-        self.bn1 = nn.BatchNorm2d(128)
-        self.bn2 = nn.BatchNorm2d(256)
+        Z = latent_size
+        # in_channels, out_channels, kernel_size, stride, padding
+        self.conv1 = nn.ConvTranspose2d(     Z,    256, 7, 1, 0, bias=False)
+        self.conv2 = nn.ConvTranspose2d(   256,    128, 4, 2, 1, bias=False)
+        self.conv3 = nn.ConvTranspose2d(   128,      3, 4, 2, 1, bias=False)
+        self.bn1 = nn.BatchNorm2d(256)
+        self.bn2 = nn.BatchNorm2d(128)
         self.apply(weights_init)
         self.cuda()
 
     def forward(self, x):
+        x = x.unsqueeze(-1).unsqueeze(-1)
         x = self.conv1(x)
-        x = nn.LeakyReLU(0.2, inplace=True)(x)
-
-        x = self.conv2(x)
         x = self.bn1(x)
-        x = nn.LeakyReLU(0.2, inplace=True)(x)
-
-        x = self.conv3(x)
-        x = self.bn2(x)
-        x = nn.LeakyReLU(0.2, inplace=True)(x)
-
-        x = self.conv4(x)
-        return x.squeeze(-1).squeeze(-1)
-
-
-class encoder28dropout(nn.Module):
-    def __init__(self, latent_size=100, **kwargs):
-        super(self.__class__, self).__init__()
-        # 3x28x28
-        self.conv1 = nn.Conv2d(3,       64,      4, 2, 1, bias=False)
-        # 64x14x14
-        self.conv2 = nn.Conv2d(64,      128,     4, 2, 1, bias=False)
-        # 128x7x7
-        self.conv3 = nn.Conv2d(128,     256,     4, 2, 1, bias=False)
-        # 256x3x3
-        self.conv4 = nn.Conv2d(256,     latent_size,     3, 1, 0, bias=False)
-        self.conv4_drop = nn.Dropout2d()
-        # 1x1x1
-        self.bn1 = nn.BatchNorm2d(128)
-        self.bn2 = nn.BatchNorm2d(256)
-        self.apply(weights_init)
-        self.cuda()
-
-    def forward(self, x):
-        x = self.conv1(x)
-        x = nn.LeakyReLU(0.2, inplace=True)(x)
-
+        x = nn.LeakyReLU(0.2, True)(x)
         x = self.conv2(x)
-        x = self.bn1(x)
-        x = nn.LeakyReLU(0.2, inplace=True)(x)
-
-        x = self.conv3(x)
         x = self.bn2(x)
-        x = nn.LeakyReLU(0.2, inplace=True)(x)
-
-        x = self.conv4(x)
-        x = self.conv4_drop(x)
-        return x.squeeze(-1).squeeze(-1)
+        x = nn.LeakyReLU(0.2, True)(x)
+        x = self.conv3(x)
+        x = nn.Sigmoid()(x)
+        return x
 
 
 class generator32(nn.Module):
@@ -281,6 +213,40 @@ class generatorReLU64(nn.Module):
         return x
 
 
+class generator64(nn.Module):
+    def __init__(self, latent_size=100, **kwargs):
+        super(self.__class__, self).__init__()
+        self.conv1 = nn.ConvTranspose2d(latent_size, 512, 4, 1, 0, bias=False)
+        self.conv2 = nn.ConvTranspose2d(   512,    256, 4, 2, 1, bias=False)
+        self.conv3 = nn.ConvTranspose2d(   256,    128, 4, 2, 1, bias=False)
+        self.conv4 = nn.ConvTranspose2d(   128,     64, 4, 2, 1, bias=False)
+        self.conv5 = nn.ConvTranspose2d(    64,      3, 4, 2, 1, bias=False)
+        self.bn1 = nn.BatchNorm2d(512)
+        self.bn2 = nn.BatchNorm2d(256)
+        self.bn3 = nn.BatchNorm2d(128)
+        self.bn4 = nn.BatchNorm2d(64)
+        self.apply(weights_init)
+        self.cuda()
+
+    def forward(self, x):
+        x = x.unsqueeze(-1).unsqueeze(-1)
+        x = self.conv1(x)
+        x = self.bn1(x)
+        x = nn.LeakyReLU(0.2, inplace=True)(x)
+        x = self.conv2(x)
+        x = self.bn2(x)
+        x = nn.LeakyReLU(0.2, inplace=True)(x)
+        x = self.conv3(x)
+        x = self.bn3(x)
+        x = nn.LeakyReLU(0.2, inplace=True)(x)
+        x = self.conv4(x)
+        x = self.bn4(x)
+        x = nn.LeakyReLU(0.2, inplace=True)(x)
+        x = self.conv5(x)
+        x = nn.Sigmoid()(x)
+        return x
+
+
 class generatorReLU128(nn.Module):
     def __init__(self, latent_size=100, **kwargs):
         super(self.__class__, self).__init__()
@@ -320,7 +286,6 @@ class generatorReLU128(nn.Module):
         x = nn.Sigmoid()(x)
         return x
 
-#LeakyReLU
 class generatorLeakyReLU128(nn.Module):
     def __init__(self, latent_size=100, **kwargs):
         super(self.__class__, self).__init__()
@@ -448,6 +413,7 @@ class discriminatorLReLU64(nn.Module):
         # Global average pooling
         x = x.mean(-1).mean(-1)
         return x.view(-1, 1).squeeze(1)
+discriminator64 = discriminatorLReLU64
 
 
 class discriminatorMultiscale128With4Critics(nn.Module):
@@ -550,39 +516,72 @@ class discriminatorMultiscale128(nn.Module):
         return wasserstein_distance.squeeze()
 
 
-class encoderLReLU64(nn.Module):
+class encoder28(nn.Module):
     def __init__(self, latent_size=100, **kwargs):
         super(self.__class__, self).__init__()
-        self.latent_size = latent_size
-        self.conv1 = nn.Conv2d(3,       64,     4, 2, 1, bias=False)
-        self.conv2 = nn.Conv2d(64,      128,    4, 2, 1, bias=False)
-        self.conv3 = nn.Conv2d(128,     256,    4, 2, 1, bias=False)
-        self.conv4 = nn.Conv2d(256,     512,    4, 2, 1, bias=False)
-        self.conv5 = nn.Conv2d(512,     1024,   4, 1, 0, bias=False)
+        # 3x28x28
+        self.conv1 = nn.Conv2d(3,       64,      4, 2, 1, bias=False)
+        # 64x14x14
+        self.conv2 = nn.Conv2d(64,      128,     4, 2, 1, bias=False)
+        # 128x7x7
+        self.conv3 = nn.Conv2d(128,     256,     4, 2, 1, bias=False)
+        # 256x3x3
+        self.conv4 = nn.Conv2d(256,     latent_size,     3, 1, 0, bias=False)
+        # 1x1x1
         self.bn1 = nn.BatchNorm2d(128)
         self.bn2 = nn.BatchNorm2d(256)
-        self.bn3 = nn.BatchNorm2d(512)
-        self.fc1 = nn.Linear(1024, self.latent_size, bias=False)
         self.apply(weights_init)
         self.cuda()
 
     def forward(self, x):
         x = self.conv1(x)
         x = nn.LeakyReLU(0.2, inplace=True)(x)
+
         x = self.conv2(x)
         x = self.bn1(x)
         x = nn.LeakyReLU(0.2, inplace=True)(x)
+
         x = self.conv3(x)
         x = self.bn2(x)
         x = nn.LeakyReLU(0.2, inplace=True)(x)
+
         x = self.conv4(x)
-        x = self.bn3(x)
+        return x.squeeze(-1).squeeze(-1)
+
+
+class encoder28dropout(nn.Module):
+    def __init__(self, latent_size=100, **kwargs):
+        super(self.__class__, self).__init__()
+        # 3x28x28
+        self.conv1 = nn.Conv2d(3,       64,      4, 2, 1, bias=False)
+        # 64x14x14
+        self.conv2 = nn.Conv2d(64,      128,     4, 2, 1, bias=False)
+        # 128x7x7
+        self.conv3 = nn.Conv2d(128,     256,     4, 2, 1, bias=False)
+        # 256x3x3
+        self.conv4 = nn.Conv2d(256,     latent_size,     3, 1, 0, bias=False)
+        self.conv4_drop = nn.Dropout2d()
+        # 1x1x1
+        self.bn1 = nn.BatchNorm2d(128)
+        self.bn2 = nn.BatchNorm2d(256)
+        self.apply(weights_init)
+        self.cuda()
+
+    def forward(self, x):
+        x = self.conv1(x)
         x = nn.LeakyReLU(0.2, inplace=True)(x)
-        x = self.conv5(x)
+
+        x = self.conv2(x)
+        x = self.bn1(x)
         x = nn.LeakyReLU(0.2, inplace=True)(x)
-        x = x.squeeze()
-        x = self.fc1(x)
-        return x
+
+        x = self.conv3(x)
+        x = self.bn2(x)
+        x = nn.LeakyReLU(0.2, inplace=True)(x)
+
+        x = self.conv4(x)
+        x = self.conv4_drop(x)
+        return x.squeeze(-1).squeeze(-1)
 
 
 class encoder32(nn.Module):
@@ -646,6 +645,42 @@ class encoder32sphere(nn.Module):
         xnorm = xnorm.transpose(1,0)
         x = x.div(xnorm)
         return x
+
+
+class encoderLReLU64(nn.Module):
+    def __init__(self, latent_size=100, **kwargs):
+        super(self.__class__, self).__init__()
+        self.latent_size = latent_size
+        self.conv1 = nn.Conv2d(3,       64,     4, 2, 1, bias=False)
+        self.conv2 = nn.Conv2d(64,      128,    4, 2, 1, bias=False)
+        self.conv3 = nn.Conv2d(128,     256,    4, 2, 1, bias=False)
+        self.conv4 = nn.Conv2d(256,     512,    4, 2, 1, bias=False)
+        self.conv5 = nn.Conv2d(512,     1024,   4, 1, 0, bias=False)
+        self.bn1 = nn.BatchNorm2d(128)
+        self.bn2 = nn.BatchNorm2d(256)
+        self.bn3 = nn.BatchNorm2d(512)
+        self.fc1 = nn.Linear(1024, self.latent_size, bias=False)
+        self.apply(weights_init)
+        self.cuda()
+
+    def forward(self, x):
+        x = self.conv1(x)
+        x = nn.LeakyReLU(0.2, inplace=True)(x)
+        x = self.conv2(x)
+        x = self.bn1(x)
+        x = nn.LeakyReLU(0.2, inplace=True)(x)
+        x = self.conv3(x)
+        x = self.bn2(x)
+        x = nn.LeakyReLU(0.2, inplace=True)(x)
+        x = self.conv4(x)
+        x = self.bn3(x)
+        x = nn.LeakyReLU(0.2, inplace=True)(x)
+        x = self.conv5(x)
+        x = nn.LeakyReLU(0.2, inplace=True)(x)
+        x = x.squeeze()
+        x = self.fc1(x)
+        return x
+encoder64 = encoderLReLU64
 
 
 class encoderLReLU128(nn.Module):
