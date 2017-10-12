@@ -32,7 +32,7 @@ def evaluate_classifier(networks, dataloader, verbose=True, **options):
     plot_labels = []
     discriminator_scores = []
     
-    for i, (images, labels) in enumerate(dataloader):
+    for i, (images, labels, _) in enumerate(dataloader):
         images = Variable(images, volatile=True)
         z = netE(images)
 
@@ -205,7 +205,7 @@ def get_openset_scores(dataloader, networks):
     discriminator_scores = []
     softmax_scores = []
 
-    for i, (images, labels) in enumerate(dataloader):
+    for i, (images, labels, _) in enumerate(dataloader):
         images = Variable(images, volatile=True)
         z = netE(images)
         reconstructed = netG(z)
