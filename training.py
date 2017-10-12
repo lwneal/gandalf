@@ -169,9 +169,10 @@ def train_counterfactual(networks, optimizers, dataloader, epoch=None, **options
         correct += sum(predicted.data == labels.data)
         total += len(predicted)
 
-        attr_preds = (attribute_predictions > 0.5) == (attributes > 0.5)
-        attr_correct += torch.sum(attr_preds).data.cpu().numpy()[0]
-        attr_total += attr_preds.size()[0] * attr_preds.size()[1]
+        if netA:
+            attr_preds = (attribute_predictions > 0.5) == (attributes > 0.5)
+            attr_correct += torch.sum(attr_preds).data.cpu().numpy()[0]
+            attr_total += attr_preds.size()[0] * attr_preds.size()[1]
 
         errD = errD_real + errD_fake
         if i % 25 == 0:
