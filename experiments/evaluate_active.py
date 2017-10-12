@@ -33,7 +33,7 @@ print("Loading full-sized dataset for evaluation...")
 test_dataloader = CustomDataloader(fold='test', **options)
 
 print("Loading networks (except classifier)...")
-networks = build_networks(test_dataloader.num_classes, load_classifier=False, **options)
+networks = build_networks(test_dataloader.num_classes, **options)
 optimizers = get_optimizers(networks, **options)
 
 print("Loading all available active-learning labels...")
@@ -100,13 +100,15 @@ print("Training classifier using active-learning labels")
 for classifier_epoch in range(options['classifier_epochs']):
     # Apply learning rate decay
     for optimizer in optimizers.values():
-        optimizer.param_groups[0]['lr'] = .01 * (.9 ** classifier_epoch)
+        optimizer.param_groups[0]['lr'] = .0001 * (.9 ** classifier_epoch)
     # Train for one epoch
     train_active_learning(networks, optimizers, active_points, active_labels, complementary_points, complementary_labels, **options)
 
-    print("Evaluating classifier")
-    new_results = evaluate_classifier(networks, test_dataloader, verbose=False, fold='active_learning', **options)
+
+    foldname = 'active_learning_comp_{}'.format(len(complementary_points))
+    print("Evaluating {}".format(foldname))
+    new_results = evaluate_classifier(networks, test_dataloader, verbose=False, fold=foldname, **options)
 
     print("Results from training with {} trajectories".format(len(trajectory_filenames)))
     pprint(new_results)
-#save_evaluation(new_results, options['result_dir'], options['evaluation_epoch'])
+save_evaluation(new_results, options['result_dir'], get_current_epoch(**options))

@@ -262,7 +262,7 @@ def train_active_learning(networks, optimizers, active_points, active_labels, co
     batch_size = options['batch_size']
 
     correct = 0
-    total = 0
+    total = 1  # hack
     def generator(points, labels):
         assert len(points) == len(labels)
         i = 0
@@ -272,10 +272,10 @@ def train_active_learning(networks, optimizers, active_points, active_labels, co
             y = torch.LongTensor(labels[i:i+batch_size])
             yield x.squeeze(1), y
             i += batch_size
+
+    # Train on combined normal and complementary labels
     dataloader = generator(active_points, active_labels)
     c_dataloader = generator(complementary_points, complementary_labels)
-
-    # Train on combined normal and complementary
     for i, (xy, comp_xy) in enumerate(zip(dataloader, c_dataloader)):
         latent_points, labels = xy
         latent_points = Variable(latent_points).cuda()
@@ -287,7 +287,6 @@ def train_active_learning(networks, optimizers, active_points, active_labels, co
 
         ############################
         # Update C(Z) network:
-        # 
         ############################
         class_predictions = netC(latent_points)
         # Standard Categorical Cross-Entropy
