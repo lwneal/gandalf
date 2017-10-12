@@ -62,10 +62,6 @@ def main():
     print("Finished writing datasets")
 
 
-def is_animal(label):
-    return label in ['bird', 'cat', 'deer', 'dog', 'frog', 'horse']
-
-
 def make_example(label, filename, data):
     pixels = data.reshape((3,32,32)).transpose((1,2,0))
     filename = str(filename, 'utf-8')
@@ -75,6 +71,8 @@ def make_example(label, filename, data):
             'filename': os.path.join(DATASET_PATH, filename),
             'label': class_name,
             'is_animal': is_animal(class_name),
+            'is_flying': is_flying(class_name),
+            'is_pet': is_pet(class_name),
     }
 
 
@@ -83,6 +81,18 @@ def cifar_class(label_idx):
             'airplane', 'automobile', 'bird', 'cat', 'deer',
             'dog', 'frog', 'horse', 'ship', 'truck']
     return classes[label_idx]
+
+
+def is_animal(label):
+    return label in ['bird', 'cat', 'deer', 'dog', 'frog', 'horse']
+
+
+def is_flying(label):
+    return label in ['bird', 'airplane']
+
+
+def is_pet(label):
+    return label in ['dog', 'cat']
 
 
 def mkdir(path):
