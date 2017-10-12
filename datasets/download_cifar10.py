@@ -59,29 +59,30 @@ def main():
     save_image_dataset(examples, output_filename)
     print("Dataset convertion finished")
 
-    # Add zero-through-five and six-through-nine sets for open set testing
-    on_manifold = []
-    off_manifold = []
-    for e in examples:
-        if int(e['label']) <= 5:
-            on_manifold.append(e)
-        else:
-            off_manifold.append(e)
-    output_filename = '{}/{}-05.dataset'.format(DATA_DIR, DATASET_NAME)
-    save_image_dataset(on_manifold, output_filename)
-    output_filename = '{}/{}-69.dataset'.format(DATA_DIR, DATASET_NAME)
-    save_image_dataset(off_manifold, output_filename)
     print("Finished writing datasets")
+
+
+def is_animal(label):
+    return label in ['bird', 'cat', 'deer', 'dog', 'frog', 'horse']
 
 
 def make_example(label, filename, data):
     pixels = data.reshape((3,32,32)).transpose((1,2,0))
-    filename = str(filename).strip("b'")
+    filename = str(filename, 'utf-8')
     Image.fromarray(pixels).save(filename)
+    class_name = cifar_class(label)
     return {
             'filename': os.path.join(DATASET_PATH, filename),
-            'label': label,
+            'label': class_name,
+            'is_animal': is_animal(class_name),
     }
+
+
+def cifar_class(label_idx):
+    classes = [
+            'airplane', 'automobile', 'bird', 'cat', 'deer',
+            'dog', 'frog', 'horse', 'ship', 'truck']
+    return classes[label_idx]
 
 
 def mkdir(path):
