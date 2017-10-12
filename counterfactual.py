@@ -26,7 +26,7 @@ def generate_trajectory_batch(networks, dataloader, desired_class=None, **option
         desired_class = random.randint(0, dataloader.num_classes - 1)
     print("Morphing input examples to class {}".format(desired_class))
 
-    real_images, labels = dataloader.get_batch()
+    real_images, labels, attributes = dataloader.get_batch()
     real_images = Variable(real_images)
 
     # We start with vectors in the latent space Z
@@ -96,7 +96,7 @@ def generate_trajectory_active(networks, dataloader, **options):
     latent_size = options['latent_size']
 
 
-    real_image, label = dataloader.get_batch()
+    real_image, label, attributes = dataloader.get_batch()
     real_image = Variable(real_image)
 
     start_class = label.cpu().numpy()[0]
