@@ -86,7 +86,7 @@ class LabelConverter(Converter):
         return self.idx[example[self.label_key]]
 
     def from_array(self, array):
-        return self.idx[np.argmax(array)]
+        return self.labels[np.argmax(array)]
 
 
 # AttributeConverter extracts boolean attributes from DatasetFile examples
