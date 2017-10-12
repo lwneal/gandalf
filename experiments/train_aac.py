@@ -39,7 +39,7 @@ options = vars(parser.parse_args())
 
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 from dataloader import CustomDataloader
-from training import train_adversarial_autoencoder
+from training import train_counterfactual
 from networks import build_networks, save_networks, get_optimizers
 from options import save_options, load_options, get_current_epoch
 from locking import acquire_lock, release_lock
@@ -49,7 +49,7 @@ if os.path.exists(options['result_dir']):
     options = load_options(options)
 
 dataloader = CustomDataloader(fold='train', **options)
-networks = build_networks(dataloader.num_classes, **options)
+networks = build_networks(dataloader.num_classes, dataloader.num_attributes, **options)
 optimizers = get_optimizers(networks, **options)
 
 save_options(options)
@@ -62,7 +62,7 @@ try:
         for optimizer in optimizers.values():
             optimizer.param_groups[0]['lr'] = options['lr'] * (options['decay'] ** epoch)
         # Train for one epoch
-        train_adversarial_autoencoder(networks, optimizers, dataloader, epoch=epoch, **options)
+        train_counterfactual(networks, optimizers, dataloader, epoch=epoch, **options)
         save_networks(networks, epoch, options['result_dir'])
 finally:
     release_lock(options['result_dir'])

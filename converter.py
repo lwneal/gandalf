@@ -69,7 +69,8 @@ class ImageConverter(Converter):
         return array
 
 
-# LabelConverter converts eg. the MNIST label "2" to the one-hot [00100000000]
+# LabelConverter extracts the class labels from DatasetFile examples
+# Each example can have only one class
 class LabelConverter(Converter):
     def __init__(self, dataset, label_key="label", **kwargs):
         self.label_key = label_key
@@ -85,9 +86,29 @@ class LabelConverter(Converter):
         return self.idx[example[self.label_key]]
 
     def from_array(self, array):
-        return str(np.argmax(array))
+        return self.idx[np.argmax(array)]
 
-    def to_categorical(self, idx):
-        res = np.zeros(self.num_classes)
-        res[idx] = 1
-        return res
+
+# AttributeConverter extracts boolean attributes from DatasetFile examples
+# An example might have many attributes. Each attribute is True or False.
+class AttributeConverter(Converter):
+    def __init__(self, dataset, **kwargs):
+        unique_attributes = set()
+        for example in dataset.examples:
+            for key in example:
+                if key.startswith('is_') or key.startswith('has_'):
+                    unique_attributes.add(key)
+        self.attributes = sorted(list(unique_attributes))
+        self.num_attributes = len(self.attributes)
+        self.idx = {self.attributes[i]: i for i in range(self.num_attributes)}
+
+    def to_array(self, example):
+        attrs = np.zeros(self.num_attributes)
+        for i, attr in enumerate(self.attributes):
+            # Attributes not present on an example are set to False
+            attrs[i] = float(example.get(attr, False))
+        return attrs
+
+    def from_array(self, array):
+        return ",".join(self.attributes[i] for i in range(self.attributes) if array[i > .5])
+

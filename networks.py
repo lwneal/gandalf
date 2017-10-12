@@ -5,7 +5,7 @@ from torch import optim
 from torch import nn
 
 
-def build_networks(num_classes, epoch=None, latent_size=10, batch_size=64, load_classifier=True, **options):
+def build_networks(num_classes, num_attributes=0, epoch=None, latent_size=10, batch_size=64, load_classifier=True, **options):
     networks = {}
 
     EncoderClass = get_network_class(options['encoder'])
@@ -19,6 +19,10 @@ def build_networks(num_classes, epoch=None, latent_size=10, batch_size=64, load_
 
     ClassifierClass = network_definitions.classifierMLP256
     networks['classifier'] = ClassifierClass(latent_size, num_classes=num_classes)
+
+    if num_attributes > 0:
+        ClassifierClass = network_definitions.classifierMulticlass
+        networks['attribute'] = ClassifierClass(latent_size, num_classes=num_attributes)
 
     for name, net in networks.items():
         if epoch:

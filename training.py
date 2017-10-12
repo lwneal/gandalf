@@ -6,19 +6,21 @@ import numpy as np
 from torchvision import models
 from torch.autograd import Variable
 from gradient_penalty import calc_gradient_penalty
-from torch.nn.functional import nll_loss
+from torch.nn.functional import nll_loss, binary_cross_entropy
 import imutil
 
 
-def train_adversarial_autoencoder(networks, optimizers, dataloader, epoch=None, **options):
+def train_counterfactual(networks, optimizers, dataloader, epoch=None, **options):
     netD = networks['discriminator']
     netG = networks['generator']
     netE = networks['encoder']
     netC = networks['classifier']
+    netA = networks.get('attribute')
     optimizerD = optimizers['discriminator']
     optimizerG = optimizers['generator']
     optimizerE = optimizers['encoder']
     optimizerC = optimizers['classifier']
+    optimizerA = optimizers.get('attribute')
     result_dir = options['result_dir']
     batch_size = options['batch_size']
     image_size = options['image_size']
@@ -44,10 +46,14 @@ def train_adversarial_autoencoder(networks, optimizers, dataloader, epoch=None, 
     label_minus_one = torch.FloatTensor(batch_size).cuda().fill_(-1)
     correct = 0
     total = 0
+    attr_correct = 0
+    attr_total = 0
     
-    for i, (images, labels) in enumerate(dataloader):
+    for i, (images, class_labels, attributes) in enumerate(dataloader):
         images = Variable(images)
-        labels = Variable(labels)
+        labels = Variable(class_labels)
+        if netA:
+            attributes = Variable(attributes)
         ############################
         # (1) Update D network
         # WGAN: maximize D(G(z)) - D(x)
@@ -127,6 +133,7 @@ def train_adversarial_autoencoder(networks, optimizers, dataloader, epoch=None, 
         errEG.backward()
         ############################
 
+        # If joint training is disabled, stop training netE at this point
         if not options['joint_classifier_training']:
             optimizerE.step()
 
@@ -137,7 +144,19 @@ def train_adversarial_autoencoder(networks, optimizers, dataloader, epoch=None, 
         latent_points = netE(images)
         class_predictions = netC(latent_points)
         errC = nll_loss(class_predictions, labels)
-        errC.backward()
+        errC.backward(retain_graph=True)
+        ############################
+
+
+        ############################
+        # (7) Update C(Z) network for attributes:
+        # Binary Cross-Entropy
+        ############################
+        if netA:
+            attribute_predictions = netA(latent_points)
+            errA = binary_cross_entropy(attribute_predictions, attributes)
+            errA.backward()
+            optimizerA.step()
         ############################
 
         if options['joint_classifier_training']:
@@ -150,9 +169,13 @@ def train_adversarial_autoencoder(networks, optimizers, dataloader, epoch=None, 
         correct += sum(predicted.data == labels.data)
         total += len(predicted)
 
+        attr_preds = (attribute_predictions > 0.5) == (attributes > 0.5)
+        attr_correct += torch.sum(attr_preds).data.cpu().numpy()[0]
+        attr_total += attr_preds.size()[0] * attr_preds.size()[1]
+
         errD = errD_real + errD_fake
         if i % 25 == 0:
-            msg = '[{}][{}/{}] D:{:.3f} G:{:.3f} GP:{:.3f} GE:{:.3f} EG:{:.3f} EC: {:.3f} C_acc:{:.3f} DGE: {:.3f}'
+            msg = '[{}][{}/{}] D:{:.3f} G:{:.3f} GP:{:.3f} GE:{:.3f} EG:{:.3f} EC: {:.3f} C_acc:{:.3f} A_acc: {:.3f}'
             msg = msg.format(
                   epoch, i, len(dataloader),
                   errD.data[0],
@@ -162,6 +185,7 @@ def train_adversarial_autoencoder(networks, optimizers, dataloader, epoch=None, 
                   errEG.data[0],
                   errC.data[0],
                   float(correct) / total,
+                  float(attr_correct) / attr_total if attr_total > 0 else 0,
                   errDGE.data[0])
             print(msg)
             video_filename = "{}/generated.mjpeg".format(result_dir)
