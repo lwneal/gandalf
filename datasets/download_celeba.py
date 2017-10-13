@@ -27,20 +27,21 @@ def main():
     download('list_eval_partition.txt', PARTITION_URL)
     download('list_attr_celeba.txt', ANNO_URL)
 
-    images = listdir('~/data/celeba/img_align_celeba')
+    images = listdir(os.path.join(DATASET_PATH, 'img_align_celeba'))
 
     # Read training/test split
     is_training = train_test_split('list_eval_partition.txt')
     assert len(is_training) == len(images)
 
-    # TODO: Read attributes and add them to the json
-    attrs = load_attributes('list_attr_celeba.txt')
-
-    for attr, is_training in zip(attrs, is_training):
-        attr['fold'] = 'train' if is_training else 'test'
+    examples = []
+    raw_attrs = load_attributes('list_attr_celeba.txt')
+    for attr, is_training in zip(raw_attrs, is_training):
+        example = {'is_' + k.lower(): v for (k, v) in attr.items()}
+        example['fold'] = 'train' if is_training else 'test'
+        examples.append(example)
 
     # Generate CSV file for the full dataset
-    save_image_dataset(images, attrs)
+    save_image_dataset(images, examples)
     print("Successfully built dataset {}".format(DATASET_PATH))
 
 
@@ -95,7 +96,7 @@ def save_image_dataset(images, attributes):
     for filename, attrs in zip(images, attributes):
         line = attrs
         line['filename'] = filename
-        line['label'] = attrs['Male']  # Default classification: male/female
+        line['label'] = attrs['is_young']
         fp.write(json.dumps(line) + '\n')
     fp.close()
 
