@@ -44,3 +44,6 @@ class CustomDataloader(object):
 
     def __len__(self):
         return math.floor(self.dsf.count(self.fold) / self.batch_size)
+
+    def count(self):
+        return self.dsf.count(self.fold)
