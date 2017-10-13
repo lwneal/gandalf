@@ -77,7 +77,22 @@ def get_result_dirs():
     return [f for f in os.listdir(RESULTS_PATH) if os.path.isdir(os.path.join(RESULTS_PATH, f))]
 
 
-def args_for_filename(filename, result_dir):
+def get_args_active(filename, result_dir):
+    trajectory_id = filename.split('-')[-3]
+    target_class = filename.split('-')[-1].replace('.mp4', '')
+    start_class = filename.split('-')[-2].replace('.mp4', '')
+    file_url = '{}/{}/trajectories/{}'.format(FILES_URL, result_dir, filename)
+    return {
+            'result_dir': result_dir,
+            'filename': filename,
+            'file_url': file_url,
+            'start_class': start_class,
+            'target_class': target_class,
+            'trajectory_id': trajectory_id,
+    }
+
+
+def get_args_batch(filename, result_dir):
     trajectory_id = filename.split('-')[-3]
     target_class = filename.split('-')[-1].replace('.mp4', '')
     start_class = filename.split('-')[-2].replace('.mp4', '')
@@ -111,14 +126,26 @@ def route_main_page():
 
 @app.route('/active/<result_dir>')
 def route_label_slider(result_dir):
-    filenames = get_unlabeled_trajectories(result_dir)
+    filenames = get_unlabeled_trajectories(result_dir, fold='active')
     if filenames:
         filename = random.choice(filenames)
-        args = args_for_filename(filename, result_dir)
+        args = get_args_active(filename, result_dir)
         args['unlabeled_count'] = len(filenames)
     else:
         args = {'unlabeled_count': 0}
     return flask.render_template('label_slider.html', **args)
+
+
+@app.route('/batch/<result_dir>')
+def route_label_batch(result_dir):
+    filenames = get_unlabeled_trajectories(result_dir, fold='batch')
+    if filenames:
+        filename = random.choice(filenames)
+        args = get_args_batch(filename, result_dir)
+        args['unlabeled_count'] = len(filenames)
+    else:
+        args = {'unlabeled_count': 0}
+    return flask.render_template('label_batch.html', **args)
 
 
 @app.route('/submit/<result_dir>', methods=['POST'])
