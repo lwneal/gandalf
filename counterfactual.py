@@ -24,7 +24,8 @@ def generate_trajectory_batch(networks, dataloader, desired_class=None, **option
 
     if desired_class is None:
         desired_class = random.randint(0, dataloader.num_classes - 1)
-    print("Morphing input examples to class {}".format(desired_class))
+    desired_class_name = dataloader.lab_conv.labels[desired_class]
+    print("Morphing input examples to class {}".format(desired_class_name))
 
     real_images, labels, attributes = dataloader.get_batch()
     real_images = Variable(real_images)
@@ -43,7 +44,7 @@ def generate_trajectory_batch(networks, dataloader, desired_class=None, **option
 
     # Write all counterfactuals to the trajectories/ subdirectory
     trajectory_id = '{}_{}'.format(dataloader.dsf.name, int(time.time() * 1000))
-    video_filename = 'batch-{}-{}.mjpeg'.format(trajectory_id, desired_class)
+    video_filename = 'batch-{}-{}.mjpeg'.format(trajectory_id, desired_class_name)
     video_filename = os.path.join('trajectories', video_filename)
     video_filename = os.path.join(options['result_dir'], video_filename)
 
@@ -52,6 +53,16 @@ def generate_trajectory_batch(networks, dataloader, desired_class=None, **option
         print("Creating trajectories directory {}".format(path))
         os.mkdir(path)
 
+    # First frame: originals, for comparison
+    imutil.show(real_images,
+            video_filename=video_filename,
+            caption="Original",
+            font_size=12,
+            display=False)
+
+    z_trajectory = []
+
+    # TODO: Refactor this optimization into a function
     for i in range(200):
         hallucinations = netG(z)
         cf_loss = nll_loss(netC(z), target_labels)
@@ -59,6 +70,7 @@ def generate_trajectory_batch(networks, dataloader, desired_class=None, **option
         momentum -= dc_dz * .01
         z += momentum
         momentum *= .99
+        z_trajectory.append(to_np(z))
         print("Loss: {}".format(cf_loss.data[0]))
         print("Latent point: {}...".format(z[0].data.cpu().numpy()[:5]))
         print("Gradient: {}...".format(dc_dz[0].data.cpu().numpy()[:5]))
@@ -74,7 +86,17 @@ def generate_trajectory_batch(networks, dataloader, desired_class=None, **option
                 caption=caption,
                 font_size=12,
                 display=False)
+
+    # A .mp4 video for normal visualization
     imutil.encode_video(video_filename)
+
+    # A still frame with no caption, used for the Batch Labeling UI
+    imutil.show(hallucinations, filename=video_filename.replace('.mjpeg', '.jpg'))
+
+    trajectory_filename = video_filename.replace('.mjpeg', '.npy')
+    print("Saving trajectory {}".format(trajectory_filename))
+    np.save(trajectory_filename, np.array(z_trajectory))
+
     return to_np(z)
 
 

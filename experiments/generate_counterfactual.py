@@ -26,9 +26,12 @@ from options import save_options, load_options, get_current_epoch
 
 options = load_options(options)
 
-# Active Learning trajectories can only be single examples
 if options['mode'] == 'active':
+    # Active Learning trajectories can only be single examples
     options['batch_size'] = 1
+else:
+    # Batch Labeling trajectories must be 4x4 grids
+    options['batch_size'] = 16
 
 dataloader = CustomDataloader(**options)
 networks = build_networks(dataloader.num_classes, **options)
