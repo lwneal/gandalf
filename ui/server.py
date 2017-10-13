@@ -77,6 +77,21 @@ def get_result_dirs():
     return [f for f in os.listdir(RESULTS_PATH) if os.path.isdir(os.path.join(RESULTS_PATH, f))]
 
 
+def args_for_filename(filename, result_dir):
+    trajectory_id = filename.split('-')[-3]
+    target_class = filename.split('-')[-1].replace('.mp4', '')
+    start_class = filename.split('-')[-2].replace('.mp4', '')
+    file_url = '{}/{}/trajectories/{}'.format(FILES_URL, result_dir, filename)
+    return {
+            'result_dir': result_dir,
+            'filename': filename,
+            'file_url': file_url,
+            'start_class': start_class,
+            'target_class': target_class,
+            'trajectory_id': trajectory_id,
+    }
+
+
 @app.route('/')
 def route_main_page():
     table_contents = []
@@ -93,20 +108,6 @@ def route_main_page():
     }
     return flask.render_template('index.html', **args)
 
-
-def args_for_filename(filename, result_dir):
-    trajectory_id = filename.split('-')[-3]
-    target_class = filename.split('-')[-1].replace('.mp4', '')
-    start_class = filename.split('-')[-2].replace('.mp4', '')
-    file_url = '{}/{}/trajectories/{}'.format(FILES_URL, result_dir, filename)
-    return {
-            'result_dir': result_dir,
-            'filename': filename,
-            'file_url': file_url,
-            'start_class': start_class,
-            'target_class': target_class,
-            'trajectory_id': trajectory_id,
-    }
 
 @app.route('/active/<result_dir>')
 def route_label_slider(result_dir):
