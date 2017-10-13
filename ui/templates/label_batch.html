@@ -8,32 +8,11 @@ body {
   font-family: sans-serif;
   background-color: black;
 }
-#slider {
-  width: 100%
-}
-input[type=range] {
-  -webkit-appearance: none;
-  overflow: hidden;
-  height: 40px;
-  background-color: #000000;
-}
-input[type=range]::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  height: 36px;
-  width: 24px;
-  margin-top: -12px;
-  border-radius: 5px;
-  border: 1px solid #000000;
-  background: #eeffee;
-}
-input[type=range]::-webkit-slider-runnable-track {
-  -webkit-appearance: none;
-  height: 18px;
-  background: #55ee55;
-  border-radius: 5px;
+#displayCanvas {
+  height: 512;
+  width: 512;
 }
 </style>
-
 <body>
 <center>
 {% if unlabeled_count == 0 %}
@@ -43,48 +22,83 @@ Congratulations, you've finished labeling all the examples.<br>
 Come back when more are available!
 </p>
 {% else %}
-  <video id="vid" tabindex="0" autobuffer="autobuffer" preload="preload" height=512px width=512px>
-    <source src="{{file_url}}"></source>
-    <p>Error loading video</p>
-  </video>
+  <canvas id=displayCanvas>Error: Your browser does not support HTML Canvas</canvas>
+  <img id=imageDownloader hidden=true src="{{file_url}}"></img>
   <p>
-      Move the slider until the image is halfway between <b>{{start_class}}</b> and <b>{{target_class}}</b>
+  Click all the images that <b>do not</b> look like <b>{{target_class}}</b>
   </p>
-  <form action="/submit/{{result_dir}}" method=post>
-    <input id="slider" name=frame type="range" />
+  <form action="/submit_batch/{{result_dir}}" method=post>
     <input id="submit" type=submit />
     <input id="max_frames_input" name="maxframes" hidden=true />
     <input id="trajectory_id" name="trajectory_id" value="{{trajectory_id}}" hidden=true />
-    <input id="start_class" name="start_class" value="{{start_class}}" hidden=true />
     <input id="target_class" name="target_class" value="{{target_class}}" hidden=true />
   </form>
+  Only {{unlabeled_count}} labels left to go!
+  <br>
 {% endif %}
 </center>
 </body>
 
 <script>
-FPS = 25;
-vid = document.getElementById('vid'); 
-slider = document.getElementById('slider');
+var ROWS = 4;
+var COLUMNS = 4;
+var HEIGHT = 128;
+var WIDTH = 128;
 
-// On load, set the slider range
-vid.addEventListener('loadedmetadata', function() {
-  var duration_frames = vid.duration * FPS;
-  slider.min = 0;
-  slider.max = duration_frames;
-  slider.value = 0;
+var labels = new Array(ROWS);
+console.log(labels);
 
-  var maxframes = document.getElementById('max_frames_input')
-  maxframes.value = duration_frames;
-});
+var canvas, ctx, img;
 
-// Use requestAnimationFrame for smooth playback
-function playFrame(){  
-  var frameNumber  = slider.value / FPS;
-  vid.currentTime  = frameNumber;
-  window.requestAnimationFrame(playFrame);
+function initLabels() {
+    console.log(labels);
+    for (var i = 0; i < ROWS; i++) {
+        labels[i] = new Array(COLUMNS);
+        for (var j = 0; j < COLUMNS; j++) {
+            // All labels are initialized as positive
+            labels[i][j] = 1;
+        }
+    }
 }
 
-window.requestAnimationFrame(playFrame);
+function draw() {
+    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+    for (var i = 0; i < ROWS; i++) {
+        for (var j = 0; j < COLUMNS; j++) {
+            var boldness = 1;
+            if (labels[i][j] > 0) {
+                ctx.strokeStyle = "#0000FF";
+            } else {
+                ctx.strokeStyle = "#FF0000";
+                boldness = 4;
+            }
+            for (var c = 0; c < boldness; c++) {
+                ctx.strokeRect(j*WIDTH + c, i*HEIGHT + c, WIDTH - 2*c, HEIGHT - 2*c);
+            }
+        }
+    }
+}
+
+function main() {
+    canvas = document.getElementById('displayCanvas');
+    ctx = canvas.getContext('2d');
+    canvas.width = COLUMNS * WIDTH;
+    canvas.height = ROWS * HEIGHT;
+
+    img = document.getElementById('imageDownloader');
+    initLabels();
+    draw();
+
+    canvas.addEventListener('click', onclick);
+}
+
+function onclick(evt) {
+    var x = Math.floor(event.offsetX / WIDTH);
+    var y = Math.floor(event.offsetY / HEIGHT);
+    console.log("User clicked row " + y + " column " + x);
+    labels[y][x] = labels[y][x] ? 0 : 1;
+    draw();
+}
+window.onload = main;
 </script>
 </html>

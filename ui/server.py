@@ -96,7 +96,8 @@ def get_args_batch(filename, result_dir):
     trajectory_id = filename.split('-')[-3]
     target_class = filename.split('-')[-1].replace('.mp4', '')
     start_class = filename.split('-')[-2].replace('.mp4', '')
-    file_url = '{}/{}/trajectories/{}'.format(FILES_URL, result_dir, filename)
+    image_name = filename.replace('.mp4', '.jpg')
+    file_url = '{}/{}/trajectories/{}'.format(FILES_URL, result_dir, image_name)
     return {
             'result_dir': result_dir,
             'filename': filename,
@@ -156,6 +157,13 @@ def submit_value(result_dir):
         'target_class': flask.request.form['target_class'],
         'label_point': flask.request.form['frame'],
     }
+    save_active_label(label, result_dir)
+    return flask.redirect(flask.request.referrer)
+
+
+@app.route('/submit_batch/<result_dir>', methods=['POST'])
+def submit_batch(result_dir):
+    print("Submitty batchy. Request form: {}".format(flask.request.form))
     save_active_label(label, result_dir)
     return flask.redirect(flask.request.referrer)
 
