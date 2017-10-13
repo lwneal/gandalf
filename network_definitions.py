@@ -714,7 +714,9 @@ class encoder64sphere(nn.Module):
         x = self.conv5(x)
         x = nn.LeakyReLU(0.2, inplace=True)(x)
         x = x.squeeze()
+
         x = self.fc1(x)
+        xnorm = torch.norm(x, p=2, dim=1).detach()
         xnorm = xnorm.expand(1, x.size()[0])
         xnorm = xnorm.transpose(1,0)
         x = x.div(xnorm)
