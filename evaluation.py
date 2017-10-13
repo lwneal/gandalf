@@ -19,6 +19,7 @@ def evaluate_classifier(networks, dataloader, verbose=True, **options):
     netG = networks['generator']
     netC = networks['classifier']
     netD = networks['discriminator']
+    netA = networks.get('attribute')
     result_dir = options['result_dir']
     batch_size = options['batch_size']
     image_size = options['image_size']
@@ -26,14 +27,18 @@ def evaluate_classifier(networks, dataloader, verbose=True, **options):
 
     correct = 0
     total = 0
+    attr_correct = 0
+    attr_total = 0
     mae = 0
     mse = 0
     latent_vectors = []
     plot_labels = []
     discriminator_scores = []
     
-    for i, (images, labels, _) in enumerate(dataloader):
+    for i, (images, labels, attributes) in enumerate(dataloader):
         images = Variable(images, volatile=True)
+        if netA:
+            attributes = Variable(attributes, volatile=True)
         z = netE(images)
 
         reconstructed = netG(z)
@@ -44,6 +49,13 @@ def evaluate_classifier(networks, dataloader, verbose=True, **options):
         _, predicted = class_predictions.max(1)
         correct += sum(predicted.data == labels)
         total += len(predicted)
+
+        if netA:
+            attr_predictions = netA(z)
+            _, predicted = attr_predictions.max(1)
+            correct_count = torch.sum((attr_predictions > 0.5) == (attributes > 0.5))
+            attr_correct += correct_count.data.cpu().numpy()[0]
+            attr_total += attr_predictions.size()[0] * attr_predictions.size()[1]
 
         latent_vectors.extend(z.data.cpu().numpy())
         plot_labels.extend(labels.cpu().numpy())

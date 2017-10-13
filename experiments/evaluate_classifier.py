@@ -27,7 +27,7 @@ options['random_horizontal_flip'] = False
 
 dataloader = CustomDataloader(last_batch=True, shuffle=False, **options)
 
-networks = build_networks(dataloader.num_classes, **options)
+networks = build_networks(dataloader.num_classes, dataloader.num_attributes, **options)
 
 if options['comparison_dataset']:
     # Hack: Switch to a new dataset and make up a descriptive fold name

@@ -59,8 +59,14 @@ try:
 
     for epoch in range(start_epoch, start_epoch + options['epochs']):
         # Apply learning rate decay
-        for optimizer in optimizers.values():
-            optimizer.param_groups[0]['lr'] = options['lr'] * (options['decay'] ** epoch)
+        for name, optimizer in optimizers.items():
+            # Hack: Attribute networks need a higher learning rate
+            if name == 'attribute':
+                lr = options['lr'] * (options['decay'] ** epoch) * dataloader.num_attributes
+            else:
+                lr = options['lr'] * (options['decay'] ** epoch)
+            optimizer.param_groups[0]['lr'] = lr
+
         # Train for one epoch
         train_counterfactual(networks, optimizers, dataloader, epoch=epoch, **options)
         save_networks(networks, epoch, options['result_dir'])
