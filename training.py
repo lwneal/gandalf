@@ -144,7 +144,8 @@ def train_counterfactual(networks, optimizers, dataloader, epoch=None, **options
         latent_points = netE(images)
         class_predictions = netC(latent_points)
         errC = nll_loss(class_predictions, labels)
-        errC.backward(retain_graph=True)
+        if not options['attributes_only']:
+            errC.backward(retain_graph=True)
         ############################
 
 
@@ -162,7 +163,8 @@ def train_counterfactual(networks, optimizers, dataloader, epoch=None, **options
         if options['joint_classifier_training']:
             optimizerE.step()
         optimizerG.step()
-        optimizerC.step()
+        if not options['attributes_only']:
+            optimizerC.step()
 
         # https://discuss.pytorch.org/t/argmax-with-pytorch/1528/2
         _, predicted = class_predictions.max(1)
