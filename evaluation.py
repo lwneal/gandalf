@@ -27,7 +27,7 @@ def evaluate_classifier(networks, dataloader, verbose=True, **options):
 
     correct = 0
     total = 0
-    attr_correct = 0
+    attr_correct = [0] * dataloader.num_attributes
     attr_total = 0
     mae = 0
     mse = 0
@@ -53,9 +53,10 @@ def evaluate_classifier(networks, dataloader, verbose=True, **options):
         if netA:
             attr_predictions = netA(z)
             _, predicted = attr_predictions.max(1)
-            correct_count = torch.sum((attr_predictions > 0.5) == (attributes > 0.5))
-            attr_correct += correct_count.data.cpu().numpy()[0]
-            attr_total += attr_predictions.size()[0] * attr_predictions.size()[1]
+            correct_count = (attr_predictions > 0.5) == (attributes > 0.5)
+            for j in range(dataloader.num_attributes):
+                attr_correct[j] += torch.sum(correct_count[:,j]).data.cpu().numpy()[0]
+            attr_total += attr_predictions.size()[0]
 
         latent_vectors.extend(z.data.cpu().numpy())
         plot_labels.extend(labels.cpu().numpy())
@@ -64,7 +65,9 @@ def evaluate_classifier(networks, dataloader, verbose=True, **options):
 
         if verbose:
             print("Accuracy: {:.4f} ({: >12} / {: <12} correct)".format(float(correct) / total, correct, total))
-
+        if verbose and netA:
+            for i, attr in enumerate(dataloader.attr_conv.attributes):
+                print("\t{}: {:.3f} ({}/{})".format(attr, attr_correct[i] / attr_total, attr_correct[i], attr_total))
 
     # Save latent vectors for later visualization
     latent_vectors = np.array(latent_vectors)
