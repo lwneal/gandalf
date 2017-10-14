@@ -34,7 +34,6 @@ class DatasetFile(object):
             data = data.decode('zlib')
         lines = data.splitlines()
         self.examples = [json.loads(l) for l in lines]
-
         self.folds = get_folds(self.examples)
         if example_count:
             print("Randomly selecting {} examples".format(example_count))
@@ -64,19 +63,21 @@ class DatasetFile(object):
             return len(self.folds[fold])
         return len(self.examples)
 
-    def get_example(self, fold='train', idx=None):
-        if idx is None:
+    def get_example(self, fold='train', idx=None, required_class=None):
+        while True:
             idx = self._random_idx(fold)
-        return self.folds[fold][idx]
+            if required_class and self.folds[fold][idx]['label'] != required_class:
+                continue
+            return self.folds[fold][idx]
 
     def get_all_examples(self, fold='train'):
         for example in self.folds[fold]:
             yield example
 
-    def get_batch(self, fold='train', batch_size=16):
+    def get_batch(self, fold='train', batch_size=16, required_class=None):
         examples = []
         for i in range(batch_size):
-            examples.append(self.get_example(fold))
+            examples.append(self.get_example(fold, required_class=required_class))
         return examples
 
     def get_all_batches(self, fold='train', batch_size=16, shuffle=True, last_batch=False):

@@ -18,8 +18,8 @@ class CustomDataloader(object):
         self.num_classes = self.lab_conv.num_classes
         self.num_attributes = self.attr_conv.num_attributes
 
-    def get_batch(self):
-        batch = self.dsf.get_batch(fold=self.fold, batch_size=self.batch_size)
+    def get_batch(self, **kwargs):
+        batch = self.dsf.get_batch(fold=self.fold, batch_size=self.batch_size, **kwargs)
         images, labels, attributes = self.convert(batch)
         return images, labels, attributes
 
