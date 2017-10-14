@@ -110,6 +110,10 @@ def evaluate_classifier(networks, dataloader, verbose=True, **options):
     }
     if options.get('save_latent_vectors'):
         stats[options['fold']]['latent_vectors'] = z_filename
+    if netA:
+        for i, attr in enumerate(dataloader.attr_conv.attributes):
+            key = 'accuracy_{}'.format(attr)
+            stats[options['fold']][key] = attr_correct[i] / attr_total
     return stats
 
 
