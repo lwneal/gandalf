@@ -228,7 +228,7 @@ def train_classifier(networks, optimizers, dataloader, **options):
     correct = 0
     total = 0
     
-    for i, (images, labels) in enumerate(dataloader):
+    for i, (images, labels, _) in enumerate(dataloader):
         images = Variable(images)
         labels = Variable(labels)
 
