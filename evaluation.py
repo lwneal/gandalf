@@ -15,6 +15,8 @@ def to_np(v):
 
 
 def evaluate_classifier(networks, dataloader, verbose=True, **options):
+    for net in networks.values():
+        net.eval()
     netE = networks['encoder']
     netG = networks['generator']
     netC = networks['classifier']
@@ -152,6 +154,8 @@ def plot(dots, output_filename, title=None, labels=None):
 # dataloader_on: Test set of the same items the network was trained on
 # dataloader_off: Separate dataset from a different distribution
 def evaluate_openset(networks, dataloader_on, dataloader_off, **options):
+    for net in networks.values():
+        net.eval()
     result_dir = options['result_dir']
     batch_size = options['batch_size']
     image_size = options['image_size']

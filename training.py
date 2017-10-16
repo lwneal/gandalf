@@ -11,6 +11,8 @@ import imutil
 
 
 def train_counterfactual(networks, optimizers, dataloader, epoch=None, **options):
+    for net in networks.values():
+        net.train()
     netD = networks['discriminator']
     netG = networks['generator']
     netE = networks['encoder']
@@ -208,6 +210,8 @@ def clamp_to_unit_sphere(x):
 
 
 def train_classifier(networks, optimizers, dataloader, **options):
+    for net in networks.values():
+        net.train()
     netD = networks['discriminator']
     netG = networks['generator']
     netE = networks['encoder']
@@ -257,6 +261,8 @@ def shuffle(a, b):
 
 
 def train_active_learning(networks, optimizers, active_points, active_labels, complementary_points, complementary_labels, **options):
+    for net in networks.values():
+        net.train()
     netC = networks['classifier']
     optimizerC = optimizers['classifier']
     result_dir = options['result_dir']
