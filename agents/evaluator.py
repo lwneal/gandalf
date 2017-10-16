@@ -4,17 +4,47 @@ Usage:
 
     evaluator.py
     
-Searches for a result_dir that hasn't been fully evaluated.
-Enqueues an appropriate evaluation job
+Searches for evaluations that have not been completed.
+Enqueues jobs to complete them.
 """
 import os
 import random
 import json
+import rq
+import redis
+import pickle
+import time
 from docopt import docopt
 from subprocess import check_call
 
 
 RESULTS_DIR = '/mnt/results'
+DATA_DIR = '/mnt/data'
+
+
+conn = redis.Redis()
+
+def get_jobs():
+    q = rq.Queue(connection=conn)
+    jobs = []
+    for job_id in q.job_ids:
+        job = q.fetch_job(job_id)
+        kwargs = pickle.loads(job.data)[-1]
+        jobs.append({
+            'enqueued_at': str(job.enqueued_at),
+        })
+    return jobs
+
+
+def start_job(command):
+    kwargs = {
+        'directory': '~/gandalf',
+        'command': command,
+    }
+    q = rq.Queue(connection=conn)
+    # Timeout: 7 days
+    timeout = 7 * 24 * 60 * 60
+    q.enqueue('gromdar.client.jobs.run_experiment', kwargs=kwargs, timeout=timeout)
 
 
 def get_results(result_dir, epoch):
@@ -48,7 +78,8 @@ def is_valid_directory(result_dir):
         return False
     if 'params.json' not in os.listdir(result_dir):
         return False
-    if 'robotno' in os.listdir(result_dir):
+    dirs = os.listdir(result_dir)
+    if 'robotno' in dirs or 'norobot' in dirs:
         print("Found robotno in {}, skipping".format(result_dir))
         return False
     return True
@@ -60,7 +91,7 @@ def get_epochs(result_dir):
     return sorted(list(set(epoch_from_filename(f) for f in pth_names)))
 
 
-def choose_comparison_dataset(dataset):
+def comparison_dataset_for(dataset):
     comparisons = {
         'cifar10': 'cub200_2011',
         'cub200_2011': 'cifar10',
@@ -84,7 +115,7 @@ def get_eval_types(result_dir, epoch):
     dataset_name = get_dataset_name(result_dir)
 
     # Evaluate open-set classification performance
-    comparison_dataset = choose_comparison_dataset(dataset_name)
+    comparison_dataset = comparison_dataset_for(dataset_name)
     folds.append('openset_test_comparison_{}'.format(comparison_dataset))
 
     # Evaluate semi-supervised classification performance
@@ -92,10 +123,25 @@ def get_eval_types(result_dir, epoch):
     return folds
 
 
-def evaluate(result_dir, epoch, eval_type):
-    results = get_results(result_dir, epoch)
-    if eval_type not in results:
-        print("TODO: evaluate {} epoch {} {}".format(result_dir, epoch, eval_type))
+def cmd_for_eval(result_dir, epoch, eval_type):
+    dataset_name = get_dataset_name(result_dir)
+    if eval_type.startswith('openset_test'):
+        other_dataset = '{}.dataset'.format(comparison_dataset_for(dataset_name))
+        other_dataset = os.path.join(DATA_DIR, other_dataset)
+        return ['experiments/evaluate_openset.py',
+                '--epoch', str(epoch),
+                '--result_dir', os.path.join(RESULTS_DIR, result_dir),
+                '--comparison_dataset', other_dataset]
+    elif eval_type.endswith('example_count_001000'):
+        # TODO: Semisupervised only supports 1k examples for now
+        return ['experiments/evaluate_semisupervised.py',
+                '--result_dir', os.path.join(RESULTS_DIR, result_dir),
+                '--evaluation_epoch', str(epoch)]
+    else:
+        # Otherwise eval_type is eg. 'train' or 'test'
+        return ['experiments/evaluate_classifier',
+                '--result_dir', os.path.join(RESULTS_DIR, result_dir),
+                '--fold', eval_type]
 
 
 def get_result_dirs():
@@ -107,7 +153,7 @@ def get_result_dirs():
     return result_dirs
 
 
-def main():
+def evaluate_all():
     result_dirs = get_result_dirs()
     for rd in result_dirs:
         epochs = get_epochs(rd)
@@ -118,6 +164,19 @@ def main():
     print("Finished checking {} result_dirs".format(len(result_dirs)))
 
 
+def evaluate(result_dir, epoch, eval_type):
+    results = get_results(result_dir, epoch)
+    if eval_type not in results:
+        cmd = cmd_for_eval(result_dir, epoch, eval_type)
+        start_job(' '.join(cmd))
+
+
 if __name__ == '__main__':
     args = docopt(__doc__)
-    main()
+    while True:
+        if len(get_jobs()) > 0:
+            time.sleep(10)
+            continue
+        print("Waking up at {}".format(int(time.time())))
+        evaluate_all()
+        time.sleep(1)
