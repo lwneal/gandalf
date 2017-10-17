@@ -828,10 +828,6 @@ class encoder32(nn.Module):
         x = self.conv4(x)
         x = x.squeeze(-1).squeeze(-1)
         x = self.fc1(x)
-        xnorm = torch.norm(x, p=2, dim=1).detach()
-        xnorm = xnorm.expand(1, x.size()[0])
-        xnorm = xnorm.transpose(1,0)
-        x = x.div(xnorm)
         return x
 
 
