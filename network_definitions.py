@@ -709,6 +709,7 @@ class encoder28sphere(nn.Module):
         # 1x1x1
         self.bn1 = nn.BatchNorm2d(128)
         self.bn2 = nn.BatchNorm2d(256)
+        #self.fc1 = nn.Linear(1024, self.latent_size, bias=False)
         self.apply(weights_init)
         self.cuda()
 
@@ -725,12 +726,14 @@ class encoder28sphere(nn.Module):
         x = nn.LeakyReLU(0.2, inplace=True)(x)
 
         x = self.conv4(x)
+        x = x.squeeze()
 
         xnorm = torch.norm(x, p=2, dim=1).detach()
+        #print(x.size()[0])
         xnorm = xnorm.expand(1, x.size()[0])
         xnorm = xnorm.transpose(1,0)
         x = x.div(xnorm)
-        return x.squeeze(-1).squeeze(-1)
+        return x
 
 
 class encoder28dropout(nn.Module):
