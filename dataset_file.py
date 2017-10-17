@@ -32,7 +32,7 @@ class DatasetFile(object):
         if data.startswith(chr(0x1F) + chr(0x8B)):
             print("Decompressing gzip file size {}".format(len(data)))
             data = data.decode('zlib')
-        lines = data.splitlines()
+        lines = data.strip().splitlines()
         self.examples = [json.loads(l) for l in lines]
         self.folds = get_folds(self.examples)
         if example_count:
