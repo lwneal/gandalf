@@ -2,10 +2,14 @@ import torch
 from torch import autograd
 
 def calc_gradient_penalty(netD, real_data, fake_data, penalty_lambda=10.0):
+    #TODO: catch this error earlier
+    if not (real_data.size() == fake_data.size()):
+        raise TypeError("Size used for network(s): "+ str(fake_data.size())  +" doesn't match image size of data " + str(real_data.size())  + " Are you using defaults when you shouldn't be?")
+
     alpha = torch.rand(real_data.size()[0], 1, 1, 1)
     alpha = alpha.expand(real_data.size())
     alpha = alpha.cuda()
-
+    
     interpolates = alpha * real_data + (1 - alpha) * fake_data
     interpolates = interpolates.cuda()
     interpolates = autograd.Variable(interpolates, requires_grad=True)
