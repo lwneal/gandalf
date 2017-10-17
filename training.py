@@ -136,7 +136,7 @@ def train_counterfactual(networks, optimizers, dataloader, epoch=None, **options
         ############################
 
         # If joint training is disabled, stop training netE at this point
-        if not options['joint_classifier_training']:
+        if not options['supervised_encoder']:
             optimizerE.step()
 
         ############################
@@ -162,7 +162,7 @@ def train_counterfactual(networks, optimizers, dataloader, epoch=None, **options
             optimizerA.step()
         ############################
 
-        if options['joint_classifier_training']:
+        if options['supervised_encoder']:
             optimizerE.step()
         optimizerG.step()
         if not options['attributes_only']:
