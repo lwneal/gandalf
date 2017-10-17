@@ -139,7 +139,7 @@ def cmd_for_eval(result_dir, epoch, eval_type):
                 '--evaluation_epoch', str(epoch)]
     else:
         # Otherwise eval_type is eg. 'train' or 'test'
-        return ['experiments/evaluate_classifier',
+        return ['experiments/evaluate_classifier.py',
                 '--result_dir', os.path.join(RESULTS_DIR, result_dir),
                 '--fold', eval_type]
 
