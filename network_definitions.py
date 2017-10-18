@@ -694,6 +694,38 @@ class encoder28(nn.Module):
         x = self.conv4(x)
         return x.squeeze(-1).squeeze(-1)
 
+class encoder28LargeFilter(nn.Module):
+    def __init__(self, latent_size=100, **kwargs):
+        super(self.__class__, self).__init__()
+        # 3x28x28
+        self.conv1 = nn.Conv2d(3,       128,      4, 2, 1, bias=False)
+        # 64x14x14
+        self.conv2 = nn.Conv2d(128,      512,     4, 2, 1, bias=False)
+        # 128x7x7
+        self.conv3 = nn.Conv2d(512,     2048,     4, 2, 1, bias=False)
+        # 256x3x3
+        self.conv4 = nn.Conv2d(2048,     latent_size,     3, 1, 0, bias=False)
+        # 1x1x1
+        self.bn1 = nn.BatchNorm2d(512)
+        self.bn2 = nn.BatchNorm2d(2048)
+        self.apply(weights_init)
+        self.cuda()
+
+    def forward(self, x):
+        x = self.conv1(x)
+        x = nn.LeakyReLU(0.2, inplace=True)(x)
+
+        x = self.conv2(x)
+        x = self.bn1(x)
+        x = nn.LeakyReLU(0.2, inplace=True)(x)
+
+        x = self.conv3(x)
+        x = self.bn2(x)
+        x = nn.LeakyReLU(0.2, inplace=True)(x)
+
+        x = self.conv4(x)
+        return x.squeeze(-1).squeeze(-1)
+
 
 class encoder28sphere(nn.Module):
     def __init__(self, latent_size=100, **kwargs):
@@ -729,7 +761,6 @@ class encoder28sphere(nn.Module):
         x = x.squeeze()
 
         xnorm = torch.norm(x, p=2, dim=1).detach()
-        #print(x.size()[0])
         xnorm = xnorm.expand(1, x.size()[0])
         xnorm = xnorm.transpose(1,0)
         x = x.div(xnorm)
