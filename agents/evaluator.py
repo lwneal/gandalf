@@ -153,11 +153,13 @@ def cmd_for_eval(result_dir, epoch, eval_type):
     elif eval_type.endswith('example_count_001000'):
         # TODO: Semisupervised only supports 1k examples for now
         return ['experiments/evaluate_semisupervised.py',
+                '--evaluation_epoch', str(epoch),
                 '--result_dir', os.path.join(RESULTS_DIR, result_dir),
                 '--evaluation_epoch', str(epoch)]
     else:
         # Otherwise eval_type is eg. 'train' or 'test'
         return ['experiments/evaluate_classifier.py',
+                '--epoch', str(epoch),
                 '--result_dir', os.path.join(RESULTS_DIR, result_dir),
                 '--fold', eval_type]
 
@@ -181,7 +183,8 @@ def evaluate_all():
             eval_types = get_eval_types(rd, epoch)
             for eval_type in eval_types:
                 to_run.append((rd, epoch, eval_type))
-    # For each job, run it (if it needs to run)
+
+    # Find one job to run, and enqueue it
     random.shuffle(to_run)
     for (rd, epoch, eval_type) in to_run:
         evaluate(rd, epoch, eval_type)
@@ -190,8 +193,8 @@ def evaluate_all():
 
 def evaluate(result_dir, epoch, eval_type):
     results = get_results(result_dir, epoch)
-    if eval_type not in results:
-        print("{} not in {}".format(eval_type, results))
+    if eval_type not in results.keys():
+        print("{}: {} not in {}".format(result_dir, eval_type, results.keys()))
         cmd = cmd_for_eval(result_dir, epoch, eval_type)
         start_job(' '.join(cmd))
 
