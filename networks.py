@@ -19,7 +19,7 @@ def build_networks(num_classes, num_attributes=0, epoch=None, latent_size=10, ba
 
     ClassifierClass = network_definitions.classifierMLP256
     networks['classifier'] = ClassifierClass(latent_size, num_classes=num_classes)
-
+    num_attributes = 0
     if num_attributes > 0:
         ClassifierClass = network_definitions.classifierMulticlass
         networks['attribute'] = ClassifierClass(latent_size, num_classes=num_attributes)

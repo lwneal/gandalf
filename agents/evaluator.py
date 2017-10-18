@@ -24,6 +24,17 @@ DATA_DIR = '/mnt/data'
 
 conn = redis.Redis()
 
+
+def should_enqueue_low_priority_jobs():
+    # TODO: Some heuristic here
+    return False
+
+
+def is_last_epoch(result_dir, epoch):
+    params = get_params(result_dir)
+    return epoch == params['epochs']
+
+
 def get_jobs():
     q = rq.Queue(connection=conn)
     jobs = []
@@ -110,16 +121,23 @@ def comparison_dataset_for(dataset):
 
 
 def get_eval_types(result_dir, epoch):
-    # Evaluate classification and autoencoder performance
-    folds = ['train', 'test']
+    # Always run the fast test set eval
+    folds = ['test']
     dataset_name = get_dataset_name(result_dir)
 
-    # Evaluate open-set classification performance
-    comparison_dataset = comparison_dataset_for(dataset_name)
-    folds.append('openset_test_comparison_{}'.format(comparison_dataset))
+    # Optionally run the other, slower evals
+    if is_last_epoch(result_dir, epoch) or should_enqueue_low_priority_jobs():
+        # Evaluate performance on the training set
+        folds.append('train')
 
-    # Evaluate semi-supervised classification performance
-    folds.append('{}_example_count_001000'.format(dataset_name))
+        # Evaluate open-set classification performance
+        comparison_dataset = comparison_dataset_for(dataset_name)
+        folds.append('openset_test_comparison_{}'.format(comparison_dataset))
+
+        # Evaluate semi-supervised classification performance
+        folds.append('{}_example_count_001000'.format(dataset_name))
+    else:
+        print("Skipping low-priority evals for {} {}".format(result_dir, epoch))
     return folds
 
 
@@ -135,11 +153,13 @@ def cmd_for_eval(result_dir, epoch, eval_type):
     elif eval_type.endswith('example_count_001000'):
         # TODO: Semisupervised only supports 1k examples for now
         return ['experiments/evaluate_semisupervised.py',
+                '--evaluation_epoch', str(epoch),
                 '--result_dir', os.path.join(RESULTS_DIR, result_dir),
                 '--evaluation_epoch', str(epoch)]
     else:
         # Otherwise eval_type is eg. 'train' or 'test'
         return ['experiments/evaluate_classifier.py',
+                '--epoch', str(epoch),
                 '--result_dir', os.path.join(RESULTS_DIR, result_dir),
                 '--fold', eval_type]
 
@@ -155,18 +175,26 @@ def get_result_dirs():
 
 def evaluate_all():
     result_dirs = get_result_dirs()
+    # Collect all possible runnable jobs
+    to_run = []
     for rd in result_dirs:
         epochs = get_epochs(rd)
         for epoch in epochs:
             eval_types = get_eval_types(rd, epoch)
             for eval_type in eval_types:
-                evaluate(rd, epoch, eval_type)
+                to_run.append((rd, epoch, eval_type))
+
+    # Find one job to run, and enqueue it
+    random.shuffle(to_run)
+    for (rd, epoch, eval_type) in to_run:
+        evaluate(rd, epoch, eval_type)
     print("Finished checking {} result_dirs".format(len(result_dirs)))
 
 
 def evaluate(result_dir, epoch, eval_type):
     results = get_results(result_dir, epoch)
-    if eval_type not in results:
+    if eval_type not in results.keys():
+        print("{}: {} not in {}".format(result_dir, eval_type, results.keys()))
         cmd = cmd_for_eval(result_dir, epoch, eval_type)
         start_job(' '.join(cmd))
 

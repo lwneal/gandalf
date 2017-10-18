@@ -36,7 +36,8 @@ def generate_trajectory_batch(networks, dataloader, desired_class=None, **option
     z = Variable(torch.FloatTensor(z), requires_grad=True).cuda()
     original_z = z.clone()
     D_real = netD(real_images).data.cpu().numpy().mean()
-    original_preds = netA(z)
+    if netA:
+        original_preds = netA(z)
 
     # We want to move them so their classification changes
     target_labels = torch.LongTensor(batch_size)
@@ -65,7 +66,8 @@ def generate_trajectory_batch(networks, dataloader, desired_class=None, **option
 
     z_trajectory = []
 
-    # TODO: Refactor this optimization into a function
+    # TODO: Refactor all of this into a function, have it return the trajectory
+    # Then do processing on the trajectory
     for i in range(90):
         target_attr = None
         if options['zero_attribute']:
@@ -78,6 +80,7 @@ def generate_trajectory_batch(networks, dataloader, desired_class=None, **option
         # Inner loop: Take several steps of gradient descent
         for _ in range(10):
             if target_attr:
+                # Attribute-based counterfactual
                 attr_idx = dataloader.attr_conv.idx[target_attr]
                 preds = netA(z)
                 target_attrs = preds.clone()
@@ -87,6 +90,7 @@ def generate_trajectory_batch(networks, dataloader, desired_class=None, **option
                 cf_loss = -target_attr_value * torch.log(epsilon + yhat) - (1 - target_attr_value) * torch.log(epsilon + 1 - yhat)
                 cf_loss = torch.mean(cf_loss)
             else:
+                # Class-based counterfactual
                 cf_loss = nll_loss(netC(z), target_labels)
 
             # Distance in latent space from original point
@@ -206,7 +210,7 @@ def generate_trajectory_active(networks, dataloader, **options):
         print("Momentum: {}...".format(momentum[0].data.cpu().numpy()[:5]))
         preds = netC(z)
         predicted_class = to_np(preds.max(1)[1])[0]
-        pred_confidence = to_np(preds.max(1)[0])[0]
+        pred_confidence = np.exp(to_np(preds.max(1)[0])[0])
         print("Class: {} ({:.3f} confidence)...".format(predicted_class, pred_confidence))
 
         D_halluc = netD(hallucinations).data.cpu().numpy().mean()

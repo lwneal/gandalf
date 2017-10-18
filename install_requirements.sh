@@ -16,3 +16,6 @@ pip install matplotlib
 pip install seaborn
 pip install $TORCH_URL 
 pip install torchvision
+
+cd datasets
+ls | xargs -n1 python
