@@ -13,6 +13,13 @@ def save_options(options):
     if not os.path.exists(options['result_dir']):
         print("Creating result directory {}".format(options['result_dir']))
         os.makedirs(options['result_dir'])
+
+    # HACK: fix homedir
+    if '/home/olsomatt' in options['result_dir']:
+        print("WARNING: bad result directory {}".format(options['result_dir']))
+        options['result_dir'] = options['result_dir'].replace('/home/olsomatt/results', '/mnt/results')
+        print("Changed to {}".format(options['result_dir']))
+
     filename = os.path.join(options['result_dir'], 'params.json')
     with open(filename, 'w') as fp:
         print("Saving options to {}".format(filename))
@@ -25,6 +32,13 @@ def load_options(options):
     del old_opts['epochs']
     options.update(old_opts)
     options['result_dir'] = os.path.expanduser(options['result_dir'])
+
+    # HACK: fix homedir
+    if '/home/olsomatt' in options['result_dir']:
+        print("WARNING: bad result directory {}".format(options['result_dir']))
+        options['result_dir'] = options['result_dir'].replace('/home/olsomatt/results', '/mnt/results')
+        print("Changed to {}".format(options['result_dir']))
+
     pprint(options)
     return options
 
