@@ -31,7 +31,7 @@ def main():
     download('setid.mat', SPLITS_URL)
     download('README.txt', README_URL)
 
-    image_dir = '~/data/oxford102/jpg'
+    image_dir = '/mnt/data/oxford102/jpg'
     image_filenames = listdir(image_dir)
 
     imagelabels_mat = sio.loadmat('imagelabels.mat')
