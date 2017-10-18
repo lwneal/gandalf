@@ -210,7 +210,7 @@ def generate_trajectory_active(networks, dataloader, **options):
         print("Momentum: {}...".format(momentum[0].data.cpu().numpy()[:5]))
         preds = netC(z)
         predicted_class = to_np(preds.max(1)[1])[0]
-        pred_confidence = to_np(preds.max(1)[0])[0]
+        pred_confidence = np.exp(to_np(preds.max(1)[0])[0])
         print("Class: {} ({:.3f} confidence)...".format(predicted_class, pred_confidence))
 
         D_halluc = netD(hallucinations).data.cpu().numpy().mean()
