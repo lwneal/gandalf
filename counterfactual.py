@@ -195,26 +195,40 @@ def generate_trajectory_active(networks, dataloader, **options):
         print("Creating trajectories directory {}".format(path))
         os.mkdir(path)
 
+    # Generate z_trajectory
     z_trajectory = []
-
-    for i in range(200):
-        hallucinations = netG(z)
+    MIN_ITERS = 30
+    MAX_ITERS = 2000
+    for i in range(MAX_ITERS):
         cf_loss = nll_loss(netC(z), target_label)
         dc_dz = autograd.grad(cf_loss, z, cf_loss, retain_graph=True)[0]
         momentum -= dc_dz * .0002
         z += momentum
-        momentum *= .80
-        print("Loss: {}".format(cf_loss.data[0]))
-        print("Latent point: {}...".format(z[0].data.cpu().numpy()[:5]))
-        print("Gradient: {}...".format(dc_dz[0].data.cpu().numpy()[:5]))
-        print("Momentum: {}...".format(momentum[0].data.cpu().numpy()[:5]))
+        momentum *= .90
+        #print("Loss: {}".format(cf_loss.data[0]))
+        #print("Latent point: {}...".format(z[0].data.cpu().numpy()[:5]))
+        #print("Gradient: {}...".format(dc_dz[0].data.cpu().numpy()[:5]))
+        #print("Momentum: {}...".format(momentum[0].data.cpu().numpy()[:5]))
         preds = netC(z)
         predicted_class = to_np(preds.max(1)[1])[0]
         pred_confidence = np.exp(to_np(preds.max(1)[0])[0])
         print("Class: {} ({:.3f} confidence)...".format(predicted_class, pred_confidence))
+        z_trajectory.append(to_np(z))
+        if len(z_trajectory) > MIN_ITERS:
+            if predicted_class == target_class and pred_confidence > .99:
+                break
+            if np.linalg.norm(z_trajectory[-1] - z_trajectory[-2]) < .001:
+                break
 
+    # Normalize z_trajectory and turn it into a video
+    sampled_trajectory = sample_trajectory(z_trajectory)
+    for z in sampled_trajectory:
+        z = Variable(torch.FloatTensor(z)).cuda()
+        hallucinations = netG(z)
         D_halluc = netD(hallucinations).data.cpu().numpy().mean()
-
+        preds = netC(z)
+        predicted_class = to_np(preds.max(1)[1])[0]
+        pred_confidence = np.exp(to_np(preds.max(1)[0])[0])
         caption = "DR {:.04f}  DG {:.04f} C {} {:.3f}".format(
                 D_real, D_halluc, predicted_class, pred_confidence)
         imutil.show(hallucinations,
@@ -224,12 +238,31 @@ def generate_trajectory_active(networks, dataloader, **options):
                 resize_to=(512,512),
                 display=False)
 
-        z_trajectory.append(to_np(z))
 
     print("Encoding video...")
     imutil.encode_video(video_filename)
 
     print("Saving trajectory")
-    np.save(trajectory_filename, np.array(z_trajectory))
+    np.save(trajectory_filename, np.array(sampled_trajectory))
 
     return to_np(z)
+
+
+def sample_trajectory(zt, output_samples=30):
+    distances = np.array([np.linalg.norm(zt[i+1] - zt[i]) for i in range(len(zt) - 1)])
+    total_distance = sum(distances)
+    distance_per_sample = total_distance / output_samples 
+
+    samples = []
+    cumulative_distance = 0
+    for i in range(len(distances)):
+        if len(samples) * distance_per_sample < cumulative_distance:
+            samples.append(zt[i])
+            print("adding sample {}, distance traveled {:.3f}%, visualization distance {:.3f}%".format(
+                i, 100 * cumulative_distance / total_distance, 100 * len(samples) / output_samples))
+        else:
+            print("skipping sample {}, distance traveled {:.3f}%, visualization distance {:.3f}%".format(
+                i, 100 * cumulative_distance / total_distance, 100 * len(samples) / output_samples))
+        cumulative_distance += distances[i]
+    assert len(samples) == output_samples
+    return samples
