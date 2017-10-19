@@ -108,6 +108,8 @@ for classifier_epoch in range(options['classifier_epochs']):
 
     # Evaluate against the test set
     foldname = 'active_trajectories_{:06d}'.format(len(labels))
+    if options['supervised']:
+        foldname = 'active_supervised_trajectories_{:06d}'.format(len(labels))
     print("Evaluating {}".format(foldname))
     new_results = evaluate_classifier(networks, test_dataloader, verbose=False, fold=foldname, **options)
 

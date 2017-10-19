@@ -295,7 +295,8 @@ def train_active_learning(networks, optimizers, active_points, active_labels, co
     correct = 0
     total = 0
 
-    for i in range(10):
+    batches = (len(active_points) + len(complementary_points)) // 100
+    for i in range(batches):
         xy = next(dataloader)
         comp_xy = next(c_dataloader)
 
@@ -330,7 +331,7 @@ def train_active_learning(networks, optimizers, active_points, active_labels, co
             preds = torch.exp(c_class_predictions[n])
             c_label = c_labels[n]
             for k in range(K):
-                errC += .001 * learning_rate * torch.sigmoid(preds[k] - preds[c_label])
+                errC += .0001 * learning_rate * torch.sigmoid(preds[k] - preds[c_label])
         errC.backward()
         optimizerC.step()
         optimizerE.step()
@@ -339,7 +340,8 @@ def train_active_learning(networks, optimizers, active_points, active_labels, co
         _, predicted = class_predictions.max(1)
         correct += sum(predicted.data == labels.data)
         total += len(predicted)
-        print('[{}/{}] Classifier Loss: {:.3f} Classifier Accuracy:{:.3f}'.format(
-            i, len(active_points) / batch_size, errC.data[0], float(correct) / total))
+        if i % 10 == 0:
+            print('[{}] Classifier Loss: {:.3f} Classifier Accuracy:{:.3f}'.format(
+                i, errC.data[0], float(correct) / total))
 
     return float(correct) / total
