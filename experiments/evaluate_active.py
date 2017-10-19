@@ -14,7 +14,7 @@ def boolean(x):
 parser = argparse.ArgumentParser()
 parser.add_argument('--result_dir', required=True, help='Output directory for images and model checkpoints')
 
-parser.add_argument('--classifier_epochs', type=int, default=50, help='Max number of training epochs [default: 50]')
+parser.add_argument('--classifier_epochs', type=int, default=20, help='Max number of training epochs [default: 20]')
 parser.add_argument('--supervised', type=boolean, default=False, help='If True, include all training labels [default: False]')
 
 options = vars(parser.parse_args())
