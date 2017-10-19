@@ -261,13 +261,20 @@ def shuffle(a, b):
 
 
 def train_active_learning(networks, optimizers, active_points, active_labels, complementary_points, complementary_labels, **options):
+    netC = networks['classifier']
+    netE = networks['encoder']
+    netG = networks['generator']
     for net in networks.values():
         net.train()
-    netC = networks['classifier']
+    # Do not update the generator
+    netG.eval()
+
     optimizerC = optimizers['classifier']
+    optimizerE = optimizers['encoder']
     result_dir = options['result_dir']
     latent_size = options['latent_size']
     batch_size = options['batch_size']
+
 
     def generator(points, labels):
         assert len(points) == len(labels)
@@ -284,10 +291,11 @@ def train_active_learning(networks, optimizers, active_points, active_labels, co
     dataloader = generator(active_points, active_labels)
     c_dataloader = generator(complementary_points, complementary_labels)
 
+    learning_rate = .1
     correct = 0
     total = 0
 
-    for i in range(100):
+    for i in range(10):
         xy = next(dataloader)
         comp_xy = next(c_dataloader)
 
@@ -300,23 +308,32 @@ def train_active_learning(networks, optimizers, active_points, active_labels, co
         c_labels = Variable(c_labels).cuda()
 
         ############################
-        # Update C(Z) network:
+        # Update E(X) and C(Z) based on positive labels
+        # Keep G(Z) constant
         ############################
-        class_predictions = netC(latent_points)
+        generated_images = netG(latent_points).detach()
+        class_predictions = netC(netE(generated_images))
         # Standard Categorical Cross-Entropy
-        errC = nll_loss(class_predictions, labels)
+        errC = learning_rate * nll_loss(class_predictions, labels)
         #print("Standard cross-entropy loss is {}".format(errC))
 
+        ############################
+        # Update based on negative (complementary) labels
+        ############################
+        c_images = netG(c_points).detach()
+        c_class_predictions = netC(netE(c_images))
         # Pairwise Comparison Complementary Loss
         # https://arxiv.org/pdf/1705.07541.pdf
         # Naive implementation to test
-        N, K = class_predictions.size()
+        N, K = c_class_predictions.size()
         for n in range(N):
+            preds = torch.exp(c_class_predictions[n])
+            c_label = c_labels[n]
             for k in range(K):
-                errC += .001 * torch.sigmoid(torch.exp(class_predictions[n][k]) - torch.exp(class_predictions[n][c_labels[n]]))
-        #print("Loss with complementary {}".format(errC))
+                errC += .001 * learning_rate * torch.sigmoid(preds[k] - preds[c_label])
         errC.backward()
         optimizerC.step()
+        optimizerE.step()
         ############################
 
         _, predicted = class_predictions.max(1)
