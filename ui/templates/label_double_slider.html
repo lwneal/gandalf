@@ -1,0 +1,108 @@
+<html>
+<title>Interpolation</title>
+
+<style>
+body {
+  color: white;
+  font-size: 30px;
+  font-family: sans-serif;
+  background-color: black;
+}
+#slider {
+  width: 100%
+}
+input[type=range] {
+  -webkit-appearance: none;
+  overflow: hidden;
+  height: 40px;
+  background-color: #000000;
+}
+input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  height: 36px;
+  width: 24px;
+  margin-top: -12px;
+  border-radius: 5px;
+  border: 1px solid #000000;
+  background: #eeffee;
+}
+input[type=range]::-webkit-slider-runnable-track {
+  -webkit-appearance: none;
+  height: 18px;
+  background: #55ee55;
+  border-radius: 5px;
+}
+</style>
+
+<body>
+<center>
+{% if unlabeled_count == 0 %}
+<p>
+<br>
+Congratulations, you've finished labeling all the examples.<br>
+Come back when more are available!
+</p>
+{% else %}
+  <video id="vid" tabindex="0" autobuffer="autobuffer" preload="preload" height=512px width=512px>
+    <source src="{{file_url}}"></source>
+    <p>Error loading video</p>
+  </video>
+  <p id="prompt_a">
+    The computer thinks this is a <b>{{start_class}}</b>.</br>
+    Move the slider right until it no longer looks like a <b>{{start_class}}</b>.
+  </p>
+  <p id="prompt_b" hidden=true>
+  Great job! Now move the slider <b>further</b> right until it looks like a <b>{{target_class}}</b>.
+  </p>
+  <form action="/submit/{{result_dir}}" method=post>
+    <input id="slider" name=frame type="range" />
+    <input id="submitbtn" type=submit hidden=true />
+    <button type="button" id="promptbtn" onclick="nextPrompt()">Click Here</button>
+    <input id="max_frames_input" name="maxframes" hidden=true />
+    <input id="trajectory_id" name="trajectory_id" value="{{trajectory_id}}" hidden=true />
+    <input id="start_class" name="start_class" value="{{start_class}}" hidden=true />
+    <input id="target_class" name="target_class" value="{{target_class}}" hidden=true />
+  </form>
+{% endif %}
+</center>
+</body>
+
+<script>
+FPS = 25;
+vid = document.getElementById('vid'); 
+slider = document.getElementById('slider');
+var prompta = document.getElementById('prompt_a')
+var promptb = document.getElementById('prompt_b')
+var submitbtn = document.getElementById('submitbtn')
+var promptbtn = document.getElementById('promptbtn')
+
+// On load, set the slider range
+vid.addEventListener('loadedmetadata', function() {
+  var duration_frames = vid.duration * FPS;
+  slider.min = 0;
+  slider.max = duration_frames;
+  slider.value = 0;
+
+  var maxframes = document.getElementById('max_frames_input')
+  maxframes.value = duration_frames;
+});
+
+// Use requestAnimationFrame for smooth playback
+function playFrame(){  
+  var frameNumber  = slider.value / FPS;
+  vid.currentTime  = frameNumber;
+  window.requestAnimationFrame(playFrame);
+}
+
+function nextPrompt() {
+  promptbtn.hidden = true;
+  prompta.hidden = true;
+  submitbtn.hidden = false;
+  submitbtn.hidden = false;
+  promptb.hidden = false;
+  slider.style.background = "#445588";
+}
+
+window.requestAnimationFrame(playFrame);
+</script>
+</html>
