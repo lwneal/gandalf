@@ -59,6 +59,9 @@ print("Got data for {} folds and {} statistics".format(len(unique_folds), len(un
 
 
 def plot(sequence, statistic):
+    if len(sequence) < 2:
+        print("Skipping short sequence {}".format(statistic))
+        return
     print("Plotting {}".format(statistic))
     df = pd.DataFrame({statistic: sequence})
     plot = df.plot(y=statistic)
