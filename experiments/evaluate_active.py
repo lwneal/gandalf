@@ -111,7 +111,7 @@ for classifier_epoch in range(options['classifier_epochs']):
     print("Evaluating {}".format(foldname))
     new_results = evaluate_classifier(networks, test_dataloader, verbose=False, fold=foldname, **options)
 
-    print("Results from training with {} trajectories".format(len(trajectory_filenames)))
+    print("Results from training with {} trajectories".format(len(labels)))
     pprint(new_results)
     new_score = new_results[foldname]['accuracy']
     if best_score < new_score:
