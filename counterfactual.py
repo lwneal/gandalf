@@ -212,13 +212,14 @@ def generate_trajectory_active(networks, dataloader, **options):
         preds = netC(z)
         predicted_class = to_np(preds.max(1)[1])[0]
         pred_confidence = np.exp(to_np(preds.max(1)[0])[0])
-        print("Class: {} ({:.3f} confidence)...".format(predicted_class, pred_confidence))
+        #print("Class: {} ({:.3f} confidence)...".format(predicted_class, pred_confidence))
         z_trajectory.append(to_np(z))
         if len(z_trajectory) > MIN_ITERS:
             if predicted_class == target_class and pred_confidence > .99:
                 break
             if np.linalg.norm(z_trajectory[-1] - z_trajectory[-2]) < .001:
                 break
+    print("Class: {} ({:.3f} confidence)...".format(predicted_class, pred_confidence))
 
     # Normalize z_trajectory and turn it into a video
     sampled_trajectory = sample_trajectory(z_trajectory)
@@ -238,11 +239,9 @@ def generate_trajectory_active(networks, dataloader, **options):
                 resize_to=(512,512),
                 display=False)
 
-
-    print("Encoding video...")
     imutil.encode_video(video_filename)
 
-    print("Saving trajectory")
+    print("Saving trajectory length {} to {}".format(len(sampled_trajectory), trajectory_filename)
     np.save(trajectory_filename, np.array(sampled_trajectory))
 
     return to_np(z)
@@ -258,11 +257,6 @@ def sample_trajectory(zt, output_samples=30):
     for i in range(len(distances)):
         if len(samples) * distance_per_sample < cumulative_distance:
             samples.append(zt[i])
-            print("adding sample {}, distance traveled {:.3f}%, visualization distance {:.3f}%".format(
-                i, 100 * cumulative_distance / total_distance, 100 * len(samples) / output_samples))
-        else:
-            print("skipping sample {}, distance traveled {:.3f}%, visualization distance {:.3f}%".format(
-                i, 100 * cumulative_distance / total_distance, 100 * len(samples) / output_samples))
         cumulative_distance += distances[i]
     assert len(samples) == output_samples
     return samples
