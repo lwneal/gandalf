@@ -241,7 +241,7 @@ def generate_trajectory_active(networks, dataloader, **options):
 
     imutil.encode_video(video_filename)
 
-    print("Saving trajectory length {} to {}".format(len(sampled_trajectory), trajectory_filename)
+    print("Saving trajectory length {} to {}".format(len(sampled_trajectory), trajectory_filename))
     np.save(trajectory_filename, np.array(sampled_trajectory))
 
     return to_np(z)
