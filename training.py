@@ -269,22 +269,28 @@ def train_active_learning(networks, optimizers, active_points, active_labels, co
     latent_size = options['latent_size']
     batch_size = options['batch_size']
 
-    correct = 0
-    total = 1  # hack
     def generator(points, labels):
         assert len(points) == len(labels)
-        i = 0
-        shuffle(points, labels)
-        while i < len(points) - batch_size:
-            x = torch.FloatTensor(points[i:i+batch_size])
-            y = torch.LongTensor(labels[i:i+batch_size])
-            yield x.squeeze(1), y
-            i += batch_size
+        while True:
+            i = 0
+            shuffle(points, labels)
+            while i < len(points) - batch_size:
+                x = torch.FloatTensor(points[i:i+batch_size])
+                y = torch.LongTensor(labels[i:i+batch_size])
+                yield x.squeeze(1), y
+                i += batch_size
 
     # Train on combined normal and complementary labels
     dataloader = generator(active_points, active_labels)
     c_dataloader = generator(complementary_points, complementary_labels)
-    for i, (xy, comp_xy) in enumerate(zip(dataloader, c_dataloader)):
+
+    correct = 0
+    total = 0
+
+    for i in range(100):
+        xy = next(dataloader)
+        comp_xy = next(c_dataloader)
+
         latent_points, labels = xy
         latent_points = Variable(latent_points).cuda()
         labels = Variable(labels).cuda()
@@ -299,6 +305,7 @@ def train_active_learning(networks, optimizers, active_points, active_labels, co
         class_predictions = netC(latent_points)
         # Standard Categorical Cross-Entropy
         errC = nll_loss(class_predictions, labels)
+        #print("Standard cross-entropy loss is {}".format(errC))
 
         # Pairwise Comparison Complementary Loss
         # https://arxiv.org/pdf/1705.07541.pdf
@@ -306,7 +313,8 @@ def train_active_learning(networks, optimizers, active_points, active_labels, co
         N, K = class_predictions.size()
         for n in range(N):
             for k in range(K):
-                errC += torch.sigmoid(class_predictions[n][k] - class_predictions[n][c_labels[n]])
+                errC += .001 * torch.sigmoid(torch.exp(class_predictions[n][k]) - torch.exp(class_predictions[n][c_labels[n]]))
+        #print("Loss with complementary {}".format(errC))
         errC.backward()
         optimizerC.step()
         ############################

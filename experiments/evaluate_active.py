@@ -33,7 +33,7 @@ print("Loading full-sized dataset for evaluation...")
 test_dataloader = CustomDataloader(fold='test', **options)
 
 print("Loading networks (except classifier)...")
-networks = build_networks(test_dataloader.num_classes, **options)
+networks = build_networks(test_dataloader.num_classes, load_classifier=False, **options)
 optimizers = get_optimizers(networks, **options)
 
 print("Loading all available active-learning labels...")
@@ -44,8 +44,6 @@ for filename in os.listdir(active_label_dir):
     info = json.load(open(filename))
     labels.append(info)
 
-print("Loading Numpy arrays for label trajectories")
-
 trajectory_dir = os.path.join(options['result_dir'], 'trajectories')
 trajectory_filenames = os.listdir(trajectory_dir)
 def get_trajectory_filename(trajectory_id):
@@ -54,6 +52,8 @@ def get_trajectory_filename(trajectory_id):
             return filename
     return None
 
+print("Loading Numpy arrays for label trajectories")
+
 active_points = []
 active_labels = []
 complementary_points = []
@@ -61,9 +61,7 @@ complementary_labels = []
 for label in labels:
     trajectory_filename = get_trajectory_filename(label['trajectory_id'])
     trajectory_filename = os.path.join(trajectory_dir, trajectory_filename)
-    print("Loading vectors from {}".format(trajectory_filename))
     points = np.load(trajectory_filename)
-    print("Loaded matrix {}".format(points.shape))
 
     split_point = int(label['label_point'])
 
@@ -79,16 +77,20 @@ for label in labels:
     complementary_points.extend(np.squeeze(points[split_point:], axis=1))
     complementary_labels.extend([start_class] * (len(points) - split_point))
 
-train_dataloader = CustomDataloader(fold='train', **options)
+"""
+# Append all standard training examples
 netE = networks['encoder']
 from torch.autograd import Variable
+train_dataloader = CustomDataloader(fold='train', **options)
 print("Encoding training data...")
 for images, labels, _ in train_dataloader:
     z = netE(Variable(images))
     active_points.extend(z.data.cpu().numpy())
     active_labels.extend(labels.cpu().numpy())
+"""
 
-print("Loaded {} points and {} labels".format(len(active_points), len(active_labels)))
+print("Loaded {} positive and {} complementary labels".format(
+    len(active_points), len(complementary_points)))
 pprint({x: active_labels.count(x) for x in set(active_labels)})
 
 active_points = np.array(active_points)
