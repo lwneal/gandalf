@@ -7,13 +7,15 @@ import numpy as np
 from pprint import pprint
 import sys
 
+def boolean(x):
+    return not not x and x not in ['False', 'false', '0']
+
 # Dataset (input) and result_dir (output) are always required
 parser = argparse.ArgumentParser()
 parser.add_argument('--result_dir', required=True, help='Output directory for images and model checkpoints')
 
-# Core Options: these determine the shape/size of the neural network
-parser.add_argument('--dataset', help='Input filename (must be in .dataset format)')
 parser.add_argument('--classifier_epochs', type=int, default=50, help='Max number of training epochs [default: 50]')
+parser.add_argument('--supervised', type=boolean, default=False, help='If True, include all training labels [default: False]')
 
 options = vars(parser.parse_args())
 
@@ -77,19 +79,17 @@ for label in labels:
     complementary_points.extend(np.squeeze(points[split_point:], axis=1))
     complementary_labels.extend([start_class] * (len(points) - split_point))
 
-"""
-# Append all standard training examples
-netE = networks['encoder']
-from torch.autograd import Variable
-train_dataloader = CustomDataloader(fold='train', **options)
-print("Encoding training data...")
-for images, labels, _ in train_dataloader:
-    z = netE(Variable(images))
-    active_points.extend(z.data.cpu().numpy())
-    active_labels.extend(labels.cpu().numpy())
-"""
+if options['supervised']:
+    from torch.autograd import Variable
+    netE = networks['encoder']
+    train_dataloader = CustomDataloader(fold='train', **options)
+    print("Appending {} batches of training set examples".format(len(train_dataloader)))
+    for images, labels, _ in train_dataloader:
+        z = netE(Variable(images))
+        active_points.extend(z.data.cpu().numpy())
+        active_labels.extend(labels.cpu().numpy())
 
-print("Loaded {} positive and {} complementary labels".format(
+print("Training classifier with {} positive and {} negative points".format(
     len(active_points), len(complementary_points)))
 pprint({x: active_labels.count(x) for x in set(active_labels)})
 
@@ -113,4 +113,4 @@ for classifier_epoch in range(options['classifier_epochs']):
 
     print("Results from training with {} trajectories".format(len(trajectory_filenames)))
     pprint(new_results)
-save_evaluation(new_results, options['result_dir'], get_current_epoch(**options))
+save_evaluation(new_results, options['result_dir'], get_current_epoch(options['result_dir']))
