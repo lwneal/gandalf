@@ -117,4 +117,5 @@ for classifier_epoch in range(options['classifier_epochs']):
     if best_score < new_score:
         best_results = new_results
         best_score = new_score
+        best_results[foldname]['best_classifier_epoch'] = classifier_epoch
 save_evaluation(best_results, options['result_dir'], get_current_epoch(options['result_dir']))
