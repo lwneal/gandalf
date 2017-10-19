@@ -25,10 +25,18 @@ DATA_DIR = '/mnt/data'
 conn = redis.Redis()
 
 
+def get_params(result_dir):
+    filename = 'params.json'
+    filename = os.path.join(RESULTS_DIR, result_dir, filename)
+    return json.load(open(filename))
+
+
 # TODO: better heuristic to decide whether this result_dir needs graphs plotted
 def is_plotted(result_dir):
     filenames = os.listdir(os.path.join(RESULTS_DIR, result_dir))
-    return 'plot_pca_test_epoch_0025.png' in filenames
+    last_epoch = get_params(result_dir)['epochs']
+    check_filename = 'plot_pca_test_epoch_{:04d}.png'.format(last_epoch)
+    return check_filename in filenames
 
 
 def get_jobs():
