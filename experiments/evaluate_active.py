@@ -98,19 +98,23 @@ active_labels = np.array(active_labels)
 complementary_points = np.array(complementary_points)
 complementary_labels = np.array(complementary_labels)
 
+best_score = 0
 print("Training classifier using active-learning labels")
 for classifier_epoch in range(options['classifier_epochs']):
-    # Apply learning rate decay
+    # Apply learning rate decay and train for one pseudo-epoch
     for optimizer in optimizers.values():
         optimizer.param_groups[0]['lr'] = .0001 * (.9 ** classifier_epoch)
-    # Train for one epoch
     train_active_learning(networks, optimizers, active_points, active_labels, complementary_points, complementary_labels, **options)
 
-
-    foldname = 'active_learning_comp_{}'.format(len(complementary_points))
+    # Evaluate against the test set
+    foldname = 'active_trajectories_{:06d}'.format(len(labels))
     print("Evaluating {}".format(foldname))
     new_results = evaluate_classifier(networks, test_dataloader, verbose=False, fold=foldname, **options)
 
     print("Results from training with {} trajectories".format(len(trajectory_filenames)))
     pprint(new_results)
-save_evaluation(new_results, options['result_dir'], get_current_epoch(options['result_dir']))
+    new_score = new_results[foldname]['accuracy']
+    if best_score < new_score:
+        best_results = new_results
+        best_score = new_score
+save_evaluation(best_results, options['result_dir'], get_current_epoch(options['result_dir']))
