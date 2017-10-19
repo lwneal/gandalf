@@ -219,7 +219,8 @@ def generate_trajectory_active(networks, dataloader, **options):
                 break
             if np.linalg.norm(z_trajectory[-1] - z_trajectory[-2]) < .001:
                 break
-    print("Class: {} ({:.3f} confidence)...".format(predicted_class, pred_confidence))
+    predicted_class_name = dataloader.lab_conv.labels[predicted_class]
+    print("Class: {} ({:.3f} confidence)...".format(predicted_class_name, pred_confidence))
 
     # Normalize z_trajectory and turn it into a video
     sampled_trajectory = sample_trajectory(z_trajectory)
@@ -229,9 +230,10 @@ def generate_trajectory_active(networks, dataloader, **options):
         D_halluc = netD(hallucinations).data.cpu().numpy().mean()
         preds = netC(z)
         predicted_class = to_np(preds.max(1)[1])[0]
+        predicted_class_name = dataloader.lab_conv.labels[predicted_class]
         pred_confidence = np.exp(to_np(preds.max(1)[0])[0])
         caption = "DR {:.04f}  DG {:.04f} C {} {:.3f}".format(
-                D_real, D_halluc, predicted_class, pred_confidence)
+                D_real, D_halluc, predicted_class_name, pred_confidence)
         imutil.show(hallucinations,
                 video_filename=video_filename,
                 caption=caption,
