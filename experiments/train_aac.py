@@ -38,7 +38,7 @@ parser.add_argument('--autoencoder_lambda', type=float, default=1.0, help='Autoe
 parser.add_argument('--attributes_only', type=is_true, default=False, help='Learn attributes, not classes [default: False]')
 
 # This might change with each run
-parser.add_argument('--epochs', type=int, default=25, help='number of epochs to train for [default: 25]')
+parser.add_argument('--epochs', type=int, default=20, help='number of epochs to train for [default: 20]')
 
 options = vars(parser.parse_args())
 
