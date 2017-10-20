@@ -27,7 +27,7 @@ from pprint import pprint
 
 RESULTS_DIR = '/mnt/results'
 DATA_DIR = '/mnt/data'
-PATIENCE_SEC = 30
+PATIENCE_SEC = 100
 
 conn = redis.Redis()
 
@@ -199,6 +199,7 @@ if __name__ == '__main__':
         for _ in range(PATIENCE_SEC):
             time.sleep(1)
             if len(get_jobs()) > 0:
-                continue
-        print("No jobs enqueued for {} seconds, starting the next experiment".format(PATIENCE_SEC))
-        start_new_job()
+                break
+        else:
+            print("No jobs were enqueued for {} seconds. Starting the next experiment".format(PATIENCE_SEC))
+            start_new_job()
