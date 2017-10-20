@@ -4,6 +4,9 @@ import argparse
 import os
 import sys
 
+def is_true(x):
+    return not not x and x not in ['false', 'False', '0']
+
 # Dataset (input) and result_dir (output) are always required
 parser = argparse.ArgumentParser()
 parser.add_argument('--result_dir', required=True, help='Output directory for images and model checkpoints')
@@ -21,18 +24,18 @@ parser.add_argument('--batch_size', type=int, default=64, help='Batch size [defa
 parser.add_argument('--lr', type=float, default=0.0001, help='learning rate, [default: 0.0001]')
 parser.add_argument('--beta1', type=float, default=0.5, help='beta1 for adam. [default: 0.5]')
 parser.add_argument('--decay', type=float, default=0.9, help='Learning rate decay per epoch. [default: 0.9]')
-parser.add_argument('--random_horizontal_flip', type=bool, default=False, help='Flip images during training. [default: False]')
-parser.add_argument('--delete_background', type=bool, default=False, help='Delete non-foreground pixels from images [default: False]')
-parser.add_argument('--supervised_encoder', type=bool, default=False, help='Train the encoder jointly with the classifier. [default: False]')
+parser.add_argument('--random_horizontal_flip', type=is_true, default=False, help='Flip images during training. [default: False]')
+parser.add_argument('--delete_background', type=is_true, default=False, help='Delete non-foreground pixels from images [default: False]')
+parser.add_argument('--supervised_encoder', type=is_true, default=False, help='Train the encoder jointly with the classifier. [default: False]')
 # Perceptual loss at 9 layers (VGG16 relu_2_2) following Johnson et al https://arxiv.org/abs/1603.08155
-parser.add_argument('--perceptual_loss', type=bool, default=False, help='Enable P-loss [default: False]')
+parser.add_argument('--perceptual_loss', type=is_true, default=False, help='Enable P-loss [default: False]')
 parser.add_argument('--perceptual_depth', type=int, default=9, help='Number of layers of perceptual loss [default: 9]')
 # Gradient penalty lambda defaults to 10 following Gulrajani et al https://arxiv.org/abs/1704.00028
 parser.add_argument('--gradient_penalty_lambda', type=float, default=10.0, help='Magnitude of discriminator regularization [default: 10.0]')
 parser.add_argument('--autoencoder_lambda', type=float, default=1.0, help='Autoencoder training weight [default: 1.0]')
 
 # TODO: replace this, it's a hack
-parser.add_argument('--attributes_only', type=bool, default=False, help='Learn attributes, not classes [default: False]')
+parser.add_argument('--attributes_only', type=is_true, default=False, help='Learn attributes, not classes [default: False]')
 
 # This might change with each run
 parser.add_argument('--epochs', type=int, default=25, help='number of epochs to train for [default: 25]')
