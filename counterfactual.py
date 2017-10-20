@@ -232,8 +232,7 @@ def generate_trajectory_active(networks, dataloader, **options):
         predicted_class = to_np(preds.max(1)[1])[0]
         predicted_class_name = dataloader.lab_conv.labels[predicted_class]
         pred_confidence = np.exp(to_np(preds.max(1)[0])[0])
-        caption = "DR {:.04f}  DG {:.04f} C {} {:.3f}".format(
-                D_real, D_halluc, predicted_class_name, pred_confidence)
+        caption = "Class: {} (confidence {:.3f})".format(predicted_class_name, pred_confidence)
         imutil.show(hallucinations,
                 video_filename=video_filename,
                 caption=caption,
