@@ -27,7 +27,7 @@ from pprint import pprint
 
 RESULTS_DIR = '/mnt/results'
 DATA_DIR = '/mnt/data'
-PATIENCE_SEC = 100
+PATIENCE_SEC = 10
 
 conn = redis.Redis()
 
@@ -88,17 +88,19 @@ def get_editable_params(result_dir):
     editable_params = {}
     params = get_params(result_dir)
     for name in params:
-        if type(params[name]) is float:
+        if type(params[name]) is float or name == 'latent_size':
             editable_params[name] = params[name]
     return editable_params
 
 
 def perturb_editable_params(editable_params):
-    for name in editable_params:
-        multiplier = 1 + np.random.normal(0, .1)
-        new_val = editable_params[name] * multiplier
-        print("Setting {} to {}".format(name, new_val))
-        editable_params[name] = new_val
+    # Select one parameter at random and move it up or down
+    name = random.choice(list(editable_params.keys()))
+    multiplier = 1 + np.random.uniform(-.1, .1)
+    param_type = type(editable_params[name])
+    new_val = param_type(editable_params[name] * multiplier)
+    print("Setting {} to {}".format(name, new_val))
+    editable_params[name] = new_val
     return editable_params
 
 
@@ -153,7 +155,7 @@ def get_all_info(fold, metric, dataset):
 
 
 def start_new_job():
-    dataset = 'mnist'
+    dataset = 'emnist'
     fold = 'test'
     metric = 'accuracy'
     if len(sys.argv) > 1:
@@ -181,6 +183,7 @@ def start_new_job():
 
     print("Parameters for next run:")
     new_params = best_params.copy()
+
     perturbed = perturb_editable_params(get_editable_params(best_result_dir))
     new_params.update(perturbed)
 
@@ -199,6 +202,8 @@ if __name__ == '__main__':
         for _ in range(PATIENCE_SEC):
             time.sleep(1)
             if len(get_jobs()) > 0:
+                print("Jobs are on the queue. Sleeping.")
+                time.sleep(10)
                 break
         else:
             print("No jobs were enqueued for {} seconds. Starting the next experiment".format(PATIENCE_SEC))
