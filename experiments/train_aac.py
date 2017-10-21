@@ -49,7 +49,7 @@ from training import train_counterfactual
 from networks import build_networks, save_networks, get_optimizers
 from options import save_options, load_options, get_current_epoch
 from locking import acquire_lock, release_lock
-
+from imutil import encode_video
 
 if os.path.exists(options['result_dir']):
     options = load_options(options)
