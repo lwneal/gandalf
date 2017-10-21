@@ -164,7 +164,9 @@ def generate_trajectory_active(networks, dataloader, **options):
     real_image = Variable(real_image)
 
     start_class = label.cpu().numpy()[0]
-    target_class = random.randint(0, dataloader.num_classes - 1)
+    target_class = random.randint(0, dataloader.num_classes - 2)
+    if start_class <= target_class:
+        target_class += 1
 
     print("Morphing input example from class {} to class {}".format(start_class, target_class))
 
@@ -202,9 +204,9 @@ def generate_trajectory_active(networks, dataloader, **options):
     for i in range(MAX_ITERS):
         cf_loss = nll_loss(netC(z), target_label)
         dc_dz = autograd.grad(cf_loss, z, cf_loss, retain_graph=True)[0]
-        momentum -= dc_dz * .0002
+        momentum -= dc_dz * .0005
         z += momentum
-        momentum *= .90
+        momentum *= .95
         #print("Loss: {}".format(cf_loss.data[0]))
         #print("Latent point: {}...".format(z[0].data.cpu().numpy()[:5]))
         #print("Gradient: {}...".format(dc_dz[0].data.cpu().numpy()[:5]))
@@ -217,7 +219,7 @@ def generate_trajectory_active(networks, dataloader, **options):
         if len(z_trajectory) > MIN_ITERS:
             if predicted_class == target_class and pred_confidence > .99:
                 break
-            if np.linalg.norm(z_trajectory[-1] - z_trajectory[-2]) < .001:
+            if np.linalg.norm(z_trajectory[-1] - z_trajectory[-2]) < .0001:
                 break
     predicted_class_name = dataloader.lab_conv.labels[predicted_class]
     print("Class: {} ({:.3f} confidence)...".format(predicted_class_name, pred_confidence))
@@ -248,7 +250,7 @@ def generate_trajectory_active(networks, dataloader, **options):
     return to_np(z)
 
 
-def sample_trajectory(zt, output_samples=30):
+def sample_trajectory(zt, output_samples=60):
     distances = np.array([np.linalg.norm(zt[i+1] - zt[i]) for i in range(len(zt) - 1)])
     total_distance = sum(distances)
     distance_per_sample = total_distance / output_samples 
@@ -259,5 +261,4 @@ def sample_trajectory(zt, output_samples=30):
         if len(samples) * distance_per_sample < cumulative_distance:
             samples.append(zt[i])
         cumulative_distance += distances[i]
-    assert len(samples) == output_samples
     return samples
