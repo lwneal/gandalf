@@ -758,7 +758,7 @@ class encoder28sphere(nn.Module):
         x = nn.LeakyReLU(0.2, inplace=True)(x)
 
         x = self.conv4(x)
-        x = x.squeeze()
+        x = x.squeeze(-1).squeeze(-1)
 
         xnorm = torch.norm(x, p=2, dim=1).detach()
         xnorm = xnorm.expand(1, x.size()[0])
@@ -832,7 +832,7 @@ class encoderLReLU64sphere(nn.Module):
         x = nn.LeakyReLU(0.2, inplace=True)(x)
         x = self.conv5(x)
         x = nn.LeakyReLU(0.2, inplace=True)(x)
-        x = x.squeeze()
+        x = x.squeeze(-1).squeeze(-1)
         x = self.fc1(x)
         return x
 
@@ -890,7 +890,7 @@ class encoder32sphere(nn.Module):
         x = self.bn2(x)
         x = nn.LeakyReLU(0.2, inplace=True)(x)
         x = self.conv4(x)
-        x = x.squeeze()
+        x = x.squeeze(-1).squeeze(-1)
         x = self.fc1(x)
         xnorm = torch.norm(x, p=2, dim=1).detach()
         xnorm = xnorm.expand(1, x.size()[0])
@@ -929,7 +929,7 @@ class encoderLReLU64(nn.Module):
         x = nn.LeakyReLU(0.2, inplace=True)(x)
         x = self.conv5(x)
         x = nn.LeakyReLU(0.2, inplace=True)(x)
-        x = x.squeeze()
+        x = x.squeeze(-1).squeeze(-1)
         x = self.fc1(x)
         return x
 encoder64 = encoderLReLU64
@@ -965,7 +965,7 @@ class encoder64sphere(nn.Module):
         x = nn.LeakyReLU(0.2, inplace=True)(x)
         x = self.conv5(x)
         x = nn.LeakyReLU(0.2, inplace=True)(x)
-        x = x.squeeze()
+        x = x.squeeze(-1).squeeze(-1)
 
         x = self.fc1(x)
         xnorm = torch.norm(x, p=2, dim=1).detach()
@@ -1011,7 +1011,7 @@ class encoderLReLU128(nn.Module):
         x = nn.LeakyReLU(0.2, inplace=True)(x)
         x = self.conv6(x)
         x = nn.LeakyReLU(0.2, inplace=True)(x)
-        x = x.squeeze()
+        x = x.squeeze(-1).squeeze(-1)
         x = self.fc1(x)
         return x
 
