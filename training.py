@@ -96,7 +96,7 @@ def train_counterfactual(networks, optimizers, dataloader, epoch=None, **options
             noise = clamp_to_unit_sphere(noise)
         fake = netG(noise)
         DG_fake_output = netD(fake)
-        errG = DG_fake_output.mean()
+        errG = DG_fake_output.mean() * options['gan_weight']
         errG.backward(label_one)
         ###########################
 
@@ -119,7 +119,7 @@ def train_counterfactual(networks, optimizers, dataloader, epoch=None, **options
         ############################
         encoded_real = encoded.detach()
         DGE_output = netD(netG(encoded_real))
-        errDGE = DGE_output.mean()
+        errDGE = DGE_output.mean() * options['gan_weight']
         errDGE.backward(label_one)
         ###########################
 

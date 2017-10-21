@@ -33,6 +33,7 @@ parser.add_argument('--perceptual_depth', type=int, default=9, help='Number of l
 # Gradient penalty lambda defaults to 10 following Gulrajani et al https://arxiv.org/abs/1704.00028
 parser.add_argument('--gradient_penalty_lambda', type=float, default=10.0, help='Magnitude of discriminator regularization [default: 10.0]')
 parser.add_argument('--autoencoder_lambda', type=float, default=1.0, help='Autoencoder training weight [default: 1.0]')
+parser.add_argument('--gan_weight', type=float, default=1.0, help='GAN training weight [default: 1.0]')
 
 # TODO: replace this, it's a hack
 parser.add_argument('--attributes_only', type=is_true, default=False, help='Learn attributes, not classes [default: False]')
