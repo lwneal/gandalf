@@ -61,7 +61,6 @@ save_options(options)
 start_epoch = get_current_epoch(options['result_dir']) + 1
 acquire_lock(options['result_dir'])
 try:
-
     for epoch in range(start_epoch, start_epoch + options['epochs']):
         # Apply learning rate decay
         for name, optimizer in optimizers.items():
@@ -73,7 +72,8 @@ try:
             optimizer.param_groups[0]['lr'] = lr
 
         # Train for one epoch
-        train_counterfactual(networks, optimizers, dataloader, epoch=epoch, **options)
+        video_filename = train_counterfactual(networks, optimizers, dataloader, epoch=epoch, **options)
         save_networks(networks, epoch, options['result_dir'])
 finally:
     release_lock(options['result_dir'])
+    encode_video(video_filename)

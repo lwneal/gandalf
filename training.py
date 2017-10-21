@@ -27,6 +27,7 @@ def train_counterfactual(networks, optimizers, dataloader, epoch=None, **options
     batch_size = options['batch_size']
     image_size = options['image_size']
     latent_size = options['latent_size']
+    video_filename = "{}/generated.mjpeg".format(result_dir)
 
     if options['perceptual_loss']:
         vgg16 = models.vgg.vgg16(pretrained=True)
@@ -193,7 +194,6 @@ def train_counterfactual(networks, optimizers, dataloader, epoch=None, **options
                   float(attr_correct) / attr_total if attr_total > 0 else 0,
                   errDGE.data[0])
             print(msg)
-            video_filename = "{}/generated.mjpeg".format(result_dir)
             caption = "Epoch {:04d} iter {:05d}".format(epoch, i)
             demo_gen = netG(fixed_noise)
             imutil.show(demo_gen, video_filename=video_filename, caption=caption, display=False)
@@ -201,6 +201,7 @@ def train_counterfactual(networks, optimizers, dataloader, epoch=None, **options
             img = torch.cat([images[:12], reconstructed.data[:12], demo_gen.data[:12]])
             filename = "{}/demo_{}.jpg".format(result_dir, int(time.time()))
             imutil.show(img, caption=msg, font_size=8, filename=filename)
+    return video_filename
 
 
 def clamp_to_unit_sphere(x):

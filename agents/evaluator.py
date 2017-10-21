@@ -175,28 +175,28 @@ def get_result_dirs():
 
 def evaluate_all():
     result_dirs = get_result_dirs()
-    # Collect all possible runnable jobs
+    # Collect all possible runnable eval jobs
     to_run = []
     for rd in result_dirs:
-        epochs = get_epochs(rd)
-        for epoch in epochs:
-            eval_types = get_eval_types(rd, epoch)
-            for eval_type in eval_types:
-                to_run.append((rd, epoch, eval_type))
+        try:
+            epochs = get_epochs(rd)
+            for epoch in epochs:
+                eval_types = get_eval_types(rd, epoch)
+                for eval_type in eval_types:
+                    to_run.append((rd, epoch, eval_type))
+        except:
+            print("Warning: skipping bad result_dir {}".format(rd))
+            continue
 
-    # Find one job to run, and enqueue it
+    # Run the ones that haven't been run
     random.shuffle(to_run)
     for (rd, epoch, eval_type) in to_run:
-        evaluate(rd, epoch, eval_type)
+        results = get_results(rd, epoch)
+        if eval_type not in results.keys():
+            print("{}: {} not in {}".format(rd, eval_type, results.keys()))
+            cmd = cmd_for_eval(rd, epoch, eval_type)
+            start_job(' '.join(cmd))
     print("Finished checking {} result_dirs".format(len(result_dirs)))
-
-
-def evaluate(result_dir, epoch, eval_type):
-    results = get_results(result_dir, epoch)
-    if eval_type not in results.keys():
-        print("{}: {} not in {}".format(result_dir, eval_type, results.keys()))
-        cmd = cmd_for_eval(result_dir, epoch, eval_type)
-        start_job(' '.join(cmd))
 
 
 if __name__ == '__main__':
