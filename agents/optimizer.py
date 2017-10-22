@@ -159,7 +159,7 @@ def get_all_info(fold, metric, dataset):
 
 
 def start_new_job():
-    dataset = 'mnist'
+    dataset = 'emnist'
     fold = 'test'
     metric = 'accuracy'
     if len(sys.argv) > 1:
