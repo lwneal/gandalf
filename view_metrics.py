@@ -83,9 +83,10 @@ if __name__ == '__main__':
     infos = get_all_info(fold=fold, metric=metric)
     infos.sort(key=lambda x: x[0].split('_')[0] + str(x[2]))
 
-    print('{:<64} {:>8} {:>8}'.format("Experiment Name", "Epoch", fold + '_' + metric))
+    print('{:<64} {:>8} {:>8} {:>8}'.format("Experiment Name", "Epoch", fold + '_' + metric, "Superv."))
     for (name, epoch, metric, params) in infos:
-        sys.stdout.write('{:<64} {:>8} {:>8.4f}'.format(name, epoch, metric))
+        sys.stdout.write('{:<64} {:>8} {:>8.4f} {:>8}'.format(
+            name, epoch, metric, str(params.get('supervised_encoder'))))
         if '--verbose' in sys.argv:
             for param in params:
                 sys.stdout.write('\t{:>32}={:<32}'.format(param, params[param]))
