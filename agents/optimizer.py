@@ -88,7 +88,7 @@ def get_editable_params(result_dir):
     editable_params = {}
     params = get_params(result_dir)
     for name in params:
-        if type(params[name]) is float or name == 'latent_size':
+        if type(params[name]) is float or name in ['latent_size', 'epochs']:
             editable_params[name] = params[name]
     return editable_params
 
@@ -149,13 +149,17 @@ def get_all_info(fold, metric, dataset):
             continue
         if fold not in results:
             continue
+        # HACK: unsupervised only
+        if get_params(result_dir).get('supervised_encoder') != False:
+            print("Skipping supervised {}".format(result_dir))
+            continue
         info.append((result_dir, results[fold][metric]))
     info.sort(key=lambda x: x[1])
     return info
 
 
 def start_new_job():
-    dataset = 'emnist'
+    dataset = 'mnist'
     fold = 'test'
     metric = 'accuracy'
     if len(sys.argv) > 1:
