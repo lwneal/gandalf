@@ -1,14 +1,16 @@
 #!/usr/bin/env python
 """
 Usage:
-
-    optimizer.py [eval_type metric_name]
+    optimizer.py [<eval_type> <metric_name> <dataset> <supervised>]
     
-Adjusts available parameters to maximize the given metric.
-Defaults to "test accuracy"
+Runs and evaluates new models, iteratively updating parameters to optimize the given metric.
+By default, optimizes test accuracy for a supervised MNIST classifier.
 
-eval_type: One of train, test, openset, etc.
-metric_name: One of accuracy, MSE, auc, etc.
+Arguments:
+    eval_type: One of train, test, openset, etc.
+    metric_name: One of accuracy, MSE, auc, etc.
+    dataset: Eg. mnist, cifar10
+    supervised: True or False, classification or unsupervised feature learning
 """
 import os
 import uuid
@@ -134,7 +136,7 @@ def get_epochs(result_dir):
     return sorted(list(set(epoch_from_filename(f) for f in pth_names)))
 
 
-def get_all_info(fold, metric, dataset):
+def get_all_info(fold, metric, dataset, supervised):
     info = []
     for result_dir in get_result_dirs():
         if get_dataset_name(result_dir) != dataset:
@@ -150,7 +152,7 @@ def get_all_info(fold, metric, dataset):
         if fold not in results:
             continue
         # HACK: unsupervised only
-        if get_params(result_dir).get('supervised_encoder') != False:
+        if supervised == False and get_params(result_dir).get('supervised_encoder') != False:
             print("Skipping supervised {}".format(result_dir))
             continue
         info.append((result_dir, results[fold][metric]))
@@ -159,15 +161,21 @@ def get_all_info(fold, metric, dataset):
 
 
 def start_new_job():
-    dataset = 'emnist'
+    dataset = 'mnist'
     fold = 'test'
     metric = 'accuracy'
+    supervised = True
+
     if len(sys.argv) > 1:
         fold = sys.argv[1]
     if len(sys.argv) > 2:
         metric = sys.argv[2]
+    if len(sys.argv) > 3:
+        dataset = sys.argv[3]
+    if len(sys.argv) > 4:
+        supervised = sys.argv[4].lower().startswith('t')
 
-    infos = get_all_info(fold=fold, metric=metric, dataset=dataset)
+    infos = get_all_info(fold=fold, metric=metric, dataset=dataset, supervised=supervised)
     if not infos:
         print("Error: No runs found for dataset {}".format(dataset))
         return
