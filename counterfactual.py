@@ -158,6 +158,7 @@ def generate_trajectory_active(networks, dataloader, strategy='random', **option
     result_dir = options['result_dir']
     image_size = options['image_size']
     latent_size = options['latent_size']
+    output_samples = options['counterfactual_frame_count']
 
     if strategy == 'random':
         real_image, label, attributes = dataloader.get_batch()
@@ -222,25 +223,26 @@ def generate_trajectory_active(networks, dataloader, strategy='random', **option
         momentum -= dc_dz * .0005
         z += momentum
         momentum *= .95
-        #print("Loss: {}".format(cf_loss.data[0]))
-        #print("Latent point: {}...".format(z[0].data.cpu().numpy()[:5]))
-        #print("Gradient: {}...".format(dc_dz[0].data.cpu().numpy()[:5]))
-        #print("Momentum: {}...".format(momentum[0].data.cpu().numpy()[:5]))
         preds = netC(z)
         predicted_class = to_np(preds.max(1)[1])[0]
         pred_confidence = np.exp(to_np(preds.max(1)[0])[0])
-        #print("Class: {} ({:.3f} confidence)...".format(predicted_class, pred_confidence))
         z_trajectory.append(to_np(z))
         if len(z_trajectory) > MIN_ITERS:
             if predicted_class == target_class and pred_confidence > .99:
                 break
             if np.linalg.norm(z_trajectory[-1] - z_trajectory[-2]) < .0001:
                 break
+        if i % 100 == 0:
+            print("Iter {} Loss: {}".format(i, cf_loss.data[0]))
+            print("Latent point: {}...".format(z[0].data.cpu().numpy()[:5]))
+            print("Gradient: {}...".format(dc_dz[0].data.cpu().numpy()[:5]))
+            print("Momentum: {}...".format(momentum[0].data.cpu().numpy()[:5]))
+            print("Class: {} ({:.3f} confidence)...".format(predicted_class, pred_confidence))
     predicted_class_name = dataloader.lab_conv.labels[predicted_class]
     print("Class: {} ({:.3f} confidence)...".format(predicted_class_name, pred_confidence))
 
     # Normalize z_trajectory and turn it into a video
-    sampled_trajectory = sample_trajectory(z_trajectory)
+    sampled_trajectory = sample_trajectory(z_trajectory, output_samples=output_samples)
     for z in sampled_trajectory:
         z = Variable(torch.FloatTensor(z)).cuda()
         hallucinations = netG(z)
@@ -265,7 +267,7 @@ def generate_trajectory_active(networks, dataloader, strategy='random', **option
     return to_np(z)
 
 
-def sample_trajectory(zt, output_samples=60):
+def sample_trajectory(zt, output_samples):
     distances = np.array([np.linalg.norm(zt[i+1] - zt[i]) for i in range(len(zt) - 1)])
     total_distance = sum(distances)
     distance_per_sample = total_distance / output_samples 
