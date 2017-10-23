@@ -5,7 +5,7 @@ from torch import optim
 from torch import nn
 
 
-def build_networks(num_classes, num_attributes=0, epoch=None, latent_size=10, batch_size=64, load_classifier=True, **options):
+def build_networks(num_classes, num_attributes=0, epoch=None, latent_size=10, batch_size=64, classifier_name='classifier', **options):
     networks = {}
 
     EncoderClass = get_network_class(options['encoder'])
@@ -18,24 +18,22 @@ def build_networks(num_classes, num_attributes=0, epoch=None, latent_size=10, ba
     networks['discriminator'] = DiscrimClass(latent_size=latent_size)
 
     ClassifierClass = network_definitions.classifierMLP256
-    networks['classifier'] = ClassifierClass(latent_size, num_classes=num_classes)
-    num_attributes = 0
+    networks[classifier_name] = ClassifierClass(latent_size, num_classes=num_classes)
+
+    # Attribute network is only active for some datasets
     if num_attributes > 0:
         ClassifierClass = network_definitions.classifierMulticlass
         networks['attribute'] = ClassifierClass(latent_size, num_classes=num_attributes)
 
-    for name, net in networks.items():
-        if epoch:
-            # Evaluate a particular epoch
-            pth = get_pth_by_epoch(options['result_dir'], name, epoch)
-        else:
-            # Evaluate the last completed epoch
-            pth = get_latest_pth(options['result_dir'], name)
+    for net_name in networks:
+        pth = get_pth_by_epoch(options['result_dir'], net_name, epoch)
         if pth:
-            print("Loading {} from checkpoint {}".format(name, pth))
-            if name is 'classifier' and load_classifier is False:
-                continue
-            net.load_state_dict(torch.load(pth))
+            print("Loading {} from checkpoint {}".format(net_name, pth))
+            networks[net_name].load_state_dict(torch.load(pth))
+        else:
+            print("Using randomly-initialized weights for {}".format(net_name))
+
+    networks['classifier'] = networks[classifier_name]
     return networks
 
 
@@ -79,9 +77,12 @@ def get_latest_pth(result_dir, name):
     
 
 def get_pth_by_epoch(result_dir, name, epoch):
+    if epoch == None:
+        return get_latest_pth(result_dir, name)
     files = os.listdir(result_dir)
     suffix = 'epoch_{:04d}.pth'.format(epoch)
     files = [f for f in files if f.startswith(name) and f.endswith(suffix)]
     if not files:
-        raise ValueError("No file available for network {} epoch {}".format(name, epoch))
+        print("WARNING: No file available for network {} epoch {}".format(name, epoch))
+        return None
     return os.path.join(result_dir, files[0])
