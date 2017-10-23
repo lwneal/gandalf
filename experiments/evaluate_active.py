@@ -35,7 +35,7 @@ print("Loading full-sized dataset for evaluation...")
 test_dataloader = CustomDataloader(fold='test', **options)
 
 print("Loading networks (except classifier)...")
-networks = build_networks(test_dataloader.num_classes, load_classifier=False, **options)
+networks = build_networks(test_dataloader.num_classes, classifier_name=None, **options)
 optimizers = get_optimizers(networks, **options)
 
 print("Loading all available active-learning labels...")

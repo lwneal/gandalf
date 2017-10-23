@@ -20,6 +20,7 @@ def build_networks(num_classes, num_attributes=0, epoch=None, latent_size=10, ba
     ClassifierClass = network_definitions.classifierMLP256
     networks['classifier'] = ClassifierClass(latent_size, num_classes=num_classes)
 
+    # Attribute network is only active for some datasets
     if num_attributes > 0:
         ClassifierClass = network_definitions.classifierMulticlass
         networks['attribute'] = ClassifierClass(latent_size, num_classes=num_attributes)
@@ -32,11 +33,13 @@ def build_networks(num_classes, num_attributes=0, epoch=None, latent_size=10, ba
         else:
             print("Using randomly-initialized weights for {}".format(net_name))
 
+    # If we're using a non-default classifier (eg. one trained on a set of active learning data)
     if classifier_name:
+        networks[classifier_name] = networks['classifier']
         pth = get_pth_by_epoch(options['result_dir'], classifier_name, epoch)
         if pth:
-            print("Classifier: Loading {} from checkpoint {}".format(net_name, pth))
-            networks[net_name].load_state_dict(torch.load(pth))
+            print("Classifier: Loading {} from checkpoint {}".format(classifier_name, pth))
+            networks[classifier_name].load_state_dict(torch.load(pth))
     return networks
 
 
