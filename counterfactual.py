@@ -281,5 +281,4 @@ def sample_trajectory(zt, output_samples=30):
             samples.append(zt[i])
         cumulative_distance += distances[i]
     print("{} samples, expecting {}".format(len(samples), output_samples))
-    assert len(samples) == output_samples
     return samples
