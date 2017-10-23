@@ -15,7 +15,8 @@ parser.add_argument('--start_class', type=str, help='Start from one class instea
 parser.add_argument('--desired_class', type=int, help='Desired class number')
 parser.add_argument('--zero_attribute', type=str, help='Attribute to set to one')
 parser.add_argument('--one_attribute', type=str, help='Attribute to set to zero')
-parser.add_argument('--mode', default="batch", help='One of: batch, active [default: batch]')
+parser.add_argument('--mode', default="batch", help='One of: batch, active, uncertainty [default: batch]')
+parser.add_argument('--classifier_name', type=str, help='Name of the classifier to use')
 
 options = vars(parser.parse_args())
 
@@ -23,13 +24,13 @@ options = vars(parser.parse_args())
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 from dataloader import CustomDataloader
 import counterfactual
-from networks import build_networks, save_networks, get_optimizers
-from options import save_options, load_options, get_current_epoch
+from networks import build_networks, get_optimizers
+from options import load_options, get_current_epoch
 
 
 options = load_options(options)
 
-if options['mode'] == 'active':
+if options['mode'] in ['active', 'uncertainty']:
     # Active Learning trajectories can only be single examples
     options['batch_size'] = 1
 else:
@@ -37,14 +38,18 @@ else:
     options['batch_size'] = 64
 
 dataloader = CustomDataloader(**options)
+
 networks = build_networks(dataloader.num_classes, dataloader.num_attributes, **options)
 
 start_epoch = get_current_epoch(options['result_dir'])
 print("Loaded model at epoch {}".format(start_epoch))
 
-# Generate a counterfactual
 if options['mode'] == 'batch':
+    # This one is a good visualization and can be used for efficient labeling
     counterfactual.generate_trajectory_batch(networks, dataloader, **options)
 elif options['mode'] == 'active':
-    # TODO: Select the optimal start class and target class
+    # This is the classic visualization for a single example
     counterfactual.generate_trajectory_active(networks, dataloader, **options)
+elif options['mode'] == 'uncertainty':
+    # Uncertainty Sampling used for Experiment 1. Requires --classifier_name
+    counterfactual.generate_trajectory_active(networks, dataloader, strategy='uncertainty', **options)

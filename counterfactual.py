@@ -150,7 +150,7 @@ def to_np(z):
     return z.data.cpu().numpy()
 
 
-def generate_trajectory_active(networks, dataloader, **options):
+def generate_trajectory_active(networks, dataloader, strategy='random', **options):
     netG = networks['generator']
     netE = networks['encoder']
     netC = networks['classifier']
@@ -159,14 +159,29 @@ def generate_trajectory_active(networks, dataloader, **options):
     image_size = options['image_size']
     latent_size = options['latent_size']
 
+    if strategy == 'random':
+        real_image, label, attributes = dataloader.get_batch()
+        real_image = Variable(real_image)
 
-    real_image, label, attributes = dataloader.get_batch()
-    real_image = Variable(real_image)
+        start_class = label.cpu().numpy()[0]
+        target_class = random.randint(0, dataloader.num_classes - 2)
+        if start_class <= target_class:
+            target_class += 1
+    elif strategy == 'uncertainty':
+        print("Performing uncertainty sampling with dataloader {}".format(dataloader))
+        # todo: run the classifier on every? point, and find one with minimal top-1 score
+        # Then decide on which direction to take it
+        real_image, label, attributes = dataloader.get_batch()
+        real_image = Variable(real_image)
+        print("TODO: Run through a pool of unlabeled examples, apply classifier to each one")
+        print("TODO: Pick the highest-uncertainty unlabeled example")
 
-    start_class = label.cpu().numpy()[0]
-    target_class = random.randint(0, dataloader.num_classes - 2)
-    if start_class <= target_class:
-        target_class += 1
+        start_class = label.cpu().numpy()[0]
+        target_class = random.randint(0, dataloader.num_classes - 2)
+        if start_class <= target_class:
+            target_class += 1
+    else:
+        raise ValueError("Unknown sampling strategy {}".format(strategy))
 
     print("Morphing input example from class {} to class {}".format(start_class, target_class))
 
