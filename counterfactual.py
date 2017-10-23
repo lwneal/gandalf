@@ -11,8 +11,8 @@ import imutil
 CF_VIDEO_FRAMES = 48  # Two seconds of video
 
 
-# Morphs an entire batch of input examples into a given desired_class
-def generate_trajectory_batch(networks, dataloader, desired_class=None, **options):
+# Morphs an entire batch of input examples into a given target_class
+def generate_trajectory_batch(networks, dataloader, target_class=None, **options):
     netG = networks['generator']
     netE = networks['encoder']
     netC = networks['classifier']
@@ -23,10 +23,10 @@ def generate_trajectory_batch(networks, dataloader, desired_class=None, **option
     image_size = options['image_size']
     latent_size = options['latent_size']
 
-    if desired_class is None:
-        desired_class = random.randint(0, dataloader.num_classes - 1)
-    desired_class_name = dataloader.lab_conv.labels[desired_class]
-    print("Morphing input examples to class {}".format(desired_class_name))
+    if target_class is None:
+        target_class = random.randint(0, dataloader.num_classes - 1)
+    target_class_name = dataloader.lab_conv.labels[target_class]
+    print("Morphing input examples to class {}".format(target_class_name))
 
     real_images, labels, attributes = dataloader.get_batch(required_class=options['start_class'])
     real_images = Variable(real_images)
@@ -41,14 +41,14 @@ def generate_trajectory_batch(networks, dataloader, desired_class=None, **option
 
     # We want to move them so their classification changes
     target_labels = torch.LongTensor(batch_size)
-    target_labels[:] = desired_class
+    target_labels[:] = target_class
     target_labels = Variable(target_labels).cuda()
 
     momentum = Variable(torch.zeros(z.size())).cuda()
 
     # Write all counterfactuals to the trajectories/ subdirectory
     trajectory_id = '{}_{}'.format(dataloader.dsf.name, int(time.time() * 1000))
-    video_filename = 'batch-{}-{}.mjpeg'.format(trajectory_id, desired_class_name)
+    video_filename = 'batch-{}-{}.mjpeg'.format(trajectory_id, target_class_name)
     video_filename = os.path.join('trajectories', video_filename)
     video_filename = os.path.join(options['result_dir'], video_filename)
 
@@ -162,29 +162,25 @@ def generate_trajectory_active(networks, dataloader, strategy='random', **option
     speed = options['speed']
     momentum_mu = options['momentum_mu']
 
-    if strategy == 'random':
-        real_image, label, attributes = dataloader.get_batch()
-        real_image = Variable(real_image)
+    # Random selection
+    real_image, label, attributes = dataloader.get_batch()
+    real_image = Variable(real_image)
+    start_class = label.cpu().numpy()[0]
+    target_class = random.randint(0, dataloader.num_classes - 2)
+    if start_class <= target_class:
+        target_class += 1
 
-        start_class = label.cpu().numpy()[0]
-        target_class = random.randint(0, dataloader.num_classes - 2)
-        if start_class <= target_class:
-            target_class += 1
-    elif strategy == 'uncertainty':
+    if strategy == 'uncertainty':
         print("Performing uncertainty sampling with dataloader {}".format(dataloader))
         # todo: run the classifier on every? point, and find one with minimal top-1 score
         # Then decide on which direction to take it
-        real_image, label, attributes = dataloader.get_batch()
-        real_image = Variable(real_image)
         print("TODO: Run through a pool of unlabeled examples, apply classifier to each one")
         print("TODO: Pick the highest-uncertainty unlabeled example")
 
-        start_class = label.cpu().numpy()[0]
-        target_class = random.randint(0, dataloader.num_classes - 2)
-        if start_class <= target_class:
-            target_class += 1
-    else:
-        raise ValueError("Unknown sampling strategy {}".format(strategy))
+    if options['start_class']:
+        target_class = options['start_class']
+    if options['target_class']:
+        target_class = options['target_class']
 
     print("Morphing input example from class {} to class {}".format(start_class, target_class))
 

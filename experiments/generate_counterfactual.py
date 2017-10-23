@@ -12,7 +12,7 @@ parser.add_argument('--result_dir', required=True, help='Output directory for im
 parser.add_argument('--batch_size', type=int, default=64, help='Batch size [default: 64]')
 parser.add_argument('--fold', type=str, default='test', help='Fold [default: test]')
 parser.add_argument('--start_class', type=str, help='Start from one class instead of random sampling')
-parser.add_argument('--desired_class', type=int, help='Desired class number')
+parser.add_argument('--target_class', type=int, help='Index of target class')
 parser.add_argument('--zero_attribute', type=str, help='Attribute to set to one')
 parser.add_argument('--one_attribute', type=str, help='Attribute to set to zero')
 parser.add_argument('--mode', default="batch", help='One of: batch, active, uncertainty [default: batch]')
