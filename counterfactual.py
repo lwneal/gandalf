@@ -159,6 +159,8 @@ def generate_trajectory_active(networks, dataloader, strategy='random', **option
     image_size = options['image_size']
     latent_size = options['latent_size']
     output_samples = options['counterfactual_frame_count']
+    speed = options['speed']
+    momentum_mu = options['momentum_mu']
 
     if strategy == 'random':
         real_image, label, attributes = dataloader.get_batch()
@@ -220,14 +222,14 @@ def generate_trajectory_active(networks, dataloader, strategy='random', **option
     for i in range(MAX_ITERS):
         cf_loss = nll_loss(netC(z), target_label)
         dc_dz = autograd.grad(cf_loss, z, cf_loss, retain_graph=True)[0]
-        momentum -= dc_dz * .0005
+        momentum -= dc_dz * speed
         z += momentum
-        momentum *= .95
+        momentum *= momentum_mu
         preds = netC(z)
         predicted_class = to_np(preds.max(1)[1])[0]
         pred_confidence = np.exp(to_np(preds.max(1)[0])[0])
         z_trajectory.append(to_np(z))
-        if len(z_trajectory) > MIN_ITERS:
+        if len(z_trajectory) >= MIN_ITERS:
             if predicted_class == target_class and pred_confidence > .99:
                 break
             if np.linalg.norm(z_trajectory[-1] - z_trajectory[-2]) < .0001:
@@ -267,7 +269,7 @@ def generate_trajectory_active(networks, dataloader, strategy='random', **option
     return to_np(z)
 
 
-def sample_trajectory(zt, output_samples):
+def sample_trajectory(zt, output_samples=30):
     distances = np.array([np.linalg.norm(zt[i+1] - zt[i]) for i in range(len(zt) - 1)])
     total_distance = sum(distances)
     distance_per_sample = total_distance / output_samples 
@@ -275,7 +277,9 @@ def sample_trajectory(zt, output_samples):
     samples = []
     cumulative_distance = 0
     for i in range(len(distances)):
-        if len(samples) * distance_per_sample < cumulative_distance:
+        if len(samples) * distance_per_sample <= cumulative_distance:
             samples.append(zt[i])
         cumulative_distance += distances[i]
+    print("{} samples, expecting {}".format(len(samples), output_samples))
+    assert len(samples) == output_samples
     return samples

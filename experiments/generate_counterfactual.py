@@ -20,6 +20,8 @@ parser.add_argument('--counterfactual_frame_count', default=60, type=int,
         help='Number of frames to output [default: 60]')
 parser.add_argument('--classifier_name', type=str, default='active_learning_classifier',
         help='Name of the classifier to use [default: active_learning_classifier]')
+parser.add_argument('--speed', type=float, default=.001, help='Learning rate for counterfactual descent [default: .001]')
+parser.add_argument('--momentum_mu', type=float, default=.95, help='Momentum decay (zero for no momentum) [default: .95]')
 
 options = vars(parser.parse_args())
 
