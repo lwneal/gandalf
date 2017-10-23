@@ -261,8 +261,8 @@ def shuffle(a, b):
     np.random.shuffle(b)
 
 
-def train_active_learning(networks, optimizers, active_points, active_labels, complementary_points, complementary_labels, **options):
-    netC = networks['classifier']
+def train_active_learning(networks, optimizers, active_points, active_labels, complementary_points, complementary_labels, classifier_name, **options):
+    netC = networks[classifier_name]
     netE = networks['encoder']
     netG = networks['generator']
     for net in networks.values():
@@ -270,11 +270,19 @@ def train_active_learning(networks, optimizers, active_points, active_labels, co
     # Do not update the generator
     netG.eval()
 
-    optimizerC = optimizers['classifier']
+    optimizerC = optimizers[classifier_name]
     optimizerE = optimizers['encoder']
     result_dir = options['result_dir']
     latent_size = options['latent_size']
     batch_size = options['batch_size']
+
+    if batch_size < len(active_points) or batch_size < len(complementary_points):
+        print("Warning: not enough data to fill one batch")
+        batch_size = min(len(active_points) - 1, len(complementary_points) - 1)
+        print("Setting batch size to {}".format(batch_size))
+    if len(active_points) == 0 or len(complementary_points) == 0:
+        print("Warning: no input data available, skipping training")
+        return 0
 
 
     def generator(points, labels):
@@ -297,6 +305,7 @@ def train_active_learning(networks, optimizers, active_points, active_labels, co
     total = 0
 
     batches = (len(active_points) + len(complementary_points)) // 100
+    print("Training on {} batches".format(batches))
     for i in range(batches):
         xy = next(dataloader)
         comp_xy = next(c_dataloader)
@@ -341,8 +350,7 @@ def train_active_learning(networks, optimizers, active_points, active_labels, co
         _, predicted = class_predictions.max(1)
         correct += sum(predicted.data == labels.data)
         total += len(predicted)
-        if i % 10 == 0:
-            print('[{}] Classifier Loss: {:.3f} Classifier Accuracy:{:.3f}'.format(
-                i, errC.data[0], float(correct) / total))
+        print('[{}/{}] Classifier Loss: {:.3f} Classifier Accuracy:{:.3f}'.format(
+            i, batches, errC.data[0], float(correct) / total))
 
     return float(correct) / total

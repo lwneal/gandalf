@@ -3,6 +3,7 @@ import argparse
 import json
 import os
 import sys
+from pprint import pprint
 
 # Print --help message before importing the rest of the project
 parser = argparse.ArgumentParser()
@@ -14,22 +15,29 @@ options = vars(parser.parse_args())
 # Import the rest of the project
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 from dataloader import CustomDataloader
-from networks import build_networks, save_networks
+from networks import build_networks, get_optimizers, save_networks
 from options import load_options, get_current_epoch
 from evaluation import evaluate_classifier, save_evaluation
+from training import train_active_learning
 
 options = load_options(options)
 current_epoch = get_current_epoch(options['result_dir'])
+classifier_name = options['classifier_name']
 
 # We start with a small set of ground-truth labels to seed the classifier: 1 label per class
 dataloader = CustomDataloader(fold='train', **options)
+# We can also test while training to get data
+test_dataloader = CustomDataloader(fold='test', **options)
 
 # Load the active learning classifier and the unsupervised encoder/generator
 networks = build_networks(dataloader.num_classes, dataloader.num_attributes, epoch=current_epoch, **options)
+optimizers = get_optimizers(networks, **options)
 
 
 print("Loading all available active-learning labels...")
 active_label_dir = os.path.join(options['result_dir'], 'labels')
+if not os.path.exists(active_label_dir):
+    os.mkdir(active_label_dir)
 labels = []
 for filename in os.listdir(active_label_dir):
     filename = os.path.join(active_label_dir, filename)
@@ -40,6 +48,8 @@ print("Loaded {} labels from {}".format(len(labels), active_label_dir))
 import numpy as np
 print("Loading all available active-learning trajectories...")
 trajectory_dir = os.path.join(options['result_dir'], 'trajectories')
+if not os.path.exists(trajectory_dir):
+    os.mkdir(trajectory_dir)
 trajectory_filenames = os.listdir(trajectory_dir)
 def get_trajectory_filename(trajectory_id):
     for filename in trajectory_filenames:
@@ -72,8 +82,31 @@ print("Loaded {} trajectories totalling {} positive points and {} negative point
 	len(labels), len(active_points), len(complementary_points)))
 
 
-print("# TODO: Use those labeled points to re-train the classifier")
+best_score = 0
+print("Re-training classifier {} using {} active-learning label points".format(
+    classifier_name, len(active_points) + len(complementary_points)))
 
-classifier_name = options['classifier_name']
+for classifier_epoch in range(10):
+    # Apply learning rate decay and train for one pseudo-epoch
+    for optimizer in optimizers.values():
+        optimizer.param_groups[0]['lr'] = .0001 * (.9 ** classifier_epoch)
+    train_active_learning(networks, optimizers, active_points, active_labels, complementary_points, complementary_labels, **options)
+
+    # Evaluate against the test set
+    foldname = 'active_trajectories_{:06d}'.format(len(labels))
+
+    print("Evaluating {}".format(foldname))
+    new_results = evaluate_classifier(networks, dataloader, verbose=False, fold=foldname, **options)
+
+    print("Results from training with {} trajectories".format(len(labels)))
+    pprint(new_results)
+    new_score = new_results[foldname]['accuracy']
+    if best_score < new_score:
+        best_results = new_results
+        best_score = new_score
+        best_results[foldname]['best_classifier_epoch'] = classifier_epoch
+print("Finished re-training classifier, got test results:")
+print(new_results)
+
 save_networks({classifier_name: networks[classifier_name]}, epoch=current_epoch, result_dir=options['result_dir'])
 
