@@ -162,13 +162,15 @@ def generate_trajectory_active(networks, dataloader, strategy='random', **option
     speed = options['speed']
     momentum_mu = options['momentum_mu']
 
-    # Random selection
-    real_image, label, attributes = dataloader.get_batch()
+    real_image, label, attributes = dataloader.get_batch(required_class=options['start_class'])
     real_image = Variable(real_image)
     start_class = label.cpu().numpy()[0]
-    target_class = random.randint(0, dataloader.num_classes - 2)
-    if start_class <= target_class:
-        target_class += 1
+    if options['target_class']:
+        target_class = int(options['target_class'])
+    else:
+        target_class = random.randint(0, dataloader.num_classes - 2)
+        if start_class <= target_class:
+            target_class += 1
 
     if strategy == 'uncertainty':
         print("Performing uncertainty sampling with dataloader {}".format(dataloader))
@@ -176,11 +178,6 @@ def generate_trajectory_active(networks, dataloader, strategy='random', **option
         # Then decide on which direction to take it
         print("TODO: Run through a pool of unlabeled examples, apply classifier to each one")
         print("TODO: Pick the highest-uncertainty unlabeled example")
-
-    if options['start_class']:
-        target_class = options['start_class']
-    if options['target_class']:
-        target_class = options['target_class']
 
     print("Morphing input example from class {} to class {}".format(start_class, target_class))
 
