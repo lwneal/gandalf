@@ -67,7 +67,7 @@ for trajectory_filename in trajectory_filenames:
     print("Got trajectory {}".format(trajectory_filename))
     trajectory_id = trajectory_filename.split('-')[-3]
     label = {
-            'label_point': i,
+            'label_point': i + 1,
             'trajectory_id': trajectory_id,
             'start_class': trajectory_filename.split('-')[-2],
             'target_class': trajectory_filename.split('-')[-1].rstrip('.npy'),

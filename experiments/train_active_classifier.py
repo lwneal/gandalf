@@ -86,7 +86,8 @@ best_score = 0
 print("Re-training classifier {} using {} active-learning label points".format(
     classifier_name, len(active_points) + len(complementary_points)))
 
-for classifier_epoch in range(10):
+MAX_EPOCHS = 1 # no time must hurry
+for classifier_epoch in range(MAX_EPOCHS):
     # Apply learning rate decay and train for one pseudo-epoch
     for optimizer in optimizers.values():
         optimizer.param_groups[0]['lr'] = .0001 * (.9 ** classifier_epoch)
@@ -105,8 +106,12 @@ for classifier_epoch in range(10):
         best_results = new_results
         best_score = new_score
         best_results[foldname]['best_classifier_epoch'] = classifier_epoch
+    else:
+        print("Overfit detected")
+        break
 print("Finished re-training classifier, got test results:")
 print(new_results)
 
 save_networks({classifier_name: networks[classifier_name]}, epoch=current_epoch, result_dir=options['result_dir'])
 
+save_evaluation(best_results, options['result_dir'], get_current_epoch(options['result_dir']))
