@@ -4,6 +4,9 @@ import argparse
 import os
 import sys
 
+def is_true(x):
+    return not not x and x.lower().startswith('t')
+
 # Dataset (input) and result_dir (output) are always required
 parser = argparse.ArgumentParser()
 parser.add_argument('--result_dir', required=True, help='Output directory for images and model checkpoints')
@@ -22,6 +25,8 @@ parser.add_argument('--classifier_name', type=str, default='active_learning_clas
         help='Name of the classifier to use [default: active_learning_classifier]')
 parser.add_argument('--speed', type=float, default=.001, help='Learning rate for counterfactual descent [default: .001]')
 parser.add_argument('--momentum_mu', type=float, default=.95, help='Momentum decay (zero for no momentum) [default: .95]')
+parser.add_argument('--counterfactual_max_iters', type=int, default=1000, help='Maximum number of steps to take for CF trajectories [default: 1000]')
+parser.add_argument('--write_jpgs', type=is_true, default=False, help='Write extra JPG files for visualization')
 
 options = vars(parser.parse_args())
 

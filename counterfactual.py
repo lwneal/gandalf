@@ -161,6 +161,7 @@ def generate_trajectory_active(networks, dataloader, strategy='random', **option
     output_samples = options['counterfactual_frame_count']
     speed = options['speed']
     momentum_mu = options['momentum_mu']
+    max_iters = options['counterfactual_max_iters']
 
     real_image, label, attributes = dataloader.get_batch(required_class=options['start_class'])
     real_image = Variable(real_image)
@@ -211,8 +212,7 @@ def generate_trajectory_active(networks, dataloader, strategy='random', **option
     # Generate z_trajectory
     z_trajectory = []
     MIN_ITERS = 30
-    MAX_ITERS = 2000
-    for i in range(MAX_ITERS):
+    for i in range(max_iters):
         cf_loss = nll_loss(netC(z), target_label)
         dc_dz = autograd.grad(cf_loss, z, cf_loss, retain_graph=True)[0]
         momentum -= dc_dz * speed
@@ -238,7 +238,7 @@ def generate_trajectory_active(networks, dataloader, strategy='random', **option
 
     # Normalize z_trajectory and turn it into a video
     sampled_trajectory = sample_trajectory(z_trajectory, output_samples=output_samples)
-    for z in sampled_trajectory:
+    for i, z in enumerate(sampled_trajectory):
         z = Variable(torch.FloatTensor(z)).cuda()
         hallucinations = netG(z)
         D_halluc = netD(hallucinations).data.cpu().numpy().mean()
@@ -251,6 +251,15 @@ def generate_trajectory_active(networks, dataloader, strategy='random', **option
                 video_filename=video_filename,
                 caption=caption,
                 font_size=12,
+                resize_to=(512,512),
+                display=False)
+        jpg_dir = os.path.join(options['result_dir'], 'trajectory_jpgs')
+        if not os.path.exists(jpg_dir):
+            os.mkdir(jpg_dir)
+        jpg_filename = 'active-{}-{}-{}-{:04d}.jpg'.format(trajectory_id, start_class_name, target_class_name, i)
+        jpg_filename = os.path.join(options['result_dir'], 'trajectory_jpgs', jpg_filename)
+        imutil.show(hallucinations,
+                filename=jpg_filename,
                 resize_to=(512,512),
                 display=False)
 
