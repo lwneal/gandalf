@@ -103,6 +103,7 @@ def get_epochs(result_dir):
 
 
 def comparison_dataset_for(dataset):
+    dataset = dataset.lower()
     comparisons = {
         'cifar10': 'cub200_2011',
         'cub200_2011': 'cifar10',
@@ -116,8 +117,10 @@ def comparison_dataset_for(dataset):
         'mnist-69': 'mnist-05',
         'oxford102': 'celeba',
         'celeba': 'oxford102',
+        'svhn': 'cifar10',
+        'cifar10': 'svhn',
     }
-    return comparisons[dataset]
+    return comparisons.get(dataset, 'cifar10')
 
 
 def get_eval_types(result_dir, epoch):
@@ -184,8 +187,9 @@ def evaluate_all():
                 eval_types = get_eval_types(rd, epoch)
                 for eval_type in eval_types:
                     to_run.append((rd, epoch, eval_type))
-        except:
+        except Exception as e:
             print("Warning: skipping bad result_dir {}".format(rd))
+            print(e)
             continue
 
     # Run the ones that haven't been run
