@@ -22,6 +22,9 @@ def generate_trajectory_batch(networks, dataloader, target_class=None, **options
     batch_size = options['batch_size']
     image_size = options['image_size']
     latent_size = options['latent_size']
+    speed = options['speed']
+    momentum_mu = options['momentum_mu']
+    max_iters = options['counterfactual_max_iters']
 
     if target_class is None:
         target_class = random.randint(0, dataloader.num_classes - 1)
@@ -94,12 +97,12 @@ def generate_trajectory_batch(networks, dataloader, target_class=None, **options
                 cf_loss = nll_loss(netC(z), target_labels)
 
             # Distance in latent space from original point
-            cf_loss += .002 * torch.sum((z - original_z) ** 2)
+            cf_loss += .00001 * torch.sum((z - original_z) ** 2)
 
             dc_dz = autograd.grad(cf_loss, z, cf_loss, retain_graph=True)[0]
-            momentum -= dc_dz * .01
+            momentum -= dc_dz * speed
             z += momentum
-            momentum *= .5
+            momentum *= momentum_mu
 
         z_trajectory.append(to_np(z))
 
@@ -236,7 +239,25 @@ def generate_trajectory_active(networks, dataloader, strategy='random', **option
     predicted_class_name = dataloader.lab_conv.labels[predicted_class]
     print("Class: {} ({:.3f} confidence)...".format(predicted_class_name, pred_confidence))
 
+    def output_frame(hallucinations, caption, idx):
+        # Always write the video
+        imutil.show(hallucinations,
+                video_filename=video_filename,
+                caption=caption,
+                font_size=12,
+                resize_to=(512,512),
+                display=False)
+        if options['write_jpgs']:
+            jpg_dir = os.path.join(options['result_dir'], 'trajectory_jpgs')
+            if not os.path.exists(jpg_dir):
+                os.mkdir(jpg_dir)
+            jpg_filename = 'active-{}-{}-{}-{:04d}.jpg'.format(trajectory_id, start_class_name, target_class_name, idx)
+            jpg_filename = os.path.join(options['result_dir'], 'trajectory_jpgs', jpg_filename)
+            imutil.show(hallucinations, filename=jpg_filename, resize_to=(512,512), display=False)
+
     # Normalize z_trajectory and turn it into a video
+    for i in range(4):
+        output_frame(real_image, caption="Original", idx=0)
     sampled_trajectory = sample_trajectory(z_trajectory, output_samples=output_samples)
     for i, z in enumerate(sampled_trajectory):
         z = Variable(torch.FloatTensor(z)).cuda()
@@ -247,21 +268,8 @@ def generate_trajectory_active(networks, dataloader, strategy='random', **option
         predicted_class_name = dataloader.lab_conv.labels[predicted_class]
         pred_confidence = np.exp(to_np(preds.max(1)[0])[0])
         caption = "Class: {} (confidence {:.3f})".format(predicted_class_name, pred_confidence)
-        imutil.show(hallucinations,
-                video_filename=video_filename,
-                caption=caption,
-                font_size=12,
-                resize_to=(512,512),
-                display=False)
-        jpg_dir = os.path.join(options['result_dir'], 'trajectory_jpgs')
-        if not os.path.exists(jpg_dir):
-            os.mkdir(jpg_dir)
-        jpg_filename = 'active-{}-{}-{}-{:04d}.jpg'.format(trajectory_id, start_class_name, target_class_name, i)
-        jpg_filename = os.path.join(options['result_dir'], 'trajectory_jpgs', jpg_filename)
-        imutil.show(hallucinations,
-                filename=jpg_filename,
-                resize_to=(512,512),
-                display=False)
+        output_frame(hallucinations, caption, idx=i+1)
+
 
     imutil.encode_video(video_filename)
 
