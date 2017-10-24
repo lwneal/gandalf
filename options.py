@@ -29,7 +29,7 @@ def save_options(options):
 def load_options(options):
     print("Resuming existing experiment at {} with options:".format(options['result_dir']))
     old_opts = json.load(open(os.path.join(options['result_dir'], 'params.json')))
-    del old_opts['epochs']
+
     options.update(old_opts)
     options['result_dir'] = os.path.expanduser(options['result_dir'])
 
