@@ -66,8 +66,10 @@ class DatasetFile(object):
     def get_example(self, fold='train', idx=None, required_class=None):
         while True:
             idx = self._random_idx(fold)
-            if required_class and self.folds[fold][idx]['label'] != required_class:
-                continue
+            if required_class:
+                # TODO: replace this rejection sampling scheme with something efficient
+                if self.folds[fold][idx]['label'] != required_class:
+                    continue
             return self.folds[fold][idx]
 
     def get_all_examples(self, fold='train'):
