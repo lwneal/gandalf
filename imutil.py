@@ -71,6 +71,7 @@ def show(
         box=None,
         video_filename=None,
         resize_to=None,
+        normalize_color=True,
         caption=None,
         font_size=16):
     # Munge data to allow input filenames, pixels, PIL images, etc
@@ -113,7 +114,7 @@ def show(
         pixels = combine_images(pixels)
 
     # Normalize pixel intensities
-    if pixels.max() > pixels.min():
+    if normalize_color and pixels.max() > pixels.min():
         pixels = (pixels - pixels.min()) * 255. / (pixels.max() - pixels.min())
 
     # Resize image to desired shape
