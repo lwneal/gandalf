@@ -29,13 +29,13 @@ done
 python experiments/oracle.py --result_dir /mnt/results/$TARGET_DIR --oracle_result_dir /mnt/results/$ORACLE_DIR
 python experiments/train_active_classifier.py --result_dir /mnt/results/$TARGET_DIR 
 
-echo "Generating additional labels using counterfactual uncertainty sampling"
+echo "Generating additional labels using sampling mode: $MODE"
 for i in `seq $CLASS_COUNT 3 150`; do
     echo "Generating labels $i / 150"
     for j in `seq 3`; do
-        python experiments/generate_counterfactual.py --result_dir /mnt/results/$TARGET_DIR --mode uncertainty
+        python experiments/generate_counterfactual.py --result_dir /mnt/results/$TARGET_DIR --mode $MODE
     done
     python experiments/oracle.py --result_dir /mnt/results/$TARGET_DIR --oracle_result_dir /mnt/results/$ORACLE_DIR
-    python experiments/train_active_classifier.py --result_dir /mnt/results/$TARGET_DIR 
+    python experiments/train_active_classifier.py --result_dir /mnt/results/$TARGET_DIR --use_trajectories $USE_TRAJECTORIES
 done
 
