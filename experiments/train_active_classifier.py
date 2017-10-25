@@ -6,7 +6,7 @@ import sys
 from pprint import pprint
 
 def is_true(x):
-    return not not x or x.startswith('T')
+    return not not x and x.lower().startswith('t')
 
 # Print --help message before importing the rest of the project
 parser = argparse.ArgumentParser()
