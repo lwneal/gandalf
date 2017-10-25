@@ -5,7 +5,7 @@ from torch import optim
 from torch import nn
 
 
-def build_networks(num_classes, num_attributes=0, epoch=None, latent_size=10, batch_size=64, classifier_name='classifier', **options):
+def build_networks(num_classes, num_attributes=0, epoch=None, latent_size=10, batch_size=64, load_classifier=True, classifier_name='classifier', **options):
     networks = {}
 
     EncoderClass = get_network_class(options['encoder'])
@@ -26,6 +26,9 @@ def build_networks(num_classes, num_attributes=0, epoch=None, latent_size=10, ba
         networks['attribute'] = ClassifierClass(latent_size, num_classes=num_attributes)
 
     for net_name in networks:
+        if net_name == classifier_name and load_classifier == False:
+            print("HACK: Skipping classifier load, using randomly-initialized weights for {}".format(net_name))
+            continue
         pth = get_pth_by_epoch(options['result_dir'], net_name, epoch)
         if pth:
             print("Loading {} from checkpoint {}".format(net_name, pth))
