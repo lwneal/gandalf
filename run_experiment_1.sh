@@ -30,8 +30,7 @@ rm -Rf /mnt/results/$TARGET_DIR/labels
 rm -f /mnt/results/$TARGET_DIR/active_learning_classifier_*.pth
 
 
-echo "Generating $CLASS_COUNT seed labels to initialize..."
-# TODO: fix freeze on invalid input classes
+echo "Generating seed labels..."
 for i in $CLASSES; do
     python experiments/generate_counterfactual.py --result_dir /mnt/results/$TARGET_DIR --mode active --start_class $i --target_class $i --speed 0
 done
@@ -39,7 +38,7 @@ python experiments/oracle.py --result_dir /mnt/results/$TARGET_DIR --oracle_resu
 python experiments/train_active_classifier.py --result_dir /mnt/results/$TARGET_DIR 
 
 echo "Generating additional labels using sampling mode: $MODE"
-for i in `seq $CLASS_COUNT 5 150`; do
+for i in `seq 0 5 150`; do
     echo "Generating labels $i / 150"
     for j in `seq 5`; do
         python experiments/generate_counterfactual.py --result_dir /mnt/results/$TARGET_DIR --mode $MODE
