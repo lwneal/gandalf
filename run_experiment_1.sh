@@ -16,16 +16,16 @@ rm /mnt/results/$TARGET_DIR/active_learning_classifier_*.pth
 
 
 echo "Generating $CLASS_COUNT seed labels to initialize..."
-for i in `seq $CLASS_COUNT`; do
+for i in `seq 0 9`; do
     python experiments/generate_counterfactual.py --result_dir /mnt/results/$TARGET_DIR --mode active --start_class $i --target_class $i --speed 0
 done
 python experiments/oracle.py --result_dir /mnt/results/$TARGET_DIR --oracle_result_dir /mnt/results/$ORACLE_DIR
 python experiments/train_active_classifier.py --result_dir /mnt/results/$TARGET_DIR 
 
 echo "Generating additional labels using counterfactual uncertainty sampling"
-for i in `seq 5 $CLASS_COUNT 150`; do
+for i in `seq $CLASS_COUNT 5 150`; do
     echo "Generating labels $i / 150"
-    for i in `seq 5`; do
+    for j in `seq 5`; do
         python experiments/generate_counterfactual.py --result_dir /mnt/results/$TARGET_DIR --mode uncertainty
     done
     python experiments/oracle.py --result_dir /mnt/results/$TARGET_DIR --oracle_result_dir /mnt/results/$ORACLE_DIR
