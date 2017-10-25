@@ -104,7 +104,7 @@ for classifier_epoch in range(MAX_EPOCHS):
     foldname = 'active_trajectories_{:06d}'.format(len(labels))
 
     print("Evaluating {}".format(foldname))
-    new_results = evaluate_classifier(networks, dataloader, verbose=False, fold=foldname, **options)
+    new_results = evaluate_classifier(networks, dataloader, verbose=False, fold=foldname, skip_reconstruction=True, **options)
 
     print("Results from training with {} trajectories".format(len(labels)))
     pprint(new_results)

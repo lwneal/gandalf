@@ -14,7 +14,7 @@ def to_np(v):
     return v.data.cpu().numpy()
 
 
-def evaluate_classifier(networks, dataloader, verbose=True, **options):
+def evaluate_classifier(networks, dataloader, verbose=True, skip_reconstruction=False, **options):
     for net in networks.values():
         net.eval()
     netE = networks['encoder']
@@ -43,9 +43,10 @@ def evaluate_classifier(networks, dataloader, verbose=True, **options):
             attributes = Variable(attributes, volatile=True)
         z = netE(images)
 
-        reconstructed = netG(z)
-        mae += torch.mean(torch.abs(reconstructed - images))
-        mse += torch.mean((reconstructed - images) ** 2)
+        if not skip_reconstruction:
+            reconstructed = netG(z)
+            mae += torch.mean(torch.abs(reconstructed - images))
+            mse += torch.mean((reconstructed - images) ** 2)
 
         class_predictions = netC(z)
         _, predicted = class_predictions.max(1)
