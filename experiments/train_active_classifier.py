@@ -47,7 +47,6 @@ if not os.path.exists(active_label_dir):
     os.mkdir(active_label_dir)
 labels = []
 label_filenames = os.listdir(active_label_dir)
-print(label_filenames)
 label_filenames.sort()
 if options['max_trajectories']:
     print("Limiting labels to first {}".format(options['max_trajectories']))
