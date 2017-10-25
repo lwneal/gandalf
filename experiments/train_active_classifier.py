@@ -110,7 +110,7 @@ best_score = 0
 print("Re-training classifier {} using {} active-learning label points".format(
     classifier_name, len(active_points) + len(complementary_points)))
 
-MAX_EPOCHS = 15
+MAX_EPOCHS = 25
 for classifier_epoch in range(MAX_EPOCHS):
     # Apply learning rate decay and train for one pseudo-epoch
     for optimizer in optimizers.values():
