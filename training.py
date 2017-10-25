@@ -276,7 +276,7 @@ def train_active_learning(networks, optimizers, active_points, active_labels, co
     latent_size = options['latent_size']
     batch_size = options['batch_size']
 
-    if batch_size < len(active_points) or batch_size < len(complementary_points):
+    if batch_size > len(active_points) or batch_size > len(complementary_points):
         print("Warning: not enough data to fill one batch")
         batch_size = min(len(active_points) - 1, len(complementary_points) - 1)
         print("Setting batch size to {}".format(batch_size))
