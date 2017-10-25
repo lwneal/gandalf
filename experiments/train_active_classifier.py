@@ -36,8 +36,8 @@ dataloader = CustomDataloader(fold='train', **options)
 test_dataloader = CustomDataloader(fold='test', **options)
 
 # Load the active learning classifier and the unsupervised encoder/generator
-networks = build_networks(dataloader.num_classes, dataloader.num_attributes, epoch=current_epoch, load_classifier=False, **options)
-del networks['attribute']  # hack for speed on Experiment 1
+networks = build_networks(dataloader.num_classes, dataloader.num_attributes, epoch=current_epoch, 
+        load_classifier=False, load_attributes=False, **options)
 optimizers = get_optimizers(networks, **options)
 
 

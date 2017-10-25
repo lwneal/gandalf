@@ -5,7 +5,8 @@ from torch import optim
 from torch import nn
 
 
-def build_networks(num_classes, num_attributes=0, epoch=None, latent_size=10, batch_size=64, load_classifier=True, classifier_name='classifier', **options):
+def build_networks(num_classes, num_attributes=0, epoch=None, latent_size=10, batch_size=64, 
+        load_classifier=True, load_attributes=True, classifier_name='classifier', **options):
     networks = {}
 
     EncoderClass = get_network_class(options['encoder'])
@@ -21,7 +22,7 @@ def build_networks(num_classes, num_attributes=0, epoch=None, latent_size=10, ba
     networks[classifier_name] = ClassifierClass(latent_size, num_classes=num_classes)
 
     # Attribute network is only active for some datasets
-    if num_attributes > 0:
+    if num_attributes > 0 and load_attributes:
         ClassifierClass = network_definitions.classifierMulticlass
         networks['attribute'] = ClassifierClass(latent_size, num_classes=num_attributes)
 
