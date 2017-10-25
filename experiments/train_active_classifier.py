@@ -15,6 +15,7 @@ parser.add_argument('--classifier_name', type=str, default='active_learning_clas
         help='Name of the classifier to use [default: active_learning_classifier]')
 parser.add_argument('--max_trajectories', type=int, help='Number of trajectories to train with (default: uses all available trajectories)')
 parser.add_argument('--use_trajectories', type=is_true, default=True, help='If True, use trajectories, if False use only initial points')
+parser.add_argument('--use_negative_labels', type=is_true, default=True, help='If False, ignore all negative labels')
 options = vars(parser.parse_args())
 
 # Import the rest of the project
@@ -35,7 +36,7 @@ dataloader = CustomDataloader(fold='train', **options)
 test_dataloader = CustomDataloader(fold='test', **options)
 
 # Load the active learning classifier and the unsupervised encoder/generator
-networks = build_networks(dataloader.num_classes, dataloader.num_attributes, epoch=current_epoch, **options)
+networks = build_networks(dataloader.num_classes, dataloader.num_attributes, epoch=current_epoch, load_classifier=False, **options)
 del networks['attribute']  # hack for speed on Experiment 1
 optimizers = get_optimizers(networks, **options)
 
@@ -109,7 +110,7 @@ best_score = 0
 print("Re-training classifier {} using {} active-learning label points".format(
     classifier_name, len(active_points) + len(complementary_points)))
 
-MAX_EPOCHS = 25
+MAX_EPOCHS = 15
 for classifier_epoch in range(MAX_EPOCHS):
     # Apply learning rate decay and train for one pseudo-epoch
     for optimizer in optimizers.values():
@@ -131,7 +132,7 @@ for classifier_epoch in range(MAX_EPOCHS):
         best_results[foldname]['best_classifier_epoch'] = classifier_epoch
     else:
         print("Overfit detected")
-        break
+        #break
 print("Finished re-training classifier, got test results:")
 print(new_results)
 

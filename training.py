@@ -290,6 +290,7 @@ def train_active_learning(networks, optimizers, active_points, active_labels, co
     result_dir = options['result_dir']
     latent_size = options['latent_size']
     batch_size = options['batch_size']
+    use_negative_labels = options['use_negative_labels']
 
     is_positive = np.array([1.] * len(active_points) + [0] * len(complementary_points))
     if len(complementary_points) > 0:
@@ -326,7 +327,7 @@ def train_active_learning(networks, optimizers, active_points, active_labels, co
     correct = 0
     total = 0
 
-    batches = 5 * (len(active_points) + len(complementary_points)) // batch_size
+    batches = (len(active_points) + len(complementary_points)) // batch_size
     print("Training on {} batches".format(batches))
     for i in range(batches):
         latent_points, labels, is_positive_mask = next(dataloader)
@@ -342,20 +343,21 @@ def train_active_learning(networks, optimizers, active_points, active_labels, co
         class_predictions = netC(latent_points)
         errC = learning_rate * masked_nll_loss(class_predictions, labels, per_example_weights=is_positive_mask)
 
-        ############################
-        # Update based on negative (complementary) labels
-        ############################
-        # Pairwise Comparison Complementary Loss
-        # https://arxiv.org/pdf/1705.07541.pdf
-        # Naive implementation to test
-        N, K = class_predictions.size()
-        for n in range(N):
-            if is_positive[n]:
-                continue
-            preds = torch.exp(class_predictions[n])
-            c_label = labels[n]
-            for k in range(K):
-                errC += .0001 * learning_rate * torch.sigmoid(preds[k] - preds[c_label])
+        if use_negative_labels:
+            ############################
+            # Update based on negative (complementary) labels
+            ############################
+            # Pairwise Comparison Complementary Loss
+            # https://arxiv.org/pdf/1705.07541.pdf
+            # Naive implementation to test
+            N, K = class_predictions.size()
+            for n in range(N):
+                if is_positive[n]:
+                    continue
+                preds = torch.exp(class_predictions[n])
+                c_label = labels[n]
+                for k in range(K):
+                    errC += .0001 * learning_rate * torch.sigmoid(preds[k] - preds[c_label])
         errC.backward()
         optimizerC.step()
         optimizerE.step()
