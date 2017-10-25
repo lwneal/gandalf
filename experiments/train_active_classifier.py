@@ -10,6 +10,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--result_dir', required=True, help='Output directory for images and model checkpoints')
 parser.add_argument('--classifier_name', type=str, default='active_learning_classifier',
         help='Name of the classifier to use [default: active_learning_classifier]')
+parser.add_argument('--max_trajectories', type=int, help='Number of trajectories to train with (default: uses all available trajectories)')
 options = vars(parser.parse_args())
 
 # Import the rest of the project
@@ -39,7 +40,13 @@ active_label_dir = os.path.join(options['result_dir'], 'labels')
 if not os.path.exists(active_label_dir):
     os.mkdir(active_label_dir)
 labels = []
-for filename in os.listdir(active_label_dir):
+label_filenames = os.listdir(active_label_dir)
+if options['max_trajectories']:
+    print("Limiting labels to first {}".format(options['max_trajectories']))
+    label_filenames = label_filenames[:options['max_trajectories']]
+
+
+for filename in label_filenames:
     filename = os.path.join(active_label_dir, filename)
     info = json.load(open(filename))
     labels.append(info)
@@ -86,7 +93,7 @@ best_score = 0
 print("Re-training classifier {} using {} active-learning label points".format(
     classifier_name, len(active_points) + len(complementary_points)))
 
-MAX_EPOCHS = 1 # no time must hurry
+MAX_EPOCHS = 5
 for classifier_epoch in range(MAX_EPOCHS):
     # Apply learning rate decay and train for one pseudo-epoch
     for optimizer in optimizers.values():
