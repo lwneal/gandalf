@@ -67,7 +67,6 @@ for trajectory_filename in trajectory_filenames:
         pred_class_idx = pred_max.data.cpu().numpy()[0]
         if i == 0:
             true_start_class = dataloader.lab_conv.labels[pred_class_idx]
-        import pdb; pdb.set_trace()
         if pred_class_idx != dataloader.lab_conv.idx[start_class]:
             break
         prev_pred_class = pred_class_idx
