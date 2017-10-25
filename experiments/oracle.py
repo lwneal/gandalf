@@ -63,9 +63,9 @@ for trajectory_filename in trajectory_filenames:
         z = Variable(torch.FloatTensor(p)).cuda()
         pred = oracleC(oracleE(sourceG(z)))
         pred_conf, pred_max = pred.max(1)
-        pred_class = pred_max.data.cpu().numpy()
+        pred_class = pred_max.data.cpu().numpy()[0]
         if i == 0:
-            true_start_class = int(pred_class)
+            true_start_class = dataloader.lab_conv.labels[pred_class]
         if int(pred_class) != int(start_class):
             break
         prev_pred_class = pred_class
