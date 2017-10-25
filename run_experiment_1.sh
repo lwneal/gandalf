@@ -32,7 +32,7 @@ rm -f /mnt/results/$TARGET_DIR/active_learning_classifier_*.pth
 
 echo "Generating seed labels..."
 for i in $CLASSES; do
-    python experiments/generate_counterfactual.py --result_dir /mnt/results/$TARGET_DIR --mode active --start_class $i --target_class $i --speed 0
+    python experiments/generate_counterfactual.py --result_dir /mnt/results/$TARGET_DIR --mode random --start_class $i --target_class $i --speed 0
 done
 python experiments/oracle.py --result_dir /mnt/results/$TARGET_DIR --oracle_result_dir /mnt/results/$ORACLE_DIR
 python experiments/train_active_classifier.py --result_dir /mnt/results/$TARGET_DIR 
