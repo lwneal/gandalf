@@ -34,7 +34,6 @@ oracle_dataloader = CustomDataloader(**oracle_options)
 oracle_networks = build_networks(oracle_dataloader.num_classes, oracle_dataloader.num_attributes, **oracle_options)
 
 print("Loaded networks")
-print("TODO: Use the oracle's classifier to get a classification for every point in every trajectory")
 
 sourceG = networks['generator']
 oracleE = oracle_networks['encoder']
@@ -47,6 +46,8 @@ from torch.autograd import Variable
 print("Loading all available active-learning trajectories...")
 trajectory_dir = os.path.join(options['result_dir'], 'trajectories')
 labels_dir = os.path.join(options['result_dir'], 'labels')
+if not os.path.exists(labels_dir):
+    os.mkdir(labels_dir)
 trajectory_filenames = os.listdir(trajectory_dir)
 trajectories = []
 for trajectory_filename in trajectory_filenames:
@@ -81,5 +82,5 @@ for trajectory_filename in trajectory_filenames:
     label_filename = os.path.join(labels_dir, trajectory_id + '.json')
     with open(label_filename, 'w') as fp:
         fp.write(json.dumps(label, indent=2))
-print("Loaded {} trajectories".format(len(trajectories)))
+print("Oracle labeled {} trajectories".format(len(trajectories)))
 
