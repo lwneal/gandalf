@@ -307,7 +307,6 @@ def train_active_learning(networks, optimizers, active_points, active_labels, co
         batch_size = len(points) - 1
         print("Setting batch size to {}".format(batch_size))
 
-
     def generator(points, labels, is_positive):
         assert len(points) == len(labels)
         while True:
@@ -327,7 +326,7 @@ def train_active_learning(networks, optimizers, active_points, active_labels, co
     correct = 0
     total = 0
 
-    batches = (len(active_points) + len(complementary_points)) // 100
+    batches = 5 * (len(active_points) + len(complementary_points)) // batch_size
     print("Training on {} batches".format(batches))
     for i in range(batches):
         latent_points, labels, is_positive_mask = next(dataloader)
