@@ -254,11 +254,26 @@ def train_classifier(networks, optimizers, dataloader, **options):
     return float(correct) / total
 
 
-def shuffle(a, b):
+# A useful eye-bleeder from Andrej Karpathy
+# https://github.com/pytorch/pytorch/issues/563
+def masked_nll_loss(logp, y, per_example_weights):
+    # prepare an (N,C) array of 1s at the locations of ground truth
+    ymask = logp.data.new(logp.size()).zero_() # (N,C) all zero
+    ymask.scatter_(1, y.data.view(-1,1), 1) # have to make y into shape (N,1) for scatter_ to be happy
+    ymask = Variable(ymask)
+    # pluck
+    logpy = (logp * ymask).sum(1) # this hurts Andrej Karpathy's tender heart
+    negative_log_likelihood_loss = -(logpy * per_example_weights).mean()
+    return negative_log_likelihood_loss
+
+
+def shuffle(a, b, c):
     rng_state = np.random.get_state()
     np.random.shuffle(a)
     np.random.set_state(rng_state)
     np.random.shuffle(b)
+    np.random.set_state(rng_state)
+    np.random.shuffle(c)
 
 
 def train_active_learning(networks, optimizers, active_points, active_labels, complementary_points, complementary_labels, classifier_name, **options):
@@ -276,29 +291,37 @@ def train_active_learning(networks, optimizers, active_points, active_labels, co
     latent_size = options['latent_size']
     batch_size = options['batch_size']
 
-    if batch_size > len(active_points) or batch_size > len(complementary_points):
-        print("Warning: not enough data to fill one batch")
-        batch_size = min(len(active_points) - 1, len(complementary_points) - 1)
-        print("Setting batch size to {}".format(batch_size))
-    if len(active_points) == 0 or len(complementary_points) == 0:
+    is_positive = np.array([1.] * len(active_points) + [0] * len(complementary_points))
+    if len(complementary_points) > 0:
+        points = np.concatenate([active_points, complementary_points])
+        labels = np.concatenate([active_labels, complementary_labels])
+    else:
+        points = active_points
+        labels = active_labels
+
+    if len(points) == 0:
         print("Warning: no input data available, skipping training")
         return 0
+    if len(points) < batch_size:
+        print("Warning: not enough data to fill one batch")
+        batch_size = len(points) - 1
+        print("Setting batch size to {}".format(batch_size))
 
 
-    def generator(points, labels):
+    def generator(points, labels, is_positive):
         assert len(points) == len(labels)
         while True:
             i = 0
-            shuffle(points, labels)
+            shuffle(points, labels, is_positive)
             while i < len(points) - batch_size:
                 x = torch.FloatTensor(points[i:i+batch_size])
                 y = torch.LongTensor(labels[i:i+batch_size])
-                yield x.squeeze(1), y
+                is_positive_mask = torch.FloatTensor(is_positive[i:i+batch_size])
+                yield x.squeeze(1), y, is_positive_mask
                 i += batch_size
 
     # Train on combined normal and complementary labels
-    dataloader = generator(active_points, active_labels)
-    c_dataloader = generator(complementary_points, complementary_labels)
+    dataloader = generator(points, labels, is_positive)
 
     learning_rate = .1
     correct = 0
@@ -307,39 +330,31 @@ def train_active_learning(networks, optimizers, active_points, active_labels, co
     batches = (len(active_points) + len(complementary_points)) // 100
     print("Training on {} batches".format(batches))
     for i in range(batches):
-        xy = next(dataloader)
-        comp_xy = next(c_dataloader)
-
-        latent_points, labels = xy
+        latent_points, labels, is_positive_mask = next(dataloader)
         latent_points = Variable(latent_points).cuda()
         labels = Variable(labels).cuda()
-
-        c_points, c_labels = comp_xy
-        c_points = Variable(c_points).cuda()
-        c_labels = Variable(c_labels).cuda()
+        is_positive_mask = Variable(is_positive_mask).cuda()
 
         ############################
         # Update E(X) and C(Z) based on positive labels
         # Keep G(Z) constant
         ############################
         generated_images = netG(latent_points).detach()
-        class_predictions = netC(netE(generated_images))
-        # Standard Categorical Cross-Entropy
-        errC = learning_rate * nll_loss(class_predictions, labels)
-        #print("Standard cross-entropy loss is {}".format(errC))
+        class_predictions = netC(latent_points)
+        errC = learning_rate * masked_nll_loss(class_predictions, labels, per_example_weights=is_positive_mask)
 
         ############################
         # Update based on negative (complementary) labels
         ############################
-        c_images = netG(c_points).detach()
-        c_class_predictions = netC(netE(c_images))
         # Pairwise Comparison Complementary Loss
         # https://arxiv.org/pdf/1705.07541.pdf
         # Naive implementation to test
-        N, K = c_class_predictions.size()
+        N, K = class_predictions.size()
         for n in range(N):
-            preds = torch.exp(c_class_predictions[n])
-            c_label = c_labels[n]
+            if is_positive[n]:
+                continue
+            preds = torch.exp(class_predictions[n])
+            c_label = labels[n]
             for k in range(K):
                 errC += .0001 * learning_rate * torch.sigmoid(preds[k] - preds[c_label])
         errC.backward()
