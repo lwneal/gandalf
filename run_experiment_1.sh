@@ -23,9 +23,9 @@ python experiments/oracle.py --result_dir /mnt/results/$TARGET_DIR --oracle_resu
 python experiments/train_active_classifier.py --result_dir /mnt/results/$TARGET_DIR 
 
 echo "Generating additional labels using counterfactual uncertainty sampling"
-for i in `seq $CLASS_COUNT 5 150`; do
+for i in `seq $CLASS_COUNT 3 150`; do
     echo "Generating labels $i / 150"
-    for j in `seq 5`; do
+    for j in `seq 3`; do
         python experiments/generate_counterfactual.py --result_dir /mnt/results/$TARGET_DIR --mode uncertainty
     done
     python experiments/oracle.py --result_dir /mnt/results/$TARGET_DIR --oracle_result_dir /mnt/results/$ORACLE_DIR

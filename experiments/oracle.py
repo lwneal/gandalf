@@ -53,6 +53,9 @@ for trajectory_filename in trajectory_filenames:
     if not trajectory_filename.endswith('npy'):
         continue
     trajectory_filename = os.path.join(trajectory_dir, trajectory_filename)
+    start_class = trajectory_filename.split('-')[-2]
+    target_class = trajectory_filename.split('-')[-1].rstrip('.npy')
+
     points = np.load(trajectory_filename)
     trajectories.append(points)
     prev_pred_class = None
@@ -61,16 +64,16 @@ for trajectory_filename in trajectory_filenames:
         pred = oracleC(oracleE(sourceG(z)))
         pred_conf, pred_max = pred.max(1)
         pred_class = pred_max.data.cpu().numpy()
-        if i > 0 and pred_class != prev_pred_class:
+        if int(pred_class) != int(start_class):
             break
         prev_pred_class = pred_class
     print("Got trajectory {}".format(trajectory_filename))
     trajectory_id = trajectory_filename.split('-')[-3]
     label = {
-            'label_point': i + 1,
+            'label_point': i,
             'trajectory_id': trajectory_id,
-            'start_class': trajectory_filename.split('-')[-2],
-            'target_class': trajectory_filename.split('-')[-1].rstrip('.npy'),
+            'start_class': start_class,
+            'target_class': target_class,
     }
     label_filename = os.path.join(labels_dir, trajectory_id + '.json')
     with open(label_filename, 'w') as fp:
