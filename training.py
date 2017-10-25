@@ -366,7 +366,7 @@ def train_active_learning(networks, optimizers, active_points, active_labels, co
         _, predicted = class_predictions.max(1)
         correct += sum(predicted.data == labels.data)
         total += len(predicted)
-        print('[{}/{}] Classifier Loss: {:.3f} Classifier Accuracy:{:.3f}'.format(
-            i, batches, errC.data[0], float(correct) / total))
+    print('[{}/{}] Classifier Loss: {:.3f} Classifier Accuracy:{:.3f}'.format(
+        i, batches, errC.data[0], float(correct) / total))
 
     return float(correct) / total
