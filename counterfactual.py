@@ -165,36 +165,57 @@ def generate_trajectory_active(networks, dataloader, strategy='random', **option
     speed = options['speed']
     momentum_mu = options['momentum_mu']
     max_iters = options['counterfactual_max_iters']
+    MAX_CANDIDATE_POINTS = 1000  # speed tradeoff
 
-    real_image, label, attributes = dataloader.get_batch(required_class=options['start_class'])
-    real_image = Variable(real_image)
-    start_class = label.cpu().numpy()[0]
-    if options['target_class']:
-        target_class = int(options['target_class'])
-    else:
-        target_class = random.randint(0, dataloader.num_classes - 2)
-        if start_class <= target_class:
-            target_class += 1
 
     if strategy == 'uncertainty':
         print("Performing uncertainty sampling with dataloader {}".format(dataloader))
-        # todo: run the classifier on every? point, and find one with minimal top-1 score
-        # Then decide on which direction to take it
-        print("TODO: Run through a pool of unlabeled examples, apply classifier to each one")
-        print("TODO: Pick the highest-uncertainty unlabeled example")
+        images = []
+        candidate_points = []
+        scores = []
+        for i, (img, label, attr) in enumerate(dataloader):
+            images.append(img)
+            z = netE(Variable(img))
+            certainty = torch.exp(netC(netE(Variable(img)))).max()
+            candidate_points.append(z)
+            scores.append(float(certainty.data[0]))
+            if i > MAX_CANDIDATE_POINTS:
+                break
+        idx = np.argmin(scores)
+        real_image = Variable(images[idx])
+        z_val = to_np(candidate_points[idx])
+        print("Uncertainty sampling picking point {} with certainty {}".format(idx, scores[idx]))
+        preds = to_np(torch.exp(netC(candidate_points[idx])))
+        top1_idx = np.argmax(preds)
+        top1_conf = np.max(preds)
+        preds[0][top1_idx] = 0
+        top2_idx = np.argmax(preds)
+        top2_conf = np.max(preds)
+        print("Most likely class: {} (score {})".format(top1_idx, top1_conf))
+        print("Next likely class: {} (score {})".format(top2_idx, top2_conf))
+        start_class = top1_idx
+        target_class = top2_idx
+    else:
+        real_image, label, attributes = dataloader.get_batch(required_class=options['start_class'])
+        real_image = Variable(real_image)
+        start_class = label.cpu().numpy()[0]
+        if options['target_class']:
+            target_class = int(options['target_class'])
+        else:
+            target_class = random.randint(0, dataloader.num_classes - 2)
+            if start_class <= target_class:
+                target_class += 1
+        print("Morphing input example from class {} to class {}".format(start_class, target_class))
 
-    print("Morphing input example from class {} to class {}".format(start_class, target_class))
+        # We start with vectors in the latent space Z
+        z_val = to_np(netE(real_image))
 
-    # We start with vectors in the latent space Z
-    z_val = to_np(netE(real_image))
     z = Variable(torch.FloatTensor(z_val), requires_grad=True).cuda()
-    original_z = Variable(torch.FloatTensor(z_val), requires_grad=True).cuda()
-
+    original_z = z.clone()
     D_real = netD(real_image).data.cpu().numpy().mean()
 
-    # We want to move them so their classification changes
     target_label = torch.LongTensor(1)
-    target_label[:] = target_class
+    target_label[:] = int(target_class)
     target_label = Variable(target_label).cuda()
 
     momentum = Variable(torch.zeros(z.size())).cuda()
