@@ -186,8 +186,10 @@ def generate_trajectory_active(networks, dataloader, strategy='random', **option
     print("Morphing input example from class {} to class {}".format(start_class, target_class))
 
     # We start with vectors in the latent space Z
-    z = to_np(netE(real_image))
-    z = Variable(torch.FloatTensor(z), requires_grad=True).cuda()
+    z_val = to_np(netE(real_image))
+    z = Variable(torch.FloatTensor(z_val), requires_grad=True).cuda()
+    original_z = Variable(torch.FloatTensor(z_val), requires_grad=True).cuda()
+
     D_real = netD(real_image).data.cpu().numpy().mean()
 
     # We want to move them so their classification changes
@@ -217,6 +219,10 @@ def generate_trajectory_active(networks, dataloader, strategy='random', **option
     MIN_ITERS = 30
     for i in range(max_iters):
         cf_loss = nll_loss(netC(z), target_label)
+
+        # Distance in latent space from original point
+        cf_loss += .0001 * torch.sum((z - original_z) ** 2)
+
         dc_dz = autograd.grad(cf_loss, z, cf_loss, retain_graph=True)[0]
         momentum -= dc_dz * speed
         z += momentum
@@ -241,11 +247,12 @@ def generate_trajectory_active(networks, dataloader, strategy='random', **option
 
     def output_frame(hallucinations, caption, idx):
         # Always write the video
-        imutil.show(hallucinations,
+        imutil.show(hallucinations*255.,
                 video_filename=video_filename,
                 caption=caption,
                 font_size=12,
                 resize_to=(512,512),
+                normalize_color=False,
                 display=False)
         if options['write_jpgs']:
             jpg_dir = os.path.join(options['result_dir'], 'trajectory_jpgs')
@@ -253,7 +260,7 @@ def generate_trajectory_active(networks, dataloader, strategy='random', **option
                 os.mkdir(jpg_dir)
             jpg_filename = 'active-{}-{}-{}-{:04d}.jpg'.format(trajectory_id, start_class_name, target_class_name, idx)
             jpg_filename = os.path.join(options['result_dir'], 'trajectory_jpgs', jpg_filename)
-            imutil.show(hallucinations, filename=jpg_filename, resize_to=(512,512), display=False)
+            imutil.show(hallucinations*255., filename=jpg_filename, resize_to=(512,512), display=False, normalize_color=False)
 
     # Normalize z_trajectory and turn it into a video
     for i in range(4):
