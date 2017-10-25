@@ -18,7 +18,7 @@ parser.add_argument('--start_class', type=str, help='Name of starting class (ran
 parser.add_argument('--target_class', type=str, help='Name target class (random by default)')
 parser.add_argument('--zero_attribute', type=str, help='Attribute to set to one')
 parser.add_argument('--one_attribute', type=str, help='Attribute to set to zero')
-parser.add_argument('--mode', default="batch", help='One of: batch, active, uncertainty [default: batch]')
+parser.add_argument('--mode', default="batch", help='One of: batch, random, uncertainty [default: batch]')
 parser.add_argument('--counterfactual_frame_count', default=60, type=int,
         help='Number of frames to output [default: 60]')
 parser.add_argument('--classifier_name', type=str, default='active_learning_classifier',
@@ -41,7 +41,7 @@ from options import load_options, get_current_epoch
 
 options = load_options(options)
 
-if options['mode'] in ['active', 'uncertainty']:
+if options['mode'] in ['random', 'uncertainty']:
     # Active Learning trajectories can only be single examples
     options['batch_size'] = 1
 else:
@@ -60,7 +60,7 @@ print("Loaded model at epoch {}".format(start_epoch))
 if options['mode'] == 'batch':
     # This one is a good visualization and can be used for efficient labeling
     counterfactual.generate_trajectory_batch(networks, dataloader, **options)
-elif options['mode'] == 'active':
+elif options['mode'] == 'random':
     # This is the classic visualization for a single example
     counterfactual.generate_trajectory_active(networks, dataloader, **options)
 elif options['mode'] == 'uncertainty':
