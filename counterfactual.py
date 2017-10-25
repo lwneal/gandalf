@@ -200,7 +200,7 @@ def generate_trajectory_active(networks, dataloader, strategy='random', **option
         real_image = Variable(real_image)
         start_class = label.cpu().numpy()[0]
         if options['target_class']:
-            target_class = int(options['target_class'])
+            target_class = dataloader.lab_conv.idx[options['target_class']]
         else:
             target_class = random.randint(0, dataloader.num_classes - 2)
             if start_class <= target_class:
