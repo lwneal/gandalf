@@ -64,6 +64,8 @@ for trajectory_filename in trajectory_filenames:
         pred = oracleC(oracleE(sourceG(z)))
         pred_conf, pred_max = pred.max(1)
         pred_class = pred_max.data.cpu().numpy()
+        if i == 0:
+            true_start_class = int(pred_class)
         if int(pred_class) != int(start_class):
             break
         prev_pred_class = pred_class
@@ -74,6 +76,7 @@ for trajectory_filename in trajectory_filenames:
             'trajectory_id': trajectory_id,
             'start_class': start_class,
             'target_class': target_class,
+            'true_start_class': true_start_class,
     }
     label_filename = os.path.join(labels_dir, trajectory_id + '.json')
     with open(label_filename, 'w') as fp:

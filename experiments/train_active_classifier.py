@@ -5,12 +5,16 @@ import os
 import sys
 from pprint import pprint
 
+def is_true(x):
+    return not not x or x.startswith('T')
+
 # Print --help message before importing the rest of the project
 parser = argparse.ArgumentParser()
 parser.add_argument('--result_dir', required=True, help='Output directory for images and model checkpoints')
 parser.add_argument('--classifier_name', type=str, default='active_learning_classifier',
         help='Name of the classifier to use [default: active_learning_classifier]')
 parser.add_argument('--max_trajectories', type=int, help='Number of trajectories to train with (default: uses all available trajectories)')
+parser.add_argument('--use_trajectories', type=is_true, default=True, help='If True, use trajectories, if False use only initial points')
 options = vars(parser.parse_args())
 
 # Import the rest of the project
@@ -70,20 +74,29 @@ active_points = []
 active_labels = []
 complementary_points = []
 complementary_labels = []
+
 for label in labels:
     trajectory_filename = get_trajectory_filename(label['trajectory_id'])
     trajectory_filename = os.path.join(trajectory_dir, trajectory_filename)
     points = np.load(trajectory_filename)
-    split_point = int(label['label_point'])
-    start_class = dataloader.lab_conv.idx[label['start_class']]
-    target_class = dataloader.lab_conv.idx[label['target_class']]
-    # These are normal labels, eg "this picture is a cat"
-    active_points.extend(np.squeeze(points[:split_point], axis=1))
-    active_labels.extend([start_class] * split_point)
-    # Complementary labels eg. "this picture is not a cat"
-    # Might be a dog, might be a freight train, might be an adversarial image
-    complementary_points.extend(np.squeeze(points[split_point:], axis=1))
-    complementary_labels.extend([start_class] * (len(points) - split_point))
+    if options['use_trajectories']:
+        # Decision boundary labeling: a set of points on either side
+        split_point = int(label['label_point'])
+        start_class = dataloader.lab_conv.idx[label['start_class']]
+        target_class = dataloader.lab_conv.idx[label['target_class']]
+        # These are normal labels, eg "this picture is a cat"
+        active_points.extend(np.squeeze(points[:split_point], axis=1))
+        active_labels.extend([start_class] * split_point)
+        # Complementary labels eg. "this picture is not a cat"
+        # Might be a dog, might be a freight train, might be an adversarial image
+        complementary_points.extend(np.squeeze(points[split_point:], axis=1))
+        complementary_labels.extend([start_class] * (len(points) - split_point))
+    else:
+        # A standard active learning setup: only a single point
+        true_start_class = dataloader.lab_conv.idx[label['true_start_class']]
+        active_points.append(points[0])
+        active_labels.append(true_start_class)
+
 active_points = np.array(active_points)
 active_labels = np.array(active_labels)
 complementary_points = np.array(complementary_points)

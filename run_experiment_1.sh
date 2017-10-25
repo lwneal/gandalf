@@ -1,10 +1,17 @@
 #!/bin/bash
-TARGET_DIR=mnist_28x28_e24de477
-ORACLE_DIR=mnist_28x28_e2a0b34a
+TARGET_DIR=$1
+ORACLE_DIR=$2
+MODE=$3
+USE_TRAJECTORIES=$4
 CLASS_COUNT=10
 
-echo "Running Experiment 1 with target directory $TARGET_DIR and oracle $ORACLE_DIR..."
-echo "WARNING: Deleting all active learning labels in $TARGET_DIR and restarting experiment in 5..."
+echo "Running Experiment 1:"
+echo "  TARGET_DIR $TARGET_DIR"
+echo "  ORACLE_DIR $ORACLE_DIR"
+echo "  MODE $MODE"
+echo "  TRAJECTORIES $USE_TRAJECTORIES "
+echo ""
+echo "WARNING: Deleting all active learning labels in $TARGET_DIR and beginning experiment 1 in 5 seconds..."
 sleep 5
 
 # Delete all trajectories and labels
