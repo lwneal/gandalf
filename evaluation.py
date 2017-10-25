@@ -94,10 +94,11 @@ def evaluate_classifier(networks, dataloader, verbose=True, skip_reconstruction=
         title = 'Latent Dim #0 vs #1: {} epoch {}'.format(options['fold'], options['epoch'])
         plot(latent_2d, plot_filename, title=title, labels=plot_labels)
 
-    mse = float(to_np(mse / i)[0])
-    mae = float(to_np(mae / i)[0])
-    print("Reconstruction per-pixel MSE: {}".format(mse))
-    print("Reconstruction per-pixel MAE: {}".format(mae))
+    if not skip_reconstruction:
+        mse = float(to_np(mse / i)[0])
+        mae = float(to_np(mae / i)[0])
+        print("Reconstruction per-pixel MSE: {}".format(mse))
+        print("Reconstruction per-pixel MAE: {}".format(mae))
 
     discriminator_mean = float(np.array(discriminator_scores).mean())
 

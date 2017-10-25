@@ -32,6 +32,7 @@ test_dataloader = CustomDataloader(fold='test', **options)
 
 # Load the active learning classifier and the unsupervised encoder/generator
 networks = build_networks(dataloader.num_classes, dataloader.num_attributes, epoch=current_epoch, **options)
+del networks['attribute']  # hack for speed on Experiment 1
 optimizers = get_optimizers(networks, **options)
 
 
@@ -41,6 +42,8 @@ if not os.path.exists(active_label_dir):
     os.mkdir(active_label_dir)
 labels = []
 label_filenames = os.listdir(active_label_dir)
+print(label_filenames)
+label_filenames.sort()
 if options['max_trajectories']:
     print("Limiting labels to first {}".format(options['max_trajectories']))
     label_filenames = label_filenames[:options['max_trajectories']]
@@ -104,7 +107,7 @@ for classifier_epoch in range(MAX_EPOCHS):
     foldname = 'active_trajectories_{:06d}'.format(len(labels))
 
     print("Evaluating {}".format(foldname))
-    new_results = evaluate_classifier(networks, dataloader, verbose=False, fold=foldname, skip_reconstruction=True, **options)
+    new_results = evaluate_classifier(networks, test_dataloader, verbose=False, fold=foldname, skip_reconstruction=True, **options)
 
     print("Results from training with {} trajectories".format(len(labels)))
     pprint(new_results)
