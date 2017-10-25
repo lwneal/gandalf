@@ -25,7 +25,7 @@ DOWNLOAD_URL_TEST_MAT = 'http://ufldl.stanford.edu/housenumbers/test_32x32.mat'
 
 
 DATA_DIR = '/mnt/data'
-DATASET_NAME = 'SVHN'
+DATASET_NAME = 'svhn'
 DATASET_PATH = os.path.join(DATA_DIR, DATASET_NAME)
 
 def from_mat(mat, img_dir, fold):
@@ -41,7 +41,7 @@ def from_mat(mat, img_dir, fold):
         Image.fromarray(img).save(filename)
         examples.append({
             'fold': fold,
-            'label': int(label),
+            'label': str(label),
             'filename': filename,
         })
     return examples
@@ -67,17 +67,6 @@ def main():
 
     test_data = test_mat['X']
     test_labels = test_mat['y']
-
-    # loading from the .mat file gives an np array of type np.uint8
-    # converting to np.int64, so that we have a LongTensor after
-    # the conversion from the numpy array
-    # the squeeze is needed to obtain a 1D tensor
-
-    # the svhn dataset assigns the class label "10" to the digit 0
-    # this makes it inconsistent with several loss functions
-    # which expect the class labels to be in the range [0, C-1]
-    #np.place(labels, labels == 10, 0)
-    #data = np.transpose(data, (3, 2, 0, 1))
 
     IMG_DIR = os.path.join(DATASET_PATH, 'images')
     if not os.path.exists(IMG_DIR):
@@ -106,15 +95,12 @@ def download(filename, url):
     if os.path.exists(filename):
         print("File {} already exists, skipping".format(filename))
     else:
-        mv_dir = 'train' if 'train' in filename else 'test'
         # TODO: security lol
         os.system('wget -nc {} -O {}'.format(url, filename))
         if filename.endswith('.tgz') or filename.endswith('.tar.gz'):
             os.system('ls *gz | xargs -n 1 tar xzvf')
         elif filename.endswith('.zip'):
             os.system('unzip *.zip')
-        elif filename.endswith('.mat'):
-            os.system('cp ' + filename + ' ' + DATASET_PATH + '/' + mv_dir)
 
 
 
