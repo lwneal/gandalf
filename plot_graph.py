@@ -14,7 +14,8 @@ def plot_active_learning(filename):
     x = [int(k.split('_')[-1]) for k in keys]
     y = [evaluations[k]['accuracy'] for k in keys]
     plot = plotting.plot_xy(x, y, x_axis="Number of Examples", y_axis="Accuracy", title=filename)
-    show(plot)
+    plot_filename = "{}.jpg".format(filename.replace('.json', ''))
+    show(plot, filename=plot_filename)
 
 
 if __name__ == '__main__':
