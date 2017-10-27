@@ -5,6 +5,15 @@ ORACLE_DIR=$2
 MODE=$3
 USE_TRAJECTORIES=$4
 
+if [[ $# -lt 4 ]]; then
+    echo "Usage: $0 target_dir oracle_dir mode use_trajectories"
+    echo "target_dir: a result_dir with a good unsupervised model"
+    echo "oracle_dir: a result_dir with a high classification accuracy"
+    echo "mode: random, uncertainty"
+    echo "use_trajectories: True or False"
+    exit
+fi
+
 if (echo $TARGET_DIR | grep emnist); then
     echo "EMNIST character dataset detected"
     CLASSES="A B C D E F G H I J K L M N O P Q R S T U V W X Y Z"
