@@ -61,10 +61,10 @@ def evaluate_classifier(networks, dataloader, verbose=True, skip_reconstruction=
                 attr_correct[j] += torch.sum(correct_count[:,j]).data.cpu().numpy()[0]
             attr_total += attr_predictions.size()[0]
 
-        latent_vectors.extend(z.data.cpu().numpy())
-        plot_labels.extend(labels.cpu().numpy())
-
-        discriminator_scores.extend(netD(images).data.cpu().numpy())
+        if not skip_reconstruction:
+            latent_vectors.extend(z.data.cpu().numpy())
+            plot_labels.extend(labels.cpu().numpy())
+            discriminator_scores.extend(netD(images).data.cpu().numpy())
 
         if verbose:
             print("Accuracy: {:.4f} ({: >12} / {: <12} correct)".format(float(correct) / total, correct, total))
@@ -100,7 +100,9 @@ def evaluate_classifier(networks, dataloader, verbose=True, skip_reconstruction=
         print("Reconstruction per-pixel MSE: {}".format(mse))
         print("Reconstruction per-pixel MAE: {}".format(mae))
 
-    discriminator_mean = float(np.array(discriminator_scores).mean())
+    discriminator_mean = 0
+    if discriminator_scores:
+        discriminator_mean = float(np.array(discriminator_scores).mean())
 
     stats = {
         options['fold']: {
