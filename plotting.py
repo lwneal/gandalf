@@ -55,20 +55,23 @@ def plot_active_learning(eval_filename="results_epoch_0025.json"):
     return plot
 
 
-def compare_active_learning(eval_filename, baseline_eval_filename):
+def compare_active_learning(eval_filename, baseline_eval_filename, title=None, this_name='This Method', baseline_name='Baseline'):
     try:
         x, y = parse_active_learning_series(eval_filename)
         x2, y2 = parse_active_learning_series(baseline_eval_filename)
     except NoDataAvailable:
         return None
     
+    print("Comparing {} with baseline {}".format(eval_filename, baseline_eval_filename))
+
     plt.plot(x, y, "g") # this method
     plt.plot(x2, y2, "b") # baseline
     this_approach_name = eval_filename.split('/')
-    plt.suptitle('Accuracy Vs Baseline')
-    plt.ylabel('Accuracy (10 classes)')
+    plt.ylabel('Accuracy')
     plt.xlabel('Number of Queries')
-    plt.legend(['This Method', 'Baseline'])
+    plt.legend([this_name, baseline_name])
+    if title:
+        plt.suptitle(title)
 
     fig_filename = eval_filename.replace('.json', '-vs-baseline.png')
     plt.savefig(fig_filename)

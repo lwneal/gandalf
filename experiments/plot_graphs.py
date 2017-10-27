@@ -17,13 +17,7 @@ from networks import build_networks
 from options import load_options, get_current_epoch
 from evaluation import evaluate_classifier
 import pandas as pd
-
-# Hack to apply sane defaults to matplotlib
-import matplotlib
-matplotlib.use('Agg')
-import seaborn as sns
-sns.set_style('darkgrid')
-import matplotlib.pyplot as plt
+import plotting
 
 
 options = load_options(options)
@@ -41,9 +35,16 @@ for f in filenames:
 
 print("Generating active learning plots")
 for f in filenames:
-    import plotting
-    print('Comparing {} with baseline'.format(f))
-    plotting.compare_active_learning(f, '/mnt/results/mnist_semisupervised.json')
+    if 'svhn' in options['dataset'].lower():
+        baseline_file = '/mnt/results/svhn_uncertainty_sampling.json'
+        plotting.compare_active_learning(f, baseline_file, 'SVHN', 'Proposed Method', 'Uncertainty Sampling')
+    elif 'emnist' in options['dataset'].lower():
+        baseline_file = '/mnt/results/emnist_uncertainty_sampling.json'
+        plotting.compare_active_learning(f, baseline_file, 'SVHN', 'Proposed Method', 'Uncertainty Sampling')
+    elif 'mnist' in options['dataset'].lower():
+        baseline_file = '/mnt/results/mnist_uncertainty_sampling.json'
+        plotting.compare_active_learning(f, baseline_file, 'SVHN', 'Proposed Method', 'Uncertainty Sampling')
+
 
 print("Loaded {} evaluation reports".format(len(evals)))
 folds = []
