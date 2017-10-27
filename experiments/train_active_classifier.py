@@ -104,11 +104,22 @@ complementary_labels = np.array(complementary_labels)
 print("Loaded {} trajectories totalling {} positive points and {} negative points".format(
 	len(labels), len(active_points), len(complementary_points)))
 
-# HACK: If we don't have enough points, repeat the points we do have
-REQUIRED_POINTS = 2000
-while len(active_points) < REQUIRED_POINTS:
-    active_points = np.concatenate([active_points] * 2)
-    active_labels = np.concatenate([active_labels] * 2)
+def augment_to_length(points, labels, required_len=2000):
+    assert len(points) > 0
+    assert len(points) == len(labels)
+    augmented_points = np.copy(points)
+    augmented_labels = np.copy(labels)
+    while len(augmented_points) < required_len:
+        x = min(required_len - len(augmented_points), len(points))
+        augmented_points = np.concatenate([augmented_points, points[:x]])
+        augmented_labels = np.concatenate([augmented_labels, labels[:x]])
+    print("Augmented points up to length {}".format(len(active_points)))
+    return augmented_points, augmented_labels
+
+if len(active_points) < 2**12:
+    print("Padding active label dataset for training stability")
+    active_points, active_labels = augment_to_length(active_points, active_labels, required_len=2**12)
+
 
 best_score = 0
 print("Re-training classifier {} using {} active-learning label points".format(
