@@ -104,6 +104,11 @@ complementary_labels = np.array(complementary_labels)
 print("Loaded {} trajectories totalling {} positive points and {} negative points".format(
 	len(labels), len(active_points), len(complementary_points)))
 
+# HACK: If we don't have enough points, repeat the points we do have
+REQUIRED_POINTS = 2000
+while len(active_points) < REQUIRED_POINTS:
+    active_points = np.concatenate([active_points] * 2)
+    active_labels = np.concatenate([active_labels] * 2)
 
 best_score = 0
 print("Re-training classifier {} using {} active-learning label points".format(
@@ -114,6 +119,8 @@ for classifier_epoch in range(MAX_EPOCHS):
     # Apply learning rate decay and train for one pseudo-epoch
     for optimizer in optimizers.values():
         optimizer.param_groups[0]['lr'] = .0001 * (.9 ** classifier_epoch)
+
+
     train_active_learning(networks, optimizers, active_points, active_labels, complementary_points, complementary_labels, **options)
 
     # Evaluate against the test set
@@ -133,7 +140,9 @@ for classifier_epoch in range(MAX_EPOCHS):
         print("Overfit detected")
         #break
 print("Finished re-training classifier, got test results:")
-print(new_results)
+pprint(new_results)
+print("Best results:")
+pprint(best_results)
 
 save_networks({classifier_name: networks[classifier_name]}, epoch=current_epoch, result_dir=options['result_dir'])
 
