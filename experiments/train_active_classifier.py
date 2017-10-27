@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+import time
 import argparse
 import json
 import os
@@ -132,13 +133,17 @@ for classifier_epoch in range(MAX_EPOCHS):
         optimizer.param_groups[0]['lr'] = .0001 * (.9 ** classifier_epoch)
 
 
+    start_time = time.time()
     train_active_learning(networks, optimizers, active_points, active_labels, complementary_points, complementary_labels, **options)
+    print("Ran train_active_learning in {:.3f}s".format(time.time() - start_time))
 
     # Evaluate against the test set
     foldname = 'active_trajectories_{:06d}'.format(len(labels))
 
     print("Evaluating {}".format(foldname))
+    start_time = time.time()
     new_results = evaluate_classifier(networks, test_dataloader, verbose=False, fold=foldname, skip_reconstruction=True, **options)
+    print("Ran evaluate_classifier in {:.3f}s".format(time.time() - start_time))
 
     print("Results from training with {} trajectories".format(len(labels)))
     pprint(new_results)
