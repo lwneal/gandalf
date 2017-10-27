@@ -51,3 +51,13 @@ Each experiment is an executable Python script. Run `experiments/train_aac.py` t
 #### Counterfactuals
 
 After a network has trained for at least one epoch, use it to generate counterfactuals with `experiments/generate_counterfactual.py`
+
+## Hacks
+
+The following requirements are hacks that should be removed or turned into configuration:
+
+* All datasets should be placed in `/mnt/data` using `datasets/download_mnist.sh` et al
+* The `--result_dir` option should always point to a directory in `/mnt/results/`
+* If you `mv` a result\_dir, you have to manually edit its `params.json` or else the evaluate scripts will break
+* If you stop train\_aac and then restart it, the `--epochs` parameter in params.json won't match up with the actual number of epochs
+
