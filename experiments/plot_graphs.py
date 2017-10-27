@@ -35,15 +35,9 @@ for f in filenames:
 
 print("Generating active learning plots")
 for f in filenames:
-    if 'svhn' in options['dataset'].lower():
-        baseline_file = '/mnt/results/svhn_uncertainty_sampling.json'
-        plotting.compare_active_learning(f, baseline_file, 'SVHN', 'Proposed Method', 'Uncertainty Sampling')
-    elif 'emnist' in options['dataset'].lower():
-        baseline_file = '/mnt/results/emnist_uncertainty_sampling.json'
-        plotting.compare_active_learning(f, baseline_file, 'SVHN', 'Proposed Method', 'Uncertainty Sampling')
-    elif 'mnist' in options['dataset'].lower():
-        baseline_file = '/mnt/results/mnist_uncertainty_sampling.json'
-        plotting.compare_active_learning(f, baseline_file, 'SVHN', 'Proposed Method', 'Uncertainty Sampling')
+    dataset_name = options['dataset'].split('/')[-1].lower().split('.')[0]
+    baseline_file = '/mnt/results/{}_uncertainty_sampling.json'.format(dataset_name)
+    plotting.compare_active_learning(f, baseline_file, dataset_name.upper(), 'Proposed Method', 'Uncertainty Sampling')
 
 
 print("Loaded {} evaluation reports".format(len(evals)))
