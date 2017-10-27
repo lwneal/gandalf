@@ -238,6 +238,7 @@ def generate_trajectory_active(networks, dataloader, strategy='random', **option
     # Generate z_trajectory
     z_trajectory = []
     MIN_ITERS = 30
+    max_iters = max(max_iters, MIN_ITERS)
     for i in range(max_iters):
         cf_loss = nll_loss(netC(z), target_label)
 
