@@ -39,6 +39,12 @@ evals = []
 for f in filenames:
     evals.append(json.load(open(f)))
 
+print("Generating active learning plots")
+for f in filenames:
+    import plotting
+    print('Comparing {} with baseline'.format(f))
+    plotting.compare_active_learning(f, '/mnt/results/mnist_semisupervised.json')
+
 print("Loaded {} evaluation reports".format(len(evals)))
 folds = []
 statistics = []
