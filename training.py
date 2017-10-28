@@ -254,19 +254,6 @@ def train_classifier(networks, optimizers, dataloader, **options):
     return float(correct) / total
 
 
-# A useful eye-bleeder from Andrej Karpathy
-# https://github.com/pytorch/pytorch/issues/563
-def masked_nll_loss(logp, y, per_example_weights):
-    # prepare an (N,C) array of 1s at the locations of ground truth
-    ymask = logp.data.new(logp.size()).zero_() # (N,C) all zero
-    ymask.scatter_(1, y.data.view(-1,1), 1) # have to make y into shape (N,1) for scatter_ to be happy
-    ymask = Variable(ymask)
-    # pluck
-    logpy = (logp * ymask).sum(1) # this hurts Andrej Karpathy's tender heart
-    negative_log_likelihood_loss = -(logpy * per_example_weights).mean()
-    return negative_log_likelihood_loss
-
-
 def shuffle(a, b, c):
     rng_state = np.random.get_state()
     np.random.shuffle(a)
@@ -334,6 +321,7 @@ def train_active_learning(networks, optimizers, active_points, active_labels, co
         latent_points = Variable(latent_points).cuda()
         labels = Variable(labels).cuda()
         is_positive_mask = Variable(is_positive_mask).cuda()
+        is_negative_mask = (1 - is_positive_mask)
 
         ############################
         # Update E(X) and C(Z) based on positive labels
@@ -341,23 +329,26 @@ def train_active_learning(networks, optimizers, active_points, active_labels, co
         ############################
         generated_images = netG(latent_points).detach()
         class_predictions = netC(latent_points)
-        errC = learning_rate * masked_nll_loss(class_predictions, labels, per_example_weights=is_positive_mask)
+        errPos = masked_nll_loss(class_predictions, labels, is_positive_mask)
 
+        errNeg = 0
         if use_negative_labels:
-            ############################
-            # Update based on negative (complementary) labels
-            ############################
             # Pairwise Comparison Complementary Loss
             # https://arxiv.org/pdf/1705.07541.pdf
-            # Naive implementation to test
+            # Compute g_y(x) - g_{y'}(x) as a mask
             N, K = class_predictions.size()
-            for n in range(N):
-                if is_positive[n]:
-                    continue
-                preds = torch.exp(class_predictions[n])
-                c_label = labels[n]
-                for k in range(K):
-                    errC += .0001 * learning_rate * torch.sigmoid(preds[k] - preds[c_label])
+            y_preds = torch.gather(class_predictions, 1, labels.view(-1,1))
+            y_preds = y_preds.repeat(1, K)
+
+            # Now apply l(x) and sum
+            pairwise_comparison_losses = torch.sigmoid(torch.exp(y_preds) - torch.exp(class_predictions))
+            mask = is_negative_mask.repeat(K, 1).transpose(1, 0)
+            errNeg = torch.sum(pairwise_comparison_losses * mask)
+
+            # Normalize so each example has equal weight
+            errNeg /=  K * sum(is_negative_mask)
+
+        errC = errPos + errNeg
         errC.backward()
         optimizerC.step()
         optimizerE.step()
@@ -366,7 +357,18 @@ def train_active_learning(networks, optimizers, active_points, active_labels, co
         _, predicted = class_predictions.max(1)
         correct += sum(predicted.data == labels.data)
         total += len(predicted)
-    print('[{}/{}] Classifier Loss: {:.3f} Classifier Accuracy:{:.3f}'.format(
-        i, batches, errC.data[0], float(correct) / total))
+    print('[{}/{}] Pos Loss: {:.3f} Neg Loss: {:.3f} Classifier Accuracy:{:.3f}'.format(
+        i, batches, errPos.data[0], errNeg.data[0], float(correct) / total))
+    print(pairwise_comparison_losses * mask)
 
     return float(correct) / total
+
+
+# https://github.com/pytorch/pytorch/issues/563
+def masked_nll_loss(logp, y, binary_mask):
+    # prepare an (N,C) array of 1s at the locations of ground truth
+    ymask = logp.data.new(logp.size()).zero_() # (N,C) all zero
+    ymask.scatter_(1, y.data.view(-1,1), 1) # have to make y into shape (N,1) for scatter_ to be happy
+    ymask = Variable(ymask)
+    logpy = (logp * ymask).sum(1)
+    return -(logpy * binary_mask).mean()

@@ -32,12 +32,12 @@ current_epoch = get_current_epoch(options['result_dir'])
 classifier_name = options['classifier_name']
 
 # We start with a small set of ground-truth labels to seed the classifier: 1 label per class
-dataloader = CustomDataloader(fold='train', **options)
+train_dataloader = CustomDataloader(fold='train', **options)
 # We can also test while training to get data
 test_dataloader = CustomDataloader(fold='test', **options)
 
 # Load the active learning classifier and the unsupervised encoder/generator
-networks = build_networks(dataloader.num_classes, dataloader.num_attributes, epoch=current_epoch, 
+networks = build_networks(train_dataloader.num_classes, train_dataloader.num_attributes, epoch=current_epoch, 
         load_classifier=False, load_attributes=False, **options)
 optimizers = get_optimizers(networks, **options)
 
@@ -49,7 +49,7 @@ if not os.path.exists(active_label_dir):
 labels = []
 label_filenames = os.listdir(active_label_dir)
 label_filenames.sort()
-if options['max_trajectories']:
+if options['max_trajectories'] is not None:
     print("Limiting labels to first {}".format(options['max_trajectories']))
     label_filenames = label_filenames[:options['max_trajectories']]
 
@@ -83,18 +83,23 @@ for label in labels:
     if options['use_trajectories']:
         # Decision boundary labeling: a set of points on either side
         split_point = int(label['label_point'])
-        start_class = dataloader.lab_conv.idx[label['start_class']]
-        target_class = dataloader.lab_conv.idx[label['target_class']]
+        start_class = train_dataloader.lab_conv.idx[label['start_class']]
+        target_class = train_dataloader.lab_conv.idx[label['target_class']]
+
         # These are normal labels, eg "this picture is a cat"
-        active_points.extend(np.squeeze(points[:split_point], axis=1))
-        active_labels.extend([start_class] * split_point)
+        # If margin = 2 then we throw away 2 points on either side of the boundary
+        margin = 1
+        left = max(0, split_point - margin)
+        right = min(split_point + margin, len(points) - 1)
+        active_points.extend(np.squeeze(points[:left], axis=1))
+        active_labels.extend([start_class] * left)
         # Complementary labels eg. "this picture is not a cat"
         # Might be a dog, might be a freight train, might be an adversarial image
-        complementary_points.extend(np.squeeze(points[split_point:], axis=1))
-        complementary_labels.extend([start_class] * (len(points) - split_point))
+        complementary_points.extend(np.squeeze(points[right:], axis=1))
+        complementary_labels.extend([start_class] * (len(points) - right))
     else:
         # A standard active learning setup: only a single point
-        true_start_class = dataloader.lab_conv.idx[label['true_start_class']]
+        true_start_class = train_dataloader.lab_conv.idx[label['true_start_class']]
         active_points.append(points[0])
         active_labels.append(true_start_class)
 
@@ -117,22 +122,41 @@ def augment_to_length(points, labels, required_len=2000):
     print("Augmented points up to length {}".format(len(active_points)))
     return augmented_points, augmented_labels
 
-if len(active_points) < 2**12:
-    print("Padding active label dataset for training stability")
-    active_points, active_labels = augment_to_length(active_points, active_labels, required_len=2**12)
 
-# Also add some set number of regular labels, like 1000
+"""
+# Add some points
 extra_points = []
 extra_labels = []
 netE = networks['encoder']
 from torch.autograd import Variable
-for (images, labels, _) in dataloader:
+for (images, labels, _) in train_dataloader:
     extra_points.extend(netE(Variable(images)).data.cpu().numpy())
     extra_labels.extend(labels.cpu().numpy())
-    if len(extra_points) > 1000:
+    if len(extra_points) > 2000:
         break
-active_points = np.concatenate([active_points, extra_points])
-active_labels = np.concatenate([active_labels, extra_labels])
+active_points = np.array(extra_points)
+active_labels = np.array(extra_labels)
+"""
+
+# Add a lot of complementary points
+extra_points = []
+extra_labels = []
+netE = networks['encoder']
+from torch.autograd import Variable
+for (images, labels, _) in train_dataloader:
+    z = netE(Variable(images)).data.cpu().numpy()
+    extra_points.extend(z)
+    # Pick a label, any label... except the real one
+    K = 10
+    labels = (labels + np.random.randint(1, K)) % K
+    extra_labels.extend(labels.cpu().numpy())
+complementary_points = np.array(extra_points)
+complementary_labels = np.array(extra_labels)
+
+
+if len(active_points) < 2**12:
+    print("Padding active label dataset for training stability")
+    active_points, active_labels = augment_to_length(active_points, active_labels, required_len=2**12)
 
 
 best_score = 0
@@ -143,33 +167,20 @@ MAX_EPOCHS = 25
 for classifier_epoch in range(MAX_EPOCHS):
     # Apply learning rate decay and train for one pseudo-epoch
     for optimizer in optimizers.values():
-        optimizer.param_groups[0]['lr'] = .0001 * (.9 ** classifier_epoch)
-
-
+        optimizer.param_groups[0]['lr'] = .0002 * (.9 ** classifier_epoch)
     start_time = time.time()
     train_active_learning(networks, optimizers, active_points, active_labels, complementary_points, complementary_labels, **options)
     print("Ran train_active_learning in {:.3f}s".format(time.time() - start_time))
 
-    # Evaluate against the test set
-    foldname = 'active_trajectories_{:06d}'.format(len(labels))
+# Evaluate against the test set
+foldname = 'active_trajectories_{:06d}'.format(len(labels))
 
-    print("Evaluating {}".format(foldname))
-    start_time = time.time()
-    new_results = evaluate_classifier(networks, test_dataloader, verbose=False, fold=foldname, skip_reconstruction=True, **options)
-    print("Ran evaluate_classifier in {:.3f}s".format(time.time() - start_time))
+print("Evaluating {}".format(foldname))
+start_time = time.time()
+new_results = evaluate_classifier(networks, test_dataloader, verbose=False, fold=foldname, skip_reconstruction=True, **options)
+print("Ran evaluate_classifier in {:.3f}s".format(time.time() - start_time))
 
-    print("Results from training with {} trajectories".format(len(labels)))
-    pprint(new_results)
-    new_score = new_results[foldname]['accuracy']
-    if best_score < new_score:
-        best_results = new_results
-        best_score = new_score
-        best_results[foldname]['best_classifier_epoch'] = classifier_epoch
-    else:
-        print("Overfit detected")
-        #break
-print("Finished re-training classifier, got test results:")
-pprint(new_results)
+best_results = new_results
 print("Best results:")
 pprint(best_results)
 
