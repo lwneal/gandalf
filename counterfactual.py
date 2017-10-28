@@ -197,10 +197,9 @@ def generate_trajectory_active(networks, dataloader, strategy='random', **option
         z = to_torch(z)
         hallucination = netG(z)
         preds = netC(z)
-        predicted_class = to_np(preds.max(1)[1])[0]
-        predicted_class_name = dataloader.lab_conv.labels[predicted_class]
-        pred_confidence = np.exp(to_np(preds.max(1)[0])[0])
-        caption = "Class: {} (confidence {:.3f})".format(predicted_class_name, pred_confidence)
+        pred_conf, pred_idx = torch.exp(preds).max(1)
+        pred_conf, pred_idx = to_np(pred_conf)[0], to_np(pred_idx)[0]
+        caption = "Class: {} (confidence {:.3f})".format(dataloader.lab_conv.labels[pred_idx], pred_conf)
         vid.write_frame(hallucination, caption)
     vid.finish()
 
@@ -281,7 +280,7 @@ def make_video_filename(result_dir, dataloader, start_class, target_class):
     return video_filename
 
 
-def sample_trajectory(zt, output_samples=30):
+def sample_trajectory(zt, output_samples):
     distances = np.array([np.linalg.norm(zt[i+1] - zt[i]) for i in range(len(zt) - 1)])
     total_distance = sum(distances)
     distance_per_sample = total_distance / output_samples 
