@@ -321,7 +321,6 @@ def train_active_learning(networks, optimizers, active_points, active_labels, co
         latent_points = Variable(latent_points).cuda()
         labels = Variable(labels).cuda()
         is_positive_mask = Variable(is_positive_mask).cuda()
-        is_negative_mask = (1 - is_positive_mask)
 
         ############################
         # Update E(X) and C(Z) based on positive labels
@@ -331,22 +330,13 @@ def train_active_learning(networks, optimizers, active_points, active_labels, co
         class_predictions = netC(latent_points)
         errPos = masked_nll_loss(class_predictions, labels, is_positive_mask)
 
-        errNeg = 0
         if use_negative_labels:
-            # Pairwise Comparison Complementary Loss
-            # https://arxiv.org/pdf/1705.07541.pdf
-            # Compute g_y(x) - g_{y'}(x) as a mask
+            # A simpler form of complementary label loss: minimize softmax output
             N, K = class_predictions.size()
-            y_preds = torch.gather(class_predictions, 1, labels.view(-1,1))
-            y_preds = y_preds.repeat(1, K)
-
-            # Now apply l(x) and sum
-            pairwise_comparison_losses = torch.sigmoid(torch.exp(y_preds) - torch.exp(class_predictions))
-            mask = is_negative_mask.repeat(K, 1).transpose(1, 0)
-            errNeg = torch.sum(pairwise_comparison_losses * mask)
-
-            # Normalize so each example has equal weight
-            errNeg /=  K * sum(is_negative_mask)
+            y_preds = torch.exp(torch.gather(class_predictions, 1, labels.view(-1,1)))
+            errNeg = learning_rate * (y_preds.squeeze(1) * (1 - is_positive_mask)).sum()
+        else:
+            errNeg = errPos * 0
 
         errC = errPos + errNeg
         errC.backward()
@@ -355,11 +345,11 @@ def train_active_learning(networks, optimizers, active_points, active_labels, co
         ############################
 
         _, predicted = class_predictions.max(1)
-        correct += sum(predicted.data == labels.data)
-        total += len(predicted)
+        correct += sum((predicted.data == labels.data) * (is_positive_mask > 0).data)
+        total += sum(is_positive_mask).data[0]
+
     print('[{}/{}] Pos Loss: {:.3f} Neg Loss: {:.3f} Classifier Accuracy:{:.3f}'.format(
         i, batches, errPos.data[0], errNeg.data[0], float(correct) / total))
-    print(pairwise_comparison_losses * mask)
 
     return float(correct) / total
 
