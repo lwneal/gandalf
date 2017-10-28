@@ -281,7 +281,7 @@ def train_active_learning(networks, optimizers, active_points, active_labels, co
 
     is_positive = np.array([1.] * len(active_points) + [0] * len(complementary_points))
     if len(complementary_points) > 0:
-        points = np.concatenate([active_points, complementary_points.squeeze(1)])
+        points = np.concatenate([np.array(active_points).squeeze(1), complementary_points.squeeze(1)])
         labels = np.concatenate([active_labels, complementary_labels])
     else:
         points = active_points

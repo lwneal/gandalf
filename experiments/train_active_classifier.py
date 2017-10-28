@@ -130,8 +130,8 @@ def augment_to_length(points, labels, required_len=2000):
 print("Loading all available active-learning labels...")
 active_label_dir = os.path.join(options['result_dir'], 'labels')
 labels = load_labels(active_label_dir, label_count=options['query_count'])
+foldname = 'active_trajectories_{:06d}'.format(len(labels))
 print("Loaded {} labels from {}".format(len(labels), active_label_dir))
-
 
 import numpy as np
 
@@ -208,7 +208,6 @@ for classifier_epoch in range(MAX_EPOCHS):
     print("Ran train_active_learning in {:.3f}s".format(time.time() - start_time))
 
 # Evaluate against the test set
-foldname = 'active_trajectories_{:06d}'.format(len(labels))
 print("Evaluating {}".format(foldname))
 start_time = time.time()
 new_results = evaluate_classifier(networks, test_dataloader, verbose=False, fold=foldname, skip_reconstruction=True, **options)
