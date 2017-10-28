@@ -41,12 +41,12 @@ from options import load_options, get_current_epoch
 
 options = load_options(options)
 
-if options['mode'] in ['random', 'uncertainty']:
-    # Active Learning trajectories can only be single examples
-    options['batch_size'] = 1
-else:
+if options['mode'] == 'batch':
     # Batch Labeling trajectories must be 4x4 grids
     options['batch_size'] = 64
+else:
+    # Active Learning trajectories can only be single examples
+    options['batch_size'] = 1
 
 dataloader = CustomDataloader(**options)
 
@@ -65,4 +65,10 @@ elif options['mode'] == 'random':
     counterfactual.generate_trajectory_active(networks, dataloader, **options)
 elif options['mode'] == 'uncertainty':
     # Uncertainty Sampling used for Experiment 1. Requires --classifier_name
-    counterfactual.generate_trajectory_active(networks, dataloader, strategy='uncertainty', **options)
+    counterfactual.generate_trajectory_active(networks, dataloader, strategy='uncertainty-top2', **options)
+elif options['mode'] == 'uncertainty-top1':
+    # Counterfactual strategy: start at an uncertain point, make it more certain
+    counterfactual.generate_trajectory_active(networks, dataloader, strategy='uncertainty-top1', **options)
+elif options['mode'] == 'random-top1':
+    # Counterfactual strategy: start at a random point, move to a known class
+    counterfactual.generate_trajectory_active(networks, dataloader, strategy='random-top1', **options)

@@ -196,3 +196,21 @@ def draw_box(img, box, color=1.0):
     img[y0:y1,x1] = color
     img[y0,x0:x1] = color
     img[y1,x0:x1] = color
+
+
+class VideoMaker(object):
+    def __init__(self, filename):
+        self.filename = filename
+
+    def write_frame(self, frame, caption=None):
+        show(frame * 255.0,
+                video_filename=self.filename,
+                caption=caption,
+                font_size=12,
+                resize_to=(512,512),
+                normalize_color=False,
+                display=False)
+
+    def finish(self):
+        encode_video(self.filename)
+
