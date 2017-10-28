@@ -121,6 +121,19 @@ if len(active_points) < 2**12:
     print("Padding active label dataset for training stability")
     active_points, active_labels = augment_to_length(active_points, active_labels, required_len=2**12)
 
+# Also add some set number of regular labels, like 1000
+extra_points = []
+extra_labels = []
+netE = networks['encoder']
+from torch.autograd import Variable
+for (images, labels, _) in dataloader:
+    extra_points.extend(netE(Variable(images)).data.cpu().numpy())
+    extra_labels.extend(labels.cpu().numpy())
+    if len(extra_points) > 1000:
+        break
+active_points = np.concatenate([active_points, extra_points])
+active_labels = np.concatenate([active_labels, extra_labels])
+
 
 best_score = 0
 print("Re-training classifier {} using {} active-learning label points".format(
