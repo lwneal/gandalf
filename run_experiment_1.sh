@@ -3,14 +3,12 @@ set -e
 TARGET_DIR=$1
 ORACLE_DIR=$2
 MODE=$3
-USE_TRAJECTORIES=$4
 
-if [[ $# -lt 4 ]]; then
+if [[ $# -lt 3 ]]; then
     echo "Usage: $0 target_dir oracle_dir mode use_trajectories"
     echo "target_dir: a result_dir with a good unsupervised model"
     echo "oracle_dir: a result_dir with a high classification accuracy"
-    echo "mode: random, uncertainty"
-    echo "use_trajectories: True or False"
+    echo "mode: semisupervised, uncertainty_sampling, counterfactual"
     exit
 fi
 
@@ -39,20 +37,15 @@ rm -Rf /mnt/results/$TARGET_DIR/labels
 rm -f /mnt/results/$TARGET_DIR/active_learning_classifier_*.pth
 
 
-echo "Generating seed labels..."
-for i in $CLASSES; do
-    python experiments/generate_counterfactual.py --result_dir /mnt/results/$TARGET_DIR --mode random --start_class $i --target_class $i --speed 0
-done
-python experiments/oracle.py --result_dir /mnt/results/$TARGET_DIR --oracle_result_dir /mnt/results/$ORACLE_DIR
-python experiments/train_active_classifier.py --result_dir /mnt/results/$TARGET_DIR 
+# Seed labels are now included within train_active_classifier
 
 echo "Generating additional labels using sampling mode: $MODE"
 for i in `seq 0 5 150`; do
     echo "Generating labels $i / 150"
     for j in `seq 5`; do
-        python experiments/generate_counterfactual.py --result_dir /mnt/results/$TARGET_DIR --mode $MODE
+        python experiments/generate_counterfactual.py --result_dir /mnt/results/$TARGET_DIR --classifier_name active_learning_classifier
     done
     python experiments/oracle.py --result_dir /mnt/results/$TARGET_DIR --oracle_result_dir /mnt/results/$ORACLE_DIR
-    python experiments/train_active_classifier.py --result_dir /mnt/results/$TARGET_DIR --use_trajectories $USE_TRAJECTORIES
+    python experiments/train_active_classifier.py --result_dir /mnt/results/$TARGET_DIR --experiment_type $MODE --classifier_name active_learning_classifier
 done
 
