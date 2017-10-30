@@ -3,11 +3,13 @@ set -e
 set -x
 TARGET_DIR=$1
 MODE=$2
+RUN_NAME=$3
 
-if [[ $# -lt 2 ]]; then
+if [[ $# -lt 3 ]]; then
     echo "Usage: $0 target_dir oracle_dir mode use_trajectories"
     echo "target_dir: a result_dir with a good unsupervised model"
     echo "mode: semisupervised, uncertainty_sampling, counterfactual"
+    echo "run_name: unique name for this run"
     exit
 fi
 
@@ -46,10 +48,10 @@ fi
 python experiments/train_active_classifier.py --result_dir /mnt/results/$TARGET_DIR --experiment_type $MODE --classifier_name active_learning_classifier --init_label_count $INIT_LABELS
 
 echo "Generating additional labels using sampling mode: $MODE"
-for i in `seq 0 5 150`; do
-    echo "Generating labels $i / 150"
+for i in `seq 0 5 200`; do
+    echo "Generating labels $i"
     python experiments/generate_counterfactual.py --result_dir /mnt/results/$TARGET_DIR --classifier_name active_learning_classifier --counterfactual_frame_count $FRAME_COUNT --counterfactual_max_iters $MAX_ITERS --count 5
     python experiments/oracle.py --result_dir /mnt/results/$TARGET_DIR --oracle_pth /mnt/results/$TARGET_DIR/oracle.pth
     python experiments/train_active_classifier.py --result_dir /mnt/results/$TARGET_DIR --experiment_type $MODE --classifier_name active_learning_classifier --init_label_count $INIT_LABELS
 done
-
+cp /mnt/results/$TARGET_DIR/eval_epoch_0025.json /mnt/results/$TARGET_DIR/eval_$RUN_NAME.json
