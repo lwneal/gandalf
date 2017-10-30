@@ -64,14 +64,25 @@ for trajectory_filename in trajectory_filenames:
         if pred_class_idx != dataloader.lab_conv.idx[start_class]:
             break
         prev_pred_class = pred_class_idx
+    for j, p in reversed(list(enumerate(points))):
+        z = Variable(torch.FloatTensor(p)).cuda()
+        pred = netC(z)
+        pred_conf, pred_max = pred.max(1)
+        pred_class_idx = pred_max.data.cpu().numpy()[0]
+        if j == len(points) - 1:
+            true_target_class = dataloader.lab_conv.labels[pred_class_idx]
+        if pred_class_idx != dataloader.lab_conv.idx[target_class]:
+            break
     print("Got trajectory {}".format(trajectory_filename))
     trajectory_id = trajectory_filename.split('-')[-3]
     label = {
-            'label_point': i,
+            'start_label_point': i,
+            'end_label_point': j,
             'trajectory_id': trajectory_id,
             'start_class': start_class,
             'target_class': target_class,
             'true_start_class': true_start_class,
+            'true_target_class': true_target_class,
     }
     label_filename = os.path.join(labels_dir, trajectory_id + '.json')
     with open(label_filename, 'w') as fp:

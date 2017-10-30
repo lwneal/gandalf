@@ -80,24 +80,42 @@ def load_active_learning_trajectories(labels, train_dataloader, margin):
     for label in labels:
         trajectory_filename = get_trajectory_filename(result_dir, label['trajectory_id'])
         points = np.load(trajectory_filename)
-        # Decision boundary labeling: a set of points on either side
-        split_point = int(label['label_point'])
-        start_class = train_dataloader.lab_conv.idx[label['start_class']]
-        target_class = train_dataloader.lab_conv.idx[label['target_class']]
 
-        # These are normal labels, eg "this picture is a cat"
-        # If margin = 2 then we throw away 2 points on either side of the boundary
-        left = max(0, split_point - margin)
-        right = min(split_point + margin, len(points) - 1)
-        active_points.extend(np.squeeze(points[:left], axis=1))
-        active_labels.extend([start_class] * left)
-        # Complementary labels eg. "this picture is not a cat"
-        # Might be a dog, might be a freight train, might be an adversarial image
-        complementary_points.extend(np.squeeze(points[right:], axis=1))
-        complementary_labels.extend([start_class] * (len(points) - right))
+        # Two-Point Decision Boundary Labeling
+        #  On the left, positive labels for the left class
+        #  On the right, positive labels for the right class
+        #  In the middle, negative (complementary) labels for both classes
+        left_class = train_dataloader.lab_conv.idx[label['start_class']]
+        right_class = train_dataloader.lab_conv.idx[label['target_class']]
+        left_boundary = int(label['start_label_point'])
+        right_boundary = int(label['end_label_point'])
+
+        left_points = slice_with_margin(points, 0, left_boundary, right_margin=margin)
+        right_points = slice_with_margin(points, right_boundary, len(points), left_margin=margin)
+        center_points = slice_with_margin(points, left_boundary, right_boundary, margin, margin)
+
+        active_points.extend(left_points)
+        active_labels.extend([left_class] * len(left_points))
+        active_points.extend(right_points)
+        active_labels.extend([right_class] * len(right_points))
+
+        # For each center point we have two complementary labels: not left_class, not right_class
+        complementary_points.extend(center_points)
+        complementary_labels.extend([left_class] * len(center_points))
+        complementary_points.extend(center_points)
+        complementary_labels.extend([right_class] * len(center_points))
+
     active_points = np.expand_dims(np.array(active_points), axis=1)
+    active_labels = np.array(active_labels)
     complementary_points = np.expand_dims(np.array(complementary_points), axis=1)
-    return active_points, np.array(active_labels), complementary_points, np.array(complementary_labels)
+    complementary_labels = np.array(complementary_labels)
+    return active_points, active_labels, complementary_points, complementary_labels
+
+
+def slice_with_margin(array, left, right, left_margin=0, right_margin=0):
+    left_idx = min(left + left_margin, len(array))
+    right_idx = max(0, right - right_margin)
+    return np.squeeze(array[left_idx:right_idx], axis=1)
 
 
 def load_active_learning_points(labels, train_dataloader):
