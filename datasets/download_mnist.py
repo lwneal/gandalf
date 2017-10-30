@@ -10,7 +10,7 @@ from tqdm import tqdm
 
 DATA_DIR = '/mnt/data'
 DOWNLOAD_URL = 'https://s3.amazonaws.com/img-datasets/mnist.npz'
-LATEST_MD5 = '93239478658c70ba5f2dcc6cc6fb0f3f'
+LATEST_MD5 = 'a79bc1a9a620747e44b362121986c3f2'
 
 
 def save_set(fold, x, y, suffix='png'):
@@ -25,10 +25,6 @@ def save_set(fold, x, y, suffix='png'):
             Image.fromarray(x[i]).save(os.path.expanduser(img_filename))
         entry = {
                 'filename': img_filename,
-                'label': str(label),
-                'is_holy': label in [0, 6, 8, 9],  # numbers with holes in them
-                'is_pointy': label in [1, 4, 7],  # numbers with no curvy parts
-                'is_symmetric': label in [0, 1, 8],  # left-right symmetric numbers
                 'label': str(label),
                 'fold': fold,
         }
@@ -46,8 +42,12 @@ def download_mnist_data(path='mnist.npz'):
     f = np.load(path)
     x_train, y_train = f['x_train'], f['y_train']
     x_test, y_test = f['x_test'], f['y_test']
+    
+    # Use last 5k examples as a validation set
+    x_val, y_val = f['x_train'][-5000:], f['y_train'][-5000:]
+    x_train, y_train = x_train[:-5000], y_train[:-5000]
     f.close()
-    return (x_train, y_train), (x_test, y_test)
+    return (x_train, y_train), (x_test, y_test), (x_val, y_val)
 
 
 def mkdir(dirname):
@@ -79,14 +79,17 @@ def download_mnist(latest_md5):
         print("Already have the latest version of mnist.dataset, not downloading")
         return
 
-    (train_x, train_y), (test_x, test_y) = download_mnist_data()
+    (train_x, train_y), (test_x, test_y), (val_x, val_y) = download_mnist_data()
 
     train = save_set('train', train_x, train_y)
     test = save_set('test', test_x, test_y)
+    val = save_set('val', val_x, val_y)
     for example in train:
         example['fold'] = 'train'
     for example in test:
         example['fold'] = 'test'
+    for example in val:
+        example['fold'] = 'validation'
     with open('mnist.dataset', 'w') as fp:
         for example in train + test:
             fp.write(json.dumps(example, sort_keys=True) + '\n')
@@ -107,4 +110,5 @@ if __name__ == '__main__':
     mkdir('mnist')
     mkdir('mnist/train')
     mkdir('mnist/test')
+    mkdir('mnist/val')
     download_mnist(LATEST_MD5)

@@ -13,7 +13,7 @@ parser.add_argument('--result_dir', required=True, help='Output directory for im
 
 # Other options can change with every run
 parser.add_argument('--batch_size', type=int, default=64, help='Batch size [default: 64]')
-parser.add_argument('--fold', type=str, default='test', help='Fold [default: test]')
+parser.add_argument('--fold', type=str, default='validation', help='Fold [default: validation]')
 parser.add_argument('--start_class', type=str, help='Name of starting class (random by default)')
 parser.add_argument('--target_class', type=str, help='Name target class (random by default)')
 parser.add_argument('--counterfactual_frame_count', default=100, type=int,
@@ -46,4 +46,4 @@ dataloader = CustomDataloader(**options)
 networks = build_networks(dataloader.num_classes, dataloader.num_attributes, **options)
 
 for i in range(options['count']):
-    counterfactual.generate_trajectory_active(networks, dataloader, **options)
+    counterfactual.generate_trajectory_active(networks, pool_dataloader, **options)

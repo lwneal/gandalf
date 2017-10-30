@@ -204,14 +204,7 @@ def generate_trajectory_active(networks, dataloader, strategy='random', **option
     z = netE(Variable(start_img))
     z_trajectory = generate_z_trajectory(z, target_class, netC, dataloader, speed, momentum_mu, max_iters=max_iters)
 
-    if strategy.startswith('certainty'):
-        # We start out at a known point, so no need to reverse
-        video_filename = make_video_filename(result_dir, dataloader, start_class, target_class)
-    else:
-        # In the UI we start at the target and move back toward the original point
-        z_trajectory = z_trajectory[::-1]
-        # Active Learning trajectories are generated in reversed labeling order
-        video_filename = make_video_filename(result_dir, dataloader, target_class, start_class)
+    video_filename = make_video_filename(result_dir, dataloader, start_class, target_class)
 
     sampled_trajectory = sample_trajectory(z_trajectory, output_samples=output_frame_count)
 
