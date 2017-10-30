@@ -9,8 +9,6 @@ from torch.nn.functional import nll_loss, cross_entropy
 import imutil
 from imutil import VideoMaker
 
-CF_VIDEO_FRAMES = 48  # Two seconds of video
-
 
 # Morphs an entire batch of input examples into a given target_class
 def generate_trajectory_batch(networks, dataloader, target_class=None, **options):
@@ -204,7 +202,7 @@ def generate_trajectory_active(networks, dataloader, strategy='random', **option
     vid.finish()
 
 
-def select_uncertain_example(dataloader, netE, netC, max_points=1000):
+def select_uncertain_example(dataloader, netE, netC, max_points=100):
     print("Performing uncertainty sampling with dataloader {}".format(dataloader))
     images = []
     certainties = []
