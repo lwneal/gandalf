@@ -24,6 +24,7 @@ parser.add_argument('--speed', type=float, default=.001, help='Learning rate for
 parser.add_argument('--momentum_mu', type=float, default=.95, help='Momentum decay (zero for no momentum) [default: .95]')
 parser.add_argument('--counterfactual_max_iters', type=int, default=1000, help='Maximum number of steps to take for CF trajectories [default: 1000]')
 parser.add_argument('--start_epoch', type=int, help='Epoch to start from (defaults to most recent epoch)')
+parser.add_argument('--count', type=int, default=1, help='Number of counterfactuals to generate')
 
 options = vars(parser.parse_args())
 
@@ -43,4 +44,5 @@ options['batch_size'] = 1
 dataloader = CustomDataloader(**options)
 networks = build_networks(dataloader.num_classes, dataloader.num_attributes, **options)
 
-counterfactual.generate_trajectory_active(networks, dataloader, **options)
+for i in range(options['count']):
+    counterfactual.generate_trajectory_active(networks, dataloader, **options)

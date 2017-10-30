@@ -9,35 +9,29 @@ import sys
 # Print --help message before importing the rest of the project
 parser = argparse.ArgumentParser()
 parser.add_argument('--result_dir', required=True, help='Directory to operate on (not the oracle)')
-parser.add_argument('--oracle_result_dir', required=True, help="Load oracle from classifier.py in this result_dir")
+parser.add_argument('--oracle_pth', required=True, help="Oracle classifier network saved in .pth format")
 
 options = vars(parser.parse_args())
 
 # Import the rest of the project
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
+import torch
 from dataloader import CustomDataloader
 from networks import build_networks
 from options import load_options, get_current_epoch
 from evaluation import evaluate_classifier, save_evaluation
 
-oracle_options = options.copy()
-
 options = load_options(options)
-oracle_options = load_options(oracle_options)
 
 print("Loading networks from current result dir...")
 dataloader = CustomDataloader(**options)
 networks = build_networks(dataloader.num_classes, dataloader.num_attributes, **options)
 
-print("Loading networks from oracle result dir...")
-oracle_dataloader = CustomDataloader(**oracle_options)
-oracle_networks = build_networks(oracle_dataloader.num_classes, oracle_dataloader.num_attributes, **oracle_options)
-
+print("Loading classifier weights from {}...".format(options['oracle_pth']))
+networks['classifier'].load_state_dict(torch.load(options['oracle_pth']))
 print("Loaded networks")
 
-sourceG = networks['generator']
-oracleE = oracle_networks['encoder']
-oracleC = oracle_networks['classifier']
+netC = networks['classifier']
 
 import numpy as np
 import torch
@@ -62,7 +56,7 @@ for trajectory_filename in trajectory_filenames:
     prev_pred_class = None
     for i, p in enumerate(points):
         z = Variable(torch.FloatTensor(p)).cuda()
-        pred = oracleC(oracleE(sourceG(z)))
+        pred = netC(z)
         pred_conf, pred_max = pred.max(1)
         pred_class_idx = pred_max.data.cpu().numpy()[0]
         if i == 0:

@@ -64,7 +64,7 @@ def get_optimizers(networks, lr=.001, beta1=.5, beta2=.999, **options):
     optimizers = {}
     for name in networks:
         net = networks[name]
-        optimizers[name] = optim.Adam(net.parameters(), lr=lr, betas=(beta1, beta2))
+        optimizers[name] = optim.Adam(net.parameters(), lr=lr, betas=(beta1, beta2), weight_decay=.001)
     return optimizers
 
 
