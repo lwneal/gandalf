@@ -16,8 +16,8 @@ parser.add_argument('--batch_size', type=int, default=64, help='Batch size [defa
 parser.add_argument('--fold', type=str, default='validation', help='Fold [default: validation]')
 parser.add_argument('--start_class', type=str, help='Name of starting class (random by default)')
 parser.add_argument('--target_class', type=str, help='Name target class (random by default)')
-parser.add_argument('--counterfactual_frame_count', default=100, type=int,
-        help='Number of frames to output [default: 100]')
+parser.add_argument('--counterfactual_frame_count', default=60, type=int,
+        help='Number of frames to output [default: 60]')
 parser.add_argument('--classifier_name', type=str, default='active_learning_classifier',
         help='Name of the classifier to use [default: active_learning_classifier]')
 parser.add_argument('--speed', type=float, default=.0001, help='Learning rate for counterfactual descent [default: .0001]')
