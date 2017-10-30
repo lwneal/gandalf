@@ -3,12 +3,14 @@ set -e
 set -x
 TARGET_DIR=$1
 MODE=$2
-RUN_NAME=$3
+STRATEGY=$3
+RUN_NAME=$4
 
-if [[ $# -lt 3 ]]; then
+if [[ $# -lt 4 ]]; then
     echo "Usage: $0 target_dir oracle_dir mode use_trajectories"
     echo "target_dir: a result_dir with a good unsupervised model"
-    echo "mode: semisupervised, uncertainty_sampling, counterfactual"
+    echo "mode: uncertainty_sampling, counterfactual"
+    echo "strategy: random, uncertainty-random, random-nearest, ..."
     echo "run_name: unique name for this run"
     exit
 fi
@@ -23,6 +25,7 @@ echo "Generating seed data for $CLASS_COUNT classes"
 
 echo "Running Experiment 1:"
 echo "  TARGET_DIR $TARGET_DIR"
+echo "  STRATEGY $STRATEGY"
 echo "  MODE $MODE"
 echo ""
 echo "WARNING: Deleting all active learning labels in $TARGET_DIR and beginning experiment 1 in 5 seconds..."
@@ -50,7 +53,7 @@ python experiments/train_active_classifier.py --result_dir /mnt/results/$TARGET_
 echo "Generating additional labels using sampling mode: $MODE"
 for i in `seq 0 5 200`; do
     echo "Generating labels $i"
-    python experiments/generate_counterfactual.py --result_dir /mnt/results/$TARGET_DIR --classifier_name active_learning_classifier --counterfactual_frame_count $FRAME_COUNT --counterfactual_max_iters $MAX_ITERS --count 5
+    python experiments/generate_counterfactual.py --result_dir /mnt/results/$TARGET_DIR --classifier_name active_learning_classifier --counterfactual_frame_count $FRAME_COUNT --counterfactual_max_iters $MAX_ITERS --count 5 --strategy $STRATEGY
     python experiments/oracle.py --result_dir /mnt/results/$TARGET_DIR --oracle_pth /mnt/results/$TARGET_DIR/oracle.pth
     python experiments/train_active_classifier.py --result_dir /mnt/results/$TARGET_DIR --experiment_type $MODE --classifier_name active_learning_classifier --init_label_count $INIT_LABELS
 done

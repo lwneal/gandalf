@@ -166,27 +166,52 @@ def generate_trajectory_active(networks, dataloader, strategy='random', **option
     max_iters = options['counterfactual_max_iters']
     result_dir = options['result_dir']
 
-    if strategy == 'uncertainty':
-        # Start with an example that cannot easily be classified
-        start_class, start_score, start_img = select_uncertain_example(dataloader, netE, netC)
-    elif strategy == 'random':
-        # Start with a random example
-        start_class, start_score, start_img = select_uncertain_example(dataloader, netE, netC, pool_size=1)
+    if strategy == 'random':
+        # Start with a random example, move it to a random class
+        most_likely_class, least_likely_class, start_score, start_img = select_uncertain_example(dataloader, netE, netC, pool_size=1)
+        start_class = most_likely_class
+        target_class = random_target_class(dataloader, start_class)
+    elif strategy == 'random-nearest':
+        # Start with a random example, move it to the nearest decision boundary
+        most_likely_class, least_likely_class, start_score, start_img = select_uncertain_example(dataloader, netE, netC, pool_size=1)
+        start_class = most_likely_class
+        target_class = most_likely_class
+    elif strategy == 'uncertainty-random':
+        # Start with an uncertain example, move it to a random class
+        most_likely_class, least_likely_class, start_score, start_img = select_uncertain_example(dataloader, netE, netC)
+        start_class = most_likely_class
+        target_class = random_target_class(dataloader, start_class)
+    elif strategy == 'uncertainty-nearest':
+        # Start with an uncertain example, move it to the nearest class
+        most_likely_class, least_likely_class, start_score, start_img = select_uncertain_example(dataloader, netE, netC)
+        start_class = most_likely_class
+        target_class = most_likely_class
+    elif strategy == 'certainty-random':
+        # Start with an easy-to-classify sample, move it to the least likely class
+        start_class, start_score, start_img = select_uncertain_example(dataloader, netE, netC, reverse=True)
+        start_class = most_likely_class
+        target_class = random_target_class(dataloader, start_class)
+    elif strategy == 'certainty-furthest':
+        # Start with an easy-to-classify sample, move it to the least likely class
+        start_class, start_score, start_img = select_uncertain_example(dataloader, netE, netC, reverse=True)
+        start_class = most_likely_class
+        target_class = least_likely_class
     else:
         raise ValueError("Unknown strategy")
 
-    # Pick a random class to move it toward
-    target_class = random_target_class(dataloader, start_class)
 
     # Generate a path in latent space from start_img to a known classification
     z = netE(Variable(start_img))
     z_trajectory = generate_z_trajectory(z, target_class, netC, dataloader, speed, momentum_mu, max_iters=max_iters)
 
-    # The user starts at the target and moves back toward the original point
-    z_trajectory = z_trajectory[::-1]
-
-    # Active Learning trajectories are generated in reversed labeling order
-    video_filename = make_video_filename(result_dir, dataloader, target_class, start_class)
+    if strategy.startswith('certainty'):
+        # We start out at a known point, so no need to reverse
+        video_filename = make_video_filename(result_dir, dataloader, start_class, target_class)
+    else:
+        # In the UI we start at the target and move back toward the original point
+        z_trajectory = z_trajectory[::-1]
+        # Active Learning trajectories are generated in reversed labeling order
+        video_filename = make_video_filename(result_dir, dataloader, target_class, start_class)
 
     sampled_trajectory = sample_trajectory(z_trajectory, output_samples=output_frame_count)
 
@@ -208,26 +233,33 @@ def generate_trajectory_active(networks, dataloader, strategy='random', **option
     vid.finish()
 
 
-def select_uncertain_example(dataloader, netE, netC, pool_size=100):
+def select_uncertain_example(dataloader, netE, netC, pool_size=100, reverse=False):
     print("Performing uncertainty sampling with dataloader {}".format(dataloader))
     images = []
     certainties = []
-    classes = []
-    # hack: batch size here is always 1
-    # TODO: select the most uncertain N examples
+    most_likely_classes = []
+    least_likely_classes = []
+
     for i, (img, label, attr) in enumerate(dataloader):
         images.append(img)
         z = netE(Variable(img))
-        certainty, class_idx = torch.exp(netC(z)).max(1)
+        preds = torch.exp(netC(z))
+        certainty, class_idx = preds.max(1)
+        uncertainty, min_idx = preds.min(1)
         certainties.append(to_np(certainty)[0])
-        classes.append(to_np(class_idx)[0])
+        most_likely_classes.append(to_np(class_idx)[0])
+        least_likely_classes.append(to_np(min_idx)[0])
         if i > pool_size:
             break
-    idx = np.argmin(certainties)
+    if reverse:
+        idx = np.argmax(certainties)
+    else:
+        idx = np.argmin(certainties)
     selected_image = images[idx]
-    selected_class = classes[idx]
+    most_likely_class = most_likely_classes[idx]
+    least_likely_class = least_likely_classes[idx]
     selected_certainty = certainties[idx]
-    return selected_class, selected_certainty, selected_image
+    return most_likely_class, least_likely_class, selected_certainty, selected_image
 
 
 # Selects a class different from the start class
