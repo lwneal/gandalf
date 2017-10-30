@@ -35,7 +35,7 @@ classifier_name = options['classifier_name']
 result_dir = options['result_dir']
 
 # We start with a small set of ground-truth labels to seed the classifier: 1 label per class
-train_dataloader = CustomDataloader(fold='train', **options)
+train_dataloader = CustomDataloader(fold='train', shuffle=False, **options)
 # We can also test while training to get data
 test_dataloader = CustomDataloader(fold='test', **options)
 
