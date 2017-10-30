@@ -191,11 +191,10 @@ complementary_points = np.array(extra_points)
 complementary_labels = np.array(extra_labels)
 """
 
-"""
-if len(active_points) < 10000:
+training_len = 4000 + len(active_points) + len(complementary_points)
+if len(active_points) < training_len:
     print("Padding active label dataset for training stability")
-    active_points, active_labels = augment_to_length(active_points, active_labels, required_len=4096)
-"""
+    active_points, active_labels = augment_to_length(active_points, active_labels, required_len=training_len)
 
 print("Re-training classifier {} using {} active-learning label points".format(
     classifier_name, len(active_points) + len(complementary_points)))
