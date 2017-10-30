@@ -176,7 +176,7 @@ def generate_trajectory_active(networks, dataloader, strategy='random', **option
 
     # Generate a path in latent space from start_img to a known classification
     z = netE(Variable(start_img))
-    z_trajectory = generate_z_trajectory(z, target_class, netC, dataloader, speed, momentum_mu)
+    z_trajectory = generate_z_trajectory(z, target_class, netC, dataloader, speed, momentum_mu, max_iters=max_iters)
 
     # The user starts at the target and moves back toward the original point
     z_trajectory = z_trajectory[::-1]
