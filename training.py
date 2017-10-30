@@ -334,7 +334,7 @@ def train_active_learning(networks, optimizers, active_points, active_labels, co
             # A simpler form of complementary label loss: minimize softmax output
             N, K = class_predictions.size()
             y_preds = torch.exp(torch.gather(class_predictions, 1, labels.view(-1,1)))
-            errNeg = learning_rate * (y_preds.squeeze(1) * (1 - is_positive_mask)).sum()
+            errNeg = .001 * learning_rate * (y_preds.squeeze(1) * (1 - is_positive_mask)).sum()
         else:
             errNeg = errPos * 0
 

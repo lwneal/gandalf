@@ -166,8 +166,14 @@ def generate_trajectory_active(networks, dataloader, strategy='random', **option
     max_iters = options['counterfactual_max_iters']
     result_dir = options['result_dir']
 
-    # Start with an example that cannot easily be classified
-    start_class, start_score, start_img = select_uncertain_example(dataloader, netE, netC)
+    if strategy == 'uncertainty':
+        # Start with an example that cannot easily be classified
+        start_class, start_score, start_img = select_uncertain_example(dataloader, netE, netC)
+    elif strategy == 'random':
+        # Start with a random example
+        start_class, start_score, start_img = select_uncertain_example(dataloader, netE, netC, pool_size=1)
+    else:
+        raise ValueError("Unknown strategy")
 
     # Pick a random class to move it toward
     target_class = random_target_class(dataloader, start_class)
@@ -202,7 +208,7 @@ def generate_trajectory_active(networks, dataloader, strategy='random', **option
     vid.finish()
 
 
-def select_uncertain_example(dataloader, netE, netC, max_points=100):
+def select_uncertain_example(dataloader, netE, netC, pool_size=100):
     print("Performing uncertainty sampling with dataloader {}".format(dataloader))
     images = []
     certainties = []
@@ -215,7 +221,7 @@ def select_uncertain_example(dataloader, netE, netC, max_points=100):
         certainty, class_idx = torch.exp(netC(z)).max(1)
         certainties.append(to_np(certainty)[0])
         classes.append(to_np(class_idx)[0])
-        if i > max_points:
+        if i > pool_size:
             break
     idx = np.argmin(certainties)
     selected_image = images[idx]
