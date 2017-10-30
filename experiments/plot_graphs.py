@@ -7,6 +7,7 @@ import sys
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--result_dir', required=True, help='Output directory for images and model checkpoints')
+parser.add_argument('--baseline_eval', help='Eval file to compare against')
 
 options = vars(parser.parse_args())
 
@@ -34,10 +35,12 @@ for f in filenames:
     evals.append(json.load(open(f)))
 
 print("Generating active learning plots")
-for f in filenames:
-    dataset_name = options['dataset'].split('/')[-1].lower().split('.')[0]
-    baseline_file = '/mnt/results/{}_uncertainty_sampling.json'.format(dataset_name)
-    plotting.compare_active_learning(f, baseline_file, dataset_name.upper(), 'Proposed Method', 'Uncertainty Sampling')
+if options['baseline_eval']:
+    for f in filenames:
+        dataset_name = options['dataset'].split('/')[-1].lower().split('.')[0]
+        #baseline_file = '/mnt/results/{}_uncertainty_sampling.json'.format(dataset_name)
+        plotting.compare_active_learning(f, options['baseline_eval'],
+            dataset_name.upper(), 'Proposed Method', 'Uncertainty Sampling')
 
 
 print("Loaded {} evaluation reports".format(len(evals)))
