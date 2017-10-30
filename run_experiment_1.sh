@@ -35,6 +35,8 @@ rm -Rf /mnt/results/$TARGET_DIR/labels
 # Reset active classifier
 rm -f /mnt/results/$TARGET_DIR/active_learning_classifier_*.pth
 
+INIT_LABELS=100
+
 MAX_ITERS=1000
 FRAME_COUNT=60
 if [[ "$MODE" = "uncertainty_sampling" ]]; then
@@ -51,6 +53,6 @@ for i in `seq 0 5 150`; do
         python experiments/generate_counterfactual.py --result_dir /mnt/results/$TARGET_DIR --classifier_name active_learning_classifier --counterfactual_frame_count $FRAME_COUNT --counterfactual_max_iters $MAX_ITERS
     done
     python experiments/oracle.py --result_dir /mnt/results/$TARGET_DIR --oracle_result_dir /mnt/results/$ORACLE_DIR
-    python experiments/train_active_classifier.py --result_dir /mnt/results/$TARGET_DIR --experiment_type $MODE --classifier_name active_learning_classifier
+    python experiments/train_active_classifier.py --result_dir /mnt/results/$TARGET_DIR --experiment_type $MODE --classifier_name active_learning_classifier --init_label_count $INIT_LABELS
 done
 
