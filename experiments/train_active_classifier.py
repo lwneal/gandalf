@@ -138,7 +138,9 @@ import numpy as np
 if options['experiment_type'] == 'counterfactual':
     active_points, active_labels, complementary_points, complementary_labels = load_active_learning_trajectories(labels, train_dataloader, margin=2)
 elif options['experiment_type'] == 'uncertainty_sampling':
-    active_points, active_labels, complementary_points, complementary_labels = load_active_learning_trajectories(labels, train_dataloader, margin=0)
+    active_points, active_labels = load_active_learning_points(labels, train_dataloader)
+    complementary_points = np.array([])
+    complementary_labels = np.array([])
 elif options['experiment_type'] == 'semisupervised':
     active_points, active_labels = load_active_learning_points(labels, train_dataloader)
     complementary_points = np.array([])
