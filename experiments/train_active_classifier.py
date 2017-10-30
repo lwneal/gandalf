@@ -17,6 +17,7 @@ parser.add_argument('--classifier_name', type=str, default='active_learning_clas
 parser.add_argument('--init_label_count', type=int, help='Number of labels to initialize with. [default: 1000]', default=1000)
 parser.add_argument('--query_count', type=int, help='Number of active learning queries to apply')
 parser.add_argument('--experiment_type', type=str, help='One of: semisupervised, uncertainty_sampling, counterfactual')
+parser.add_argument('--best_epoch', type=bool, default=False, help='Select best-fit epoch (only use for oracle training)')
 
 parser.add_argument('--use_negative_labels', type=is_true, default=True, help='If False, ignore all negative labels')
 options = vars(parser.parse_args())
@@ -199,7 +200,9 @@ if len(active_points) < training_len:
 print("Re-training classifier {} using {} active-learning label points".format(
     classifier_name, len(active_points) + len(complementary_points)))
 
-MAX_EPOCHS = 25
+best_epoch = 0
+best_acc = 0
+MAX_EPOCHS = 10
 for classifier_epoch in range(MAX_EPOCHS):
     # Apply learning rate decay and train for one pseudo-epoch
     for optimizer in optimizers.values():
@@ -208,15 +211,25 @@ for classifier_epoch in range(MAX_EPOCHS):
     train_active_learning(networks, optimizers, active_points, active_labels, complementary_points, complementary_labels, **options)
     print("Ran train_active_learning in {:.3f}s".format(time.time() - start_time))
 
-# Evaluate against the test set
-print("Evaluating {}".format(foldname))
-start_time = time.time()
-new_results = evaluate_classifier(networks, test_dataloader, verbose=False, fold=foldname, skip_reconstruction=True, **options)
-print("Ran evaluate_classifier in {:.3f}s".format(time.time() - start_time))
+    if options['best_epoch'] == False and classifier_epoch < MAX_EPOCHS - 1:
+        continue
 
-print("Results:")
-pprint(new_results)
+    # Evaluate against the test set
+    print("Evaluating {}".format(foldname))
+    start_time = time.time()
+    new_results = evaluate_classifier(networks, test_dataloader, verbose=False, fold=foldname, skip_reconstruction=True, **options)
+    print("Ran evaluate_classifier in {:.3f}s".format(time.time() - start_time))
+
+    print("Results:")
+    pprint(new_results)
+    if new_results[foldname]['accuracy'] > best_acc:
+        best_acc = new_results[foldname]['accuracy']
+        best_results = new_results
+        best_epoch = classifier_epoch
 
 print("Trained with {} active points, {} negative points".format(len(active_points), len(complementary_points)))
 save_networks({classifier_name: networks[classifier_name]}, epoch=current_epoch, result_dir=options['result_dir'])
-save_evaluation(new_results, options['result_dir'], get_current_epoch(options['result_dir']))
+save_evaluation(best_results, options['result_dir'], get_current_epoch(options['result_dir']))
+print("Best Results:")
+pprint(best_results)
+print("Best epoch: {}".format(best_epoch))
