@@ -87,7 +87,6 @@ def load_active_learning_trajectories(labels, train_dataloader, margin):
 
         # These are normal labels, eg "this picture is a cat"
         # If margin = 2 then we throw away 2 points on either side of the boundary
-        margin = 1
         left = max(0, split_point - margin)
         right = min(split_point + margin, len(points) - 1)
         active_points.extend(np.squeeze(points[:left], axis=1))
@@ -137,7 +136,7 @@ print("Loaded {} labels from {}".format(len(labels), active_label_dir))
 import numpy as np
 
 if options['experiment_type'] == 'counterfactual':
-    active_points, active_labels, complementary_points, complementary_labels = load_active_learning_trajectories(labels, train_dataloader, margin=2)
+    active_points, active_labels, complementary_points, complementary_labels = load_active_learning_trajectories(labels, train_dataloader, margin=3)
 elif options['experiment_type'] == 'uncertainty_sampling':
     active_points, active_labels = load_active_learning_points(labels, train_dataloader)
     complementary_points = np.array([])
