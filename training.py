@@ -310,7 +310,7 @@ def train_active_learning(networks, optimizers, active_points, active_labels, co
     # Train on combined normal and complementary labels
     dataloader = generator(points, labels, is_positive)
 
-    learning_rate = .1
+    complementary_weight = 0.1
     correct = 0
     total = 0
 
@@ -321,6 +321,8 @@ def train_active_learning(networks, optimizers, active_points, active_labels, co
         latent_points = Variable(latent_points).cuda()
         labels = Variable(labels).cuda()
         is_positive_mask = Variable(is_positive_mask).cuda()
+        is_negative_mask = 1 - is_positive_mask
+        negative_count = is_negative_mask.sum().data.cpu().numpy()[0]
 
         ############################
         # Update E(X) and C(Z) based on positive labels
@@ -330,11 +332,21 @@ def train_active_learning(networks, optimizers, active_points, active_labels, co
         class_predictions = netC(latent_points)
         errPos = masked_nll_loss(class_predictions, labels, is_positive_mask)
 
-        if use_negative_labels:
-            # A simpler form of complementary label loss: minimize softmax output
+        if use_negative_labels and negative_count > 0:
+            # Pairwise Comparison Complementary Loss
+            # https://arxiv.org/pdf/1705.07541.pdf
+            # Compute g_y(x) - g_{y'}(x) as a mask
             N, K = class_predictions.size()
-            y_preds = torch.exp(torch.gather(class_predictions, 1, labels.view(-1,1)))
-            errNeg = .001 * learning_rate * (y_preds.squeeze(1) * (1 - is_positive_mask)).sum()
+            y_preds = torch.gather(class_predictions, 1, labels.view(-1,1))
+            y_preds = y_preds.repeat(1, K)
+
+            # Now apply l(x) and sum
+            pairwise_comparison_losses = torch.sigmoid(torch.exp(y_preds) - torch.exp(class_predictions))
+            mask = is_negative_mask.repeat(K, 1).transpose(1, 0)
+            errNeg = torch.sum(pairwise_comparison_losses * mask)
+
+            # Normalize so each example has equal weight
+            errNeg *= complementary_weight / (K * negative_count)
         else:
             errNeg = errPos * 0
 
