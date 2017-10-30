@@ -188,12 +188,12 @@ def generate_trajectory_active(networks, dataloader, strategy='random', **option
         target_class = most_likely_class
     elif strategy == 'certainty-random':
         # Start with an easy-to-classify sample, move it to the least likely class
-        start_class, start_score, start_img = select_uncertain_example(dataloader, netE, netC, reverse=True)
+        most_likely_class, least_likely_class, start_score, start_img = select_uncertain_example(dataloader, netE, netC, reverse=True)
         start_class = most_likely_class
         target_class = random_target_class(dataloader, start_class)
     elif strategy == 'certainty-furthest':
         # Start with an easy-to-classify sample, move it to the least likely class
-        start_class, start_score, start_img = select_uncertain_example(dataloader, netE, netC, reverse=True)
+        most_likely_class, least_likely_class, start_score, start_img = select_uncertain_example(dataloader, netE, netC, reverse=True)
         start_class = most_likely_class
         target_class = least_likely_class
     else:
