@@ -24,7 +24,6 @@ echo "Running Experiment 1:"
 echo "  TARGET_DIR $TARGET_DIR"
 echo "  ORACLE_DIR $ORACLE_DIR"
 echo "  MODE $MODE"
-echo "  TRAJECTORIES $USE_TRAJECTORIES "
 echo ""
 echo "WARNING: Deleting all active learning labels in $TARGET_DIR and beginning experiment 1 in 5 seconds..."
 sleep 5
