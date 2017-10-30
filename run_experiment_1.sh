@@ -43,6 +43,7 @@ if [[ "$MODE" = "uncertainty_sampling" ]]; then
 fi
 
 # Seed labels are now included within train_active_classifier
+python experiments/train_active_classifier.py --result_dir /mnt/results/$TARGET_DIR --experiment_type $MODE --classifier_name active_learning_classifier --init_label_count $INIT_LABELS
 
 echo "Generating additional labels using sampling mode: $MODE"
 for i in `seq 0 5 150`; do
