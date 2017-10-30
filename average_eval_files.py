@@ -17,6 +17,5 @@ if __name__ == '__main__':
     averages = {}
     for k in keys:
         values = [e[k]['accuracy'] for e in eval_reports]
-        print(values)
         averages[k] = {'accuracy': sum(values) / len(values)}
     print(json.dumps(averages, indent=2, sort_keys=True))

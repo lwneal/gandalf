@@ -76,3 +76,20 @@ def compare_active_learning(eval_filename, baseline_eval_filename, title=None, t
     plt.savefig(fig_filename)
     show(fig_filename)
     return fig_filename
+
+
+def compare_multiple(list_of_filenames, list_of_names, output_filename):
+    styles = ['-', '--', '-.', ':', '-', 's', 'v']
+    assert len(list_of_filenames) <= len(styles)
+    for filename, style in zip(list_of_filenames, styles):
+        x, y = parse_active_learning_series(filename)
+        plt.plot(x, y, style)
+    plt.ylabel('Accuracy')
+    plt.xlabel('Number of Queries')
+    plt.legend(list_of_names)
+    plt.suptitle('Active Learning')
+
+    plt.savefig(output_filename)
+    show(output_filename)
+    return output_filename
+
