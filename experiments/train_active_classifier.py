@@ -226,9 +226,10 @@ for classifier_epoch in range(MAX_EPOCHS):
         best_acc = new_results[foldname]['accuracy']
         best_results = new_results
         best_epoch = classifier_epoch
+        print("Saving network with accuracy {}".format(best_acc))
+        save_networks({classifier_name: networks[classifier_name]}, epoch=current_epoch, result_dir=options['result_dir'])
 
 print("Trained with {} active points, {} negative points".format(len(active_points), len(complementary_points)))
-save_networks({classifier_name: networks[classifier_name]}, epoch=current_epoch, result_dir=options['result_dir'])
 save_evaluation(best_results, options['result_dir'], get_current_epoch(options['result_dir']))
 print("Best Results:")
 pprint(best_results)
