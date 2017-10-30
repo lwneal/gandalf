@@ -58,10 +58,9 @@ def plot_active_learning(eval_filename="results_epoch_0025.json"):
 def compare_active_learning(eval_filename, baseline_eval_filename, title=None, this_name='This Method', baseline_name='Baseline'):
     try:
         x, y = parse_active_learning_series(eval_filename)
-        x2, y2 = parse_active_learning_series(baseline_eval_filename)
     except NoDataAvailable:
         return None
-    
+    x2, y2 = parse_active_learning_series(baseline_eval_filename)
     print("Comparing {} with baseline {}".format(eval_filename, baseline_eval_filename))
 
     plt.plot(x, y, "g") # this method
