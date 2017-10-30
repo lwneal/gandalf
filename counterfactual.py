@@ -285,7 +285,7 @@ def sample_trajectory(zt, output_samples):
     total_distance = sum(distances)
     distance_per_sample = total_distance / output_samples 
 
-    samples = []
+    samples = [zt[0]]
     cumulative_distance = 0
     for i in range(len(distances)):
         if len(samples) * distance_per_sample <= cumulative_distance:
