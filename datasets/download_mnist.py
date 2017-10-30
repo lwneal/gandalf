@@ -10,7 +10,7 @@ from tqdm import tqdm
 
 DATA_DIR = '/mnt/data'
 DOWNLOAD_URL = 'https://s3.amazonaws.com/img-datasets/mnist.npz'
-LATEST_MD5 = 'a79bc1a9a620747e44b362121986c3f2'
+LATEST_MD5 = ''
 
 
 def save_set(fold, x, y, suffix='png'):
@@ -39,14 +39,12 @@ def download_mnist_data(path='mnist.npz'):
     if not os.path.exists(path):
         response = requests.get(DOWNLOAD_URL)
         open(path, 'wb').write(response.content)
-    f = np.load(path)
-    x_train, y_train = f['x_train'], f['y_train']
-    x_test, y_test = f['x_test'], f['y_test']
-    
-    # Use last 5k examples as a validation set
-    x_val, y_val = f['x_train'][-5000:], f['y_train'][-5000:]
-    x_train, y_train = x_train[:-5000], y_train[:-5000]
-    f.close()
+    with np.load(path) as f:
+        x_test, y_test = f['x_test'], f['y_test']
+        VAL_SIZE = 5000
+        # Use last 5k examples as a validation set
+        x_train, y_train = f['x_train'][:-VAL_SIZE], f['y_train'][:-VAL_SIZE]
+        x_val, y_val = f['x_train'][-VAL_SIZE:], f['y_train'][-VAL_SIZE:]
     return (x_train, y_train), (x_test, y_test), (x_val, y_val)
 
 
@@ -91,7 +89,7 @@ def download_mnist(latest_md5):
     for example in val:
         example['fold'] = 'validation'
     with open('mnist.dataset', 'w') as fp:
-        for example in train + test:
+        for example in train + test + val:
             fp.write(json.dumps(example, sort_keys=True) + '\n')
 
     # For open set classification experiments
