@@ -93,9 +93,11 @@ def train_counterfactual(networks, optimizers, dataloader, epoch=None, **options
         noise = gen_noise(noise, spherical)
         fake = netG(noise)
         reencoded = netE(fake)
-        errEG = torch.mean((reencoded - noise) ** 2)
+        errEG = torch.mean((reencoded - noise) ** 2) * options['autoencoder_weight']
         if options['perceptual_loss']:
             errEG += torch.mean((netP(netG(netE(images))) - netP(images))**2)
+        # Crazy hack: increase autoencoder weight with each epoch
+        errEG *= epoch
         errEG.backward()
         ############################
 
@@ -111,9 +113,8 @@ def train_counterfactual(networks, optimizers, dataloader, epoch=None, **options
                   errEG.data[0])
             print(msg)
             caption = "Epoch {:04d} iter {:05d}".format(epoch, i)
-            demo_gen = netG(fixed_noise)
             reconstructed = netG(netE(images))
-            img = torch.cat([images[:12], reconstructed.data[:12], demo_gen.data[:12]])
+            img = torch.cat([images[:12], reconstructed.data[:12], fake.data[:12]])
             filename = "{}/demo_{}.jpg".format(result_dir, int(time.time()))
             imutil.show(img, caption=msg, font_size=8, filename=filename)
     return video_filename
