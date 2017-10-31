@@ -248,10 +248,8 @@ def train_active_learning(networks, optimizers, active_points, active_labels, co
         negative_count = is_negative_mask.sum().data.cpu().numpy()[0]
 
         ############################
-        # Update E(X) and C(Z) based on positive labels
-        # Keep G(Z) constant
+        # Update C(Z) only
         ############################
-        generated_images = netG(latent_points).detach()
         class_predictions = netC(latent_points)
         errPos = masked_nll_loss(class_predictions, labels, is_positive_mask)
 
@@ -276,7 +274,6 @@ def train_active_learning(networks, optimizers, active_points, active_labels, co
         errC = errPos + errNeg
         errC.backward()
         optimizerC.step()
-        optimizerE.step()
         ############################
 
         _, predicted = class_predictions.max(1)
