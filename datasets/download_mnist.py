@@ -94,11 +94,11 @@ def download_mnist(latest_md5):
 
     # For open set classification experiments
     with open('mnist-05.dataset', 'w') as fp:
-        for example in train + test:
+        for example in train + test + val:
             if int(example['label']) < 6:
                 fp.write(json.dumps(example) + '\n')
     with open('mnist-69.dataset', 'w') as fp:
-        for example in train + test:
+        for example in train + test + val:
             if int(example['label']) >= 6:
                 fp.write(json.dumps(example) + '\n')
 
