@@ -86,6 +86,6 @@ for trajectory_filename in trajectory_filenames:
     }
     label_filename = os.path.join(labels_dir, trajectory_id + '.json')
     with open(label_filename, 'w') as fp:
-        fp.write(json.dumps(label, indent=2))
+        fp.write(json.dumps(label, indent=2, sort_keys=True))
 print("Oracle labeled {} trajectories".format(len(trajectories)))
 
