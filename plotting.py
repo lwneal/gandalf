@@ -79,7 +79,7 @@ def compare_active_learning(eval_filename, baseline_eval_filename, title=None, t
 
 
 def compare_multiple(list_of_filenames, list_of_names, output_filename):
-    styles = ['-', '--', '-.', ':', '-', 's', 'v']
+    styles = ['-', '--', '-.', ':', '-', '--', '-.', ':']
     assert len(list_of_filenames) <= len(styles)
     for filename, style in zip(list_of_filenames, styles):
         x, y = parse_active_learning_series(filename)

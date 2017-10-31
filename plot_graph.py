@@ -7,16 +7,21 @@ import plotting
 
 if __name__ == '__main__':
     filenames = [
-        'avg_random.json',
-        'avg_randomnearest.json',
-        'avg_uncertaintynearest.json',
-        'avg_uncertainty_random.json',
-        'uncertainty_sampling_baseline.json'
+        'uncertainty_sampling-monday.json',
+        'random-monday.json',
+        'random_nearest-monday.json',
+        'uncertainty_nearest-monday.json',
+        'uncertainty_random-monday.json',
+        'certainty_random-monday.json',
+        'certainty_furthest-monday.json',
     ]
     names = [
-            'CF Random',
-            'CF Random-Nearest',
-            'CF Uncertainty Nearest',
-            'CF Uncertainty Random',
-            'Uncertainty Sampling Baseline']
+        'Uncertainty Sampling',
+        'CF Random-Random',
+        'CF Random-Nearest',
+        'CF Uncertainty-Nearest',
+        'CF Uncertainty-Random',
+        'CF Certainty-Random',
+        'CF Certainty-Furthest',
+    ]
     plotting.compare_multiple(filenames, names, 'comparison.png')
