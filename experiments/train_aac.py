@@ -24,7 +24,7 @@ parser.add_argument('--batch_size', type=int, default=64, help='Batch size [defa
 parser.add_argument('--lr', type=float, default=0.0001, help='learning rate, [default: 0.0001]')
 parser.add_argument('--beta1', type=float, default=0.5, help='beta1 for adam. [default: 0.5]')
 parser.add_argument('--decay', type=float, default=0.9, help='Learning rate decay per epoch. [default: 0.9]')
-parser.add_argument('--weight-decay', type=float, default=1.0, help='Optimizer L2 weight decay [default: 1.0]')
+parser.add_argument('--weight_decay', type=float, default=1.0, help='Optimizer L2 weight decay [default: 1.0]')
 parser.add_argument('--random_horizontal_flip', type=is_true, default=False, help='Flip images during training. [default: False]')
 parser.add_argument('--delete_background', type=is_true, default=False, help='Delete non-foreground pixels from images [default: False]')
 parser.add_argument('--supervised_encoder', type=is_true, default=False, help='Train the encoder jointly with the classifier. [default: False]')
