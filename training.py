@@ -200,7 +200,7 @@ def train_active_learning(networks, optimizers, active_points, active_labels, co
     result_dir = options['result_dir']
     latent_size = options['latent_size']
     batch_size = options['batch_size']
-    use_negative_labels = options['use_negative_labels']
+    use_negative_labels = options['use_complementary_labels']
 
     is_positive = np.array([1.] * len(active_points) + [0] * len(complementary_points))
     if len(complementary_points) > 0:

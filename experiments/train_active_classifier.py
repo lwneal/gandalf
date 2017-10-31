@@ -20,7 +20,7 @@ parser.add_argument('--experiment_type', type=str, help='One of: semisupervised,
 parser.add_argument('--best_epoch', type=bool, default=False, help='Select best-fit epoch (only use for oracle training)')
 parser.add_argument('--classifier_epochs', type=int, default=10, help='Number of epochs')
 
-parser.add_argument('--use_negative_labels', type=is_true, default=True, help='If False, ignore all negative labels')
+parser.add_argument('--use_complementary_labels', type=is_true, default=True, help='If False, ignore all complementary labels')
 options = vars(parser.parse_args())
 
 # Import the rest of the project
