@@ -70,6 +70,11 @@ def train_counterfactual(networks, optimizers, dataloader, epoch=None, **options
             optimizerD.step()
         ###########################
 
+        # WGAN-GP
+        errGP = calc_gradient_penalty(netD, images.data, fake_images.data)
+        errGP.backward()
+        optimizerD.step()
+
         # Zero gradient for all networks
         netG.zero_grad()
         netE.zero_grad()
@@ -89,6 +94,8 @@ def train_counterfactual(networks, optimizers, dataloader, epoch=None, **options
         fake = netG(noise)
         reencoded = netE(fake)
         errEG = torch.mean((reencoded - noise) ** 2)
+        if options['perceptual_loss']:
+            errEG += torch.mean((netP(netG(netE(images))) - netP(images))**2)
         errEG.backward()
         ############################
 
@@ -104,7 +111,6 @@ def train_counterfactual(networks, optimizers, dataloader, epoch=None, **options
                   errEG.data[0])
             print(msg)
             caption = "Epoch {:04d} iter {:05d}".format(epoch, i)
-        if i % 100 == 0:
             demo_gen = netG(fixed_noise)
             reconstructed = netG(netE(images))
             img = torch.cat([images[:12], reconstructed.data[:12], demo_gen.data[:12]])

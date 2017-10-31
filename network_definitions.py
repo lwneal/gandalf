@@ -48,6 +48,41 @@ class discriminator28(nn.Module):
         return x.view(-1, 1).squeeze(1)
 
 
+class discriminator28instancenorm(nn.Module):
+    def __init__(self, latent_size=100, **kwargs):
+        super(self.__class__, self).__init__()
+        # 3x28x28
+        self.conv1 = nn.Conv2d(3,       64,      4, 2, 1, bias=False)
+        # 64x14x14
+        self.conv2 = nn.Conv2d(64,      128,     4, 2, 1, bias=False)
+        # 128x7x7
+        self.conv3 = nn.Conv2d(128,     256,     4, 2, 1, bias=False)
+        # 256x3x3
+        self.conv4 = nn.Conv2d(256,     1,     3, 1, 0, bias=False)
+        # 1x1x1
+        self.norm1 = nn.InstanceNorm2d(128)
+        self.norm2 = nn.InstanceNorm2d(256)
+        self.apply(weights_init)
+        self.cuda()
+
+    def forward(self, x):
+        x = self.conv1(x)
+        x = nn.LeakyReLU(0.2, inplace=True)(x)
+
+        x = self.conv2(x)
+        x = self.norm1(x)
+        x = nn.LeakyReLU(0.2, inplace=True)(x)
+
+        x = self.conv3(x)
+        x = self.norm2(x)
+        x = nn.LeakyReLU(0.2, inplace=True)(x)
+
+        x = self.conv4(x)
+        # Global average pooling
+        x = x.mean(-1).mean(-1)
+        return x.view(-1, 1).squeeze(1)
+
+
 class discriminator28dropout(nn.Module):
     def __init__(self, **kwargs):
         super(self.__class__, self).__init__()
@@ -458,6 +493,33 @@ class discriminator32(nn.Module):
         x = nn.LeakyReLU(0.2, inplace=True)(x)
         x = self.conv3(x)
         x = self.bn2(x)
+        x = nn.LeakyReLU(0.2, inplace=True)(x)
+        x = self.conv4(x)
+        # Global average pooling
+        x = x.mean(-1).mean(-1)
+        return x.view(-1, 1).squeeze(1)
+
+
+class discriminator32instancenorm(nn.Module):
+    def __init__(self, latent_size=100, **kwargs):
+        super(self.__class__, self).__init__()
+        self.conv1 = nn.Conv2d(3,      128,     4, 2, 1, bias=False)
+        self.conv2 = nn.Conv2d(128,     256,     4, 2, 1, bias=False)
+        self.conv3 = nn.Conv2d(256,     512,     4, 2, 1, bias=False)
+        self.conv4 = nn.Conv2d(512,     1,       4, 1, 0, bias=False)
+        self.ln1 = nn.InstanceNorm2d(256)
+        self.ln2 = nn.InstanceNorm2d(512)
+        self.apply(weights_init)
+        self.cuda()
+
+    def forward(self, x):
+        x = self.conv1(x)
+        x = nn.LeakyReLU(0.2, inplace=True)(x)
+        x = self.conv2(x)
+        x = self.ln1(x)
+        x = nn.LeakyReLU(0.2, inplace=True)(x)
+        x = self.conv3(x)
+        x = self.ln2(x)
         x = nn.LeakyReLU(0.2, inplace=True)(x)
         x = self.conv4(x)
         # Global average pooling
