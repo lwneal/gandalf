@@ -18,6 +18,7 @@ parser.add_argument('--init_label_count', type=int, help='Number of labels to in
 parser.add_argument('--query_count', type=int, help='Number of active learning queries to apply')
 parser.add_argument('--experiment_type', type=str, help='One of: semisupervised, uncertainty_sampling, counterfactual')
 parser.add_argument('--best_epoch', type=bool, default=False, help='Select best-fit epoch (only use for oracle training)')
+parser.add_argument('--classifier_epochs', type=int, default=10, help='Number of epochs')
 
 parser.add_argument('--use_negative_labels', type=is_true, default=True, help='If False, ignore all negative labels')
 options = vars(parser.parse_args())
@@ -169,7 +170,7 @@ print("Loaded {} trajectories totalling {} positive points and {} negative point
 	len(labels), len(active_points), len(complementary_points)))
 
 
-# Every run starts with a set of 1k labels
+# Every run starts with a set of eg. 1k initial labels
 INIT_LABELS = options['init_label_count']
 extra_points = []
 extra_labels = []
@@ -209,7 +210,7 @@ complementary_points = np.array(extra_points)
 complementary_labels = np.array(extra_labels)
 """
 
-training_len = 4000 + len(active_points) + len(complementary_points)
+training_len = 30 * 1000
 if len(active_points) < training_len:
     print("Padding active label dataset for training stability")
     active_points, active_labels = augment_to_length(active_points, active_labels, required_len=training_len)
@@ -219,8 +220,7 @@ print("Re-training classifier {} using {} active-learning label points".format(
 
 best_epoch = 0
 best_acc = 0
-MAX_EPOCHS = 10
-for classifier_epoch in range(MAX_EPOCHS):
+for classifier_epoch in range(options['classifier_epochs']):
     # Apply learning rate decay and train for one pseudo-epoch
     for optimizer in optimizers.values():
         optimizer.param_groups[0]['lr'] = .0002 * (.9 ** classifier_epoch)
@@ -228,7 +228,7 @@ for classifier_epoch in range(MAX_EPOCHS):
     train_active_learning(networks, optimizers, active_points, active_labels, complementary_points, complementary_labels, **options)
     print("Ran train_active_learning in {:.3f}s".format(time.time() - start_time))
 
-    if options['best_epoch'] == False and classifier_epoch < MAX_EPOCHS - 1:
+    if options['best_epoch'] == False and classifier_epoch < options['classifier_epochs'] - 1:
         continue
 
     # Evaluate against the test set

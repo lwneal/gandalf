@@ -38,7 +38,7 @@ rm -Rf /mnt/results/$TARGET_DIR/labels
 # Reset active classifier
 rm -f /mnt/results/$TARGET_DIR/active_learning_classifier_*.pth
 
-INIT_LABELS=1000
+INIT_LABELS=100
 
 MAX_ITERS=1000
 FRAME_COUNT=60
