@@ -96,7 +96,7 @@ def save_image_dataset(images, attributes):
     for filename, attrs in zip(images, attributes):
         line = attrs
         line['filename'] = filename
-        line['label'] = attrs['is_male']
+        line['label'] = attrs['is_young']
         fp.write(json.dumps(line) + '\n')
     fp.close()
 
