@@ -7,7 +7,7 @@ STRATEGY=$3
 RUN_NAME=$4
 
 if [[ $# -lt 4 ]]; then
-    echo "Usage: $0 target_dir oracle_dir mode use_trajectories"
+    echo "Usage: $0 target_dir mode strategy run_name"
     echo "target_dir: a result_dir with a good unsupervised model"
     echo "mode: uncertainty_sampling, counterfactual"
     echo "strategy: random, uncertainty-random, random-nearest, ..."
