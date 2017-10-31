@@ -37,11 +37,11 @@ def train_counterfactual(networks, optimizers, dataloader, epoch=None, **options
         netP.cuda()
 
     # By convention, if it ends with 'sphere' it uses the unit sphere
-    spherical_noise = type(netE).__name__.endswith('sphere')
+    spherical = type(netE).__name__.endswith('sphere')
 
     noise = Variable(torch.FloatTensor(batch_size, latent_size).cuda())
     fixed_noise = Variable(torch.FloatTensor(batch_size, latent_size).normal_(0, 1)).cuda()
-    if spherical_noise:
+    if spherical:
         clamp_to_unit_sphere(fixed_noise)
 
     label_one = torch.FloatTensor(batch_size).cuda().fill_(1)
@@ -63,145 +63,61 @@ def train_counterfactual(networks, optimizers, dataloader, epoch=None, **options
         ###########################
         for _ in range(5):
             netD.zero_grad()
-            D_real_output = netD(images)
-            errD_real = D_real_output.mean()
-            errD_real.backward(label_one)
-
-            noise.data.normal_(0, 1)
-            if spherical_noise:
-                noise = clamp_to_unit_sphere(noise)
-            fake = netG(noise)
-            fake = fake.detach()
-            D_fake_output = netD(fake)
-            errD_fake = D_fake_output.mean()
-            errD_fake.backward(label_minus_one)
-
-            gradient_penalty = calc_gradient_penalty(netD, images.data, fake.data, options['gradient_penalty_lambda'])
-            gradient_penalty.backward()
-
+            noise = gen_noise(noise, spherical)
+            fake_images = netG(noise).detach()
+            errD = netD(images).mean() - netD(fake_images).mean()
+            errD.backward()
             optimizerD.step()
         ###########################
 
         # Zero gradient for all networks
         netG.zero_grad()
         netE.zero_grad()
-        netC.zero_grad()
 
         ############################
-        # (2) Update G network:
-        # WGAN: minimize D(G(z))
+        # Realism: minimize D(G(z))
         ############################
-        noise.data.normal_(0, 1)
-        if spherical_noise:
-            noise = clamp_to_unit_sphere(noise)
-        fake = netG(noise)
-        DG_fake_output = netD(fake)
-        errG = DG_fake_output.mean() * options['gan_weight']
-        errG.backward(label_one)
+        noise = gen_noise(noise, spherical)
+        errG = netD(netG(noise)).mean() * options['gan_weight']
+        errG.backward()
         ###########################
 
         ############################
-        # (3) Update G(E()) network:
-        # Autoencoder: Minimize X - G(E(X))
+        # Consistency: minimize z - E(G(z))
         ############################
-        encoded = netE(images)
-        reconstructed = netG(encoded)
-        weight = options['autoencoder_lambda']
-        errGE = weight * torch.mean(torch.abs(reconstructed - images))
-        if options['perceptual_loss']:
-            errGE += weight * torch.mean(torch.abs(netP(reconstructed) - netP(images)))
-        errGE.backward()
-        ############################
-
-        ############################
-        # (4) Make reconstructed examples realistic
-        # WGAN: minimize D(G(E(x)))
-        ############################
-        encoded_real = encoded.detach()
-        DGE_output = netD(netG(encoded_real))
-        errDGE = DGE_output.mean() * options['gan_weight']
-        errDGE.backward(label_one)
-        ###########################
-
-        ############################
-        # (5) Update E(G()) network:
-        # Inverse Autoencoder: Minimize Z - E(G(Z))
-        ############################
-        noise.data.normal_(0, 1)
-        if spherical_noise:
-            noise = clamp_to_unit_sphere(noise)
+        noise = gen_noise(noise, spherical)
         fake = netG(noise)
         reencoded = netE(fake)
         errEG = torch.mean((reencoded - noise) ** 2)
         errEG.backward()
         ############################
 
-        # If joint training is disabled, stop training netE at this point
-        if not options['supervised_encoder']:
-            optimizerE.step()
-
-        ############################
-        # (6) Update C(Z) network:
-        # Categorical Cross-Entropy
-        ############################
-        latent_points = netE(images)
-        class_predictions = netC(latent_points)
-        errC = nll_loss(class_predictions, labels)
-        if not options['attributes_only']:
-            errC.backward(retain_graph=True)
-        ############################
-
-
-        ############################
-        # (7) Update C(Z) network for attributes:
-        # Binary Cross-Entropy
-        ############################
-        if netA:
-            attribute_predictions = netA(latent_points)
-            errA = binary_cross_entropy(attribute_predictions, attributes)
-            errA.backward()
-            optimizerA.step()
-        ############################
-
-        if options['supervised_encoder']:
-            optimizerE.step()
+        optimizerE.step()
         optimizerG.step()
-        if not options['attributes_only']:
-            optimizerC.step()
 
-        # https://discuss.pytorch.org/t/argmax-with-pytorch/1528/2
-        _, predicted = class_predictions.max(1)
-        correct += sum(predicted.data == labels.data)
-        total += len(predicted)
-
-        if netA:
-            attr_preds = (attribute_predictions > 0.5) == (attributes > 0.5)
-            attr_correct += torch.sum(attr_preds).data.cpu().numpy()[0]
-            attr_total += attr_preds.size()[0] * attr_preds.size()[1]
-
-        errD = errD_real + errD_fake
         if i % 25 == 0:
-            msg = '[{}][{}/{}] D:{:.3f} G:{:.3f} GP:{:.3f} GE:{:.3f} EG:{:.3f} EC: {:.3f} C_acc:{:.3f} A_acc: {:.3f}'
+            msg = '[{}][{}/{}] D:{:.3f} G:{:.3f} EG:{:.3f}'
             msg = msg.format(
                   epoch, i, len(dataloader),
                   errD.data[0],
                   errG.data[0],
-                  gradient_penalty.data[0],
-                  errGE.data[0],
-                  errEG.data[0],
-                  errC.data[0],
-                  float(correct) / total,
-                  float(attr_correct) / attr_total if attr_total > 0 else 0,
-                  errDGE.data[0])
+                  errEG.data[0])
             print(msg)
             caption = "Epoch {:04d} iter {:05d}".format(epoch, i)
-            demo_gen = netG(fixed_noise)
-            imutil.show(demo_gen, video_filename=video_filename, caption=caption, display=False)
         if i % 100 == 0:
+            demo_gen = netG(fixed_noise)
+            reconstructed = netG(netE(images))
             img = torch.cat([images[:12], reconstructed.data[:12], demo_gen.data[:12]])
             filename = "{}/demo_{}.jpg".format(result_dir, int(time.time()))
             imutil.show(img, caption=msg, font_size=8, filename=filename)
     return video_filename
+
+
+def gen_noise(noise, spherical_noise):
+    noise.data.normal_(0, 1)
+    if spherical_noise:
+        noise = clamp_to_unit_sphere(noise)
+    return noise
 
 
 def clamp_to_unit_sphere(x):

@@ -60,11 +60,11 @@ def save_networks(networks, epoch, result_dir):
         torch.save(weights, filename)
 
 
-def get_optimizers(networks, lr=.001, beta1=.5, beta2=.999, **options):
+def get_optimizers(networks, lr=.001, beta1=.5, beta2=.999, weight_decay=1.0, **options):
     optimizers = {}
     for name in networks:
         net = networks[name]
-        optimizers[name] = optim.Adam(net.parameters(), lr=lr, betas=(beta1, beta2), weight_decay=1.0)
+        optimizers[name] = optim.Adam(net.parameters(), lr=lr, betas=(beta1, beta2), weight_decay=weight_decay)
     return optimizers
 
 
