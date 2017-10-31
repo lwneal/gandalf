@@ -471,6 +471,7 @@ class generatorLeakyReLU128(nn.Module):
         x = self.conv6(x)
         x = nn.Sigmoid()(x)
         return x
+generator128 = generatorLeakyReLU128
 
 
 class discriminator32(nn.Module):
@@ -754,6 +755,7 @@ class discriminatorMultiscale128(nn.Module):
 
         wasserstein_distance = critic1 + critic2 + critic3
         return wasserstein_distance.squeeze()
+discriminator128 = discriminatorMultiscale128
 
 
 class encoder28(nn.Module):
@@ -1108,6 +1110,7 @@ class encoderLReLU128(nn.Module):
         x = x.squeeze(-1).squeeze(-1)
         x = self.fc1(x)
         return x
+encoder128 = encoderLReLU128
 
 
 class classifierMLP256(nn.Module):
