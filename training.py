@@ -254,7 +254,7 @@ def train_active_learning(networks, optimizers, active_points, active_labels, co
         errPos = masked_nll_loss(class_predictions, labels, is_positive_mask)
 
         if use_negative_labels and negative_count > 0:
-            epsilon = .0001
+            epsilon = .0001  # for numerical stability
             y_preds = torch.exp(torch.gather(class_predictions, 1, labels.view(-1, 1)))
             errNeg = -torch.mean(torch.log(1 - y_preds + epsilon) * is_negative_mask)
             errNeg *= complementary_weight / negative_count
