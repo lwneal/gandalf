@@ -267,6 +267,7 @@ def generate_z_trajectory(z, target_class, netC, dataloader,
         speed=.001, momentum_mu=.95, max_iters=1000):
     # Generate z_trajectory
     z_trajectory = []
+    z_trajectory.append(to_np(z))  # initial point
     momentum = Variable(torch.zeros(z.size())).cuda()
     target_label = torch.LongTensor(1)
     target_label[:] = int(target_class)
