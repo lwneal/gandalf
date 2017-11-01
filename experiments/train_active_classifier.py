@@ -21,6 +21,7 @@ parser.add_argument('--best_epoch', type=bool, default=False, help='Select best-
 parser.add_argument('--classifier_epochs', type=int, default=10, help='Number of epochs')
 
 parser.add_argument('--use_complementary_labels', type=is_true, default=True, help='If False, ignore all complementary labels')
+parser.add_argument('--weight_decay', type=float, default=1.0, help='Weight decay [default: 1.0]')
 options = vars(parser.parse_args())
 
 # Import the rest of the project

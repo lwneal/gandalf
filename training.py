@@ -233,7 +233,7 @@ def train_active_learning(networks, optimizers, active_points, active_labels, co
     # Train on combined normal and complementary labels
     dataloader = generator(points, labels, is_positive)
 
-    complementary_weight = 0.1
+    complementary_weight = 1.00
     correct = 0
     total = 0
 
@@ -254,20 +254,10 @@ def train_active_learning(networks, optimizers, active_points, active_labels, co
         errPos = masked_nll_loss(class_predictions, labels, is_positive_mask)
 
         if use_negative_labels and negative_count > 0:
-            # Pairwise Comparison Complementary Loss
-            # https://arxiv.org/pdf/1705.07541.pdf
-            # Compute g_y(x) - g_{y'}(x) as a mask
-            N, K = class_predictions.size()
-            y_preds = torch.gather(class_predictions, 1, labels.view(-1,1))
-            y_preds = y_preds.repeat(1, K)
-
-            # Now apply l(x) and sum
-            pairwise_comparison_losses = torch.sigmoid(torch.exp(y_preds) - torch.exp(class_predictions))
-            mask = is_negative_mask.repeat(K, 1).transpose(1, 0)
-            errNeg = torch.sum(pairwise_comparison_losses * mask)
-
-            # Normalize so each example has equal weight
-            errNeg *= complementary_weight / (K * negative_count)
+            epsilon = .0001
+            y_preds = torch.exp(torch.gather(class_predictions, 1, labels.view(-1, 1)))
+            errNeg = -torch.mean(torch.log(1 - y_preds + epsilon) * is_negative_mask)
+            errNeg *= complementary_weight / negative_count
         else:
             errNeg = errPos * 0
 
