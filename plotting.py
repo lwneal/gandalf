@@ -78,7 +78,7 @@ def compare_active_learning(eval_filename, baseline_eval_filename, title=None, t
     return fig_filename
 
 
-def compare_multiple(list_of_filenames, list_of_names, output_filename):
+def compare_multiple(list_of_filenames, list_of_names, output_filename, title=None):
     styles = ['-', '--', '-.', ':', '-', '--', '-.', ':']
     assert len(list_of_filenames) <= len(styles)
     plt.figure(figsize=(9.5,6))
@@ -88,7 +88,8 @@ def compare_multiple(list_of_filenames, list_of_names, output_filename):
     plt.ylabel('Accuracy')
     plt.xlabel('Number of Queries')
     plt.legend(list_of_names)
-    plt.suptitle('Active Learning')
+    if title:
+        plt.suptitle(title)
 
     plt.savefig(output_filename)
     show(output_filename)
