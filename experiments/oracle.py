@@ -37,55 +37,51 @@ import numpy as np
 import torch
 from torch.autograd import Variable
 
+def classify(z, netC, dataloader):
+    import torch
+    from torch.autograd import Variable
+    z = Variable(torch.FloatTensor(z)).cuda()
+    pred = netC(z)
+    pred_conf, pred_max = pred.max(1)
+    pred_idx = pred_max.data.cpu().numpy()[0]
+    return dataloader.lab_conv.labels[pred_idx]
+
+
 print("Loading all available active-learning trajectories...")
 trajectory_dir = os.path.join(options['result_dir'], 'trajectories')
 labels_dir = os.path.join(options['result_dir'], 'labels')
 if not os.path.exists(labels_dir):
     os.mkdir(labels_dir)
 trajectory_filenames = os.listdir(trajectory_dir)
-trajectories = []
 for trajectory_filename in trajectory_filenames:
     if not trajectory_filename.endswith('npy'):
         continue
     trajectory_filename = os.path.join(trajectory_dir, trajectory_filename)
     start_class = trajectory_filename.split('-')[-2]
     target_class = trajectory_filename.split('-')[-1].rstrip('.npy')
+    trajectory_id = trajectory_filename.split('-')[-3]
 
     points = np.load(trajectory_filename)
-    trajectories.append(points)
-    prev_pred_class = None
-    for i, p in enumerate(points):
-        z = Variable(torch.FloatTensor(p)).cuda()
-        pred = netC(z)
-        pred_conf, pred_max = pred.max(1)
-        pred_class_idx = pred_max.data.cpu().numpy()[0]
-        if i == 0:
-            true_start_class = dataloader.lab_conv.labels[pred_class_idx]
-        if pred_class_idx != dataloader.lab_conv.idx[start_class]:
+    labels = [classify(p, netC, dataloader) for p in points]
+    for left_boundary in range(len(labels)):
+        if labels[left_boundary] != start_class:
             break
-        prev_pred_class = pred_class_idx
-    for j, p in reversed(list(enumerate(points))):
-        z = Variable(torch.FloatTensor(p)).cuda()
-        pred = netC(z)
-        pred_conf, pred_max = pred.max(1)
-        pred_class_idx = pred_max.data.cpu().numpy()[0]
-        if j == len(points) - 1:
-            true_target_class = dataloader.lab_conv.labels[pred_class_idx]
-        if pred_class_idx != dataloader.lab_conv.idx[target_class]:
+    for right_boundary in range(len(labels), 0, -1):
+        if labels[right_boundary - 1] != target_class:
             break
-    print("Got trajectory {}".format(trajectory_filename))
-    trajectory_id = trajectory_filename.split('-')[-3]
+
     label = {
-            'start_label_point': i,
-            'end_label_point': j,
+            'start_label_point': left_boundary,
+            'end_label_point': right_boundary,
             'trajectory_id': trajectory_id,
             'start_class': start_class,
             'target_class': target_class,
-            'true_start_class': true_start_class,
-            'true_target_class': true_target_class,
+            'true_start_class': labels[0],
+            'true_target_class': labels[-1],
     }
     label_filename = os.path.join(labels_dir, trajectory_id + '.json')
     with open(label_filename, 'w') as fp:
         fp.write(json.dumps(label, indent=2, sort_keys=True))
-print("Oracle labeled {} trajectories".format(len(trajectories)))
+
+print("Oracle labeled {} trajectories".format(len(trajectory_filenames)))
 
