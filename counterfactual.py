@@ -206,7 +206,7 @@ def generate_trajectory_active(networks, dataloader, strategy='random', **option
 
     video_filename = make_video_filename(result_dir, dataloader, start_class, target_class)
 
-    sampled_trajectory = sample_trajectory(z_trajectory, output_samples=output_frame_count)
+    sampled_trajectory = sample_trajectory(z_trajectory, output_frame_count)
 
     # Save the trajectory in .npy to later load
     trajectory_filename = video_filename.replace('.mjpeg', '.npy')
@@ -289,7 +289,8 @@ def generate_z_trajectory(z, target_class, netC, dataloader,
         pred_confidence = np.exp(to_np(preds.max(1)[0])[0])
         z_trajectory.append(to_np(z))
         predicted_class_name = dataloader.lab_conv.labels[predicted_class]
-        print("Class: {} ({:.3f} confidence)...".format(predicted_class_name, pred_confidence))
+        print("Class: {} ({:.3f} confidence). Target class {}".format(
+            predicted_class_name, pred_confidence, target_class))
         if pred_confidence > .99 and predicted_class == target_class:
             break
     return z_trajectory
@@ -310,18 +311,22 @@ def make_video_filename(result_dir, dataloader, start_class, target_class):
     return video_filename
 
 
-def sample_trajectory(zt, output_samples):
+def sample_trajectory(zt, output_sample_count):
     distances = np.array([np.linalg.norm(zt[i+1] - zt[i]) for i in range(len(zt) - 1)])
     total_distance = sum(distances)
-    distance_per_sample = total_distance / output_samples 
-
-    samples = [zt[0]]
-    cumulative_distance = 0
-    for i in range(len(distances)):
-        if len(samples) * distance_per_sample <= cumulative_distance:
-            samples.append(zt[i])
-        cumulative_distance += distances[i]
-    if len(samples) != output_samples:
-        print("Warning: wanted {} samples but could only generate {}".format(
-            output_samples, len(samples)))
+    if total_distance == 0:
+        print("Warning: Trajectory has zero length")
+        return [zt[0]] * output_sample_count
+    samples = []
+    for i in range(output_sample_count):
+        sample_distance = i * (total_distance / output_sample_count)
+        samples.append(get_sample_point(zt, sample_distance, distances))
     return samples
+        
+
+def get_sample_point(zt, sample_distance, distances):
+    for i in range(len(zt)):
+        theta = (sample_distance - sum(distances[:i])) / distances[i]
+        if theta <= 1:
+            return (1 - theta) * zt[i] + theta * zt[i+1]
+    assert False
