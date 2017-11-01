@@ -72,15 +72,16 @@ def train_counterfactual(networks, optimizers, dataloader, epoch=None, **options
         ###########################
 
         # WGAN-GP
+        netD.zero_grad()
         errGP = calc_gradient_penalty(netD, images.data, fake_images.data)
         errGP.backward()
         optimizerD.step()
 
-        netG.zero_grad()
-        netE.zero_grad()
         ############################
         # Realism: minimize D(G(z))
         ############################
+        netE.zero_grad()
+        netG.zero_grad()
         noise = gen_noise(noise, spherical)
         errG = netD(netG(noise)).mean() * options['gan_weight']
         errG.backward()
@@ -92,9 +93,10 @@ def train_counterfactual(networks, optimizers, dataloader, epoch=None, **options
         noise = gen_noise(noise, spherical)
         fake = netG(noise)
         reencoded = netE(fake)
-        errEG = torch.mean((reencoded - noise) ** 2) * options['autoencoder_weight']
+        errEG = torch.mean(torch.abs(reencoded - noise)**2)
         if options['perceptual_loss']:
             errEG += torch.mean((netP(netG(netE(images))) - netP(images))**2)
+        errEG *= options['autoencoder_weight']
         errEG.backward()
         ############################
         optimizerG.step()
@@ -222,9 +224,9 @@ def train_active_learning(networks, optimizers, active_points, active_labels, co
             i = 0
             shuffle(points, labels, is_positive)
             while i < len(points) - batch_size:
-                x = torch.FloatTensor(points[i:i+batch_size])
-                y = torch.LongTensor(labels[i:i+batch_size])
-                is_positive_mask = torch.FloatTensor(is_positive[i:i+batch_size])
+                x = torch.FloatTensor(np.array(points[i:i+batch_size]))
+                y = torch.LongTensor(np.array(labels[i:i+batch_size]))
+                is_positive_mask = torch.FloatTensor(np.array(is_positive[i:i+batch_size]))
                 yield x.squeeze(1), y, is_positive_mask
                 i += batch_size
 
