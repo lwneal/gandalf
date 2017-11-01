@@ -51,7 +51,7 @@ fi
 python experiments/train_active_classifier.py --result_dir /mnt/results/$TARGET_DIR --experiment_type $MODE --classifier_name active_learning_classifier --init_label_count $INIT_LABELS
 
 echo "Generating additional labels using sampling mode: $MODE"
-for i in `seq 0 5 200`; do
+for i in `seq 5 5 200`; do
     echo "Generating labels $i"
     python experiments/generate_counterfactual.py --result_dir /mnt/results/$TARGET_DIR --classifier_name active_learning_classifier --counterfactual_frame_count $FRAME_COUNT --counterfactual_max_iters $MAX_ITERS --count 5 --strategy $STRATEGY
     python experiments/oracle.py --result_dir /mnt/results/$TARGET_DIR --oracle_pth /mnt/results/$TARGET_DIR/oracle.pth
