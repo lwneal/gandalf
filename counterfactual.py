@@ -290,7 +290,7 @@ def generate_z_trajectory(z, target_class, netC, dataloader,
         z_trajectory.append(to_np(z))
         predicted_class_name = dataloader.lab_conv.labels[predicted_class]
         print("Class: {} ({:.3f} confidence)...".format(predicted_class_name, pred_confidence))
-        if pred_confidence > .999 and i > 60:
+        if pred_confidence > .99 and predicted_class == target_class:
             break
     return z_trajectory
 
