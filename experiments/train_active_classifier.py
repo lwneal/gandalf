@@ -17,8 +17,9 @@ parser.add_argument('--classifier_name', type=str, default='active_learning_clas
 parser.add_argument('--init_label_count', type=int, help='Number of labels to initialize with. [default: 1000]', default=1000)
 parser.add_argument('--query_count', type=int, help='Number of active learning queries to apply')
 parser.add_argument('--experiment_type', type=str, help='One of: semisupervised, uncertainty_sampling, counterfactual')
-parser.add_argument('--best_epoch', type=bool, default=False, help='Select best-fit epoch (only use for oracle training)')
 parser.add_argument('--classifier_epochs', type=int, default=10, help='Number of epochs')
+parser.add_argument('--best_epoch', type=is_true, default=False, help='Select best-fit epoch (only use for oracle training)')
+parser.add_argument('--save', type=is_true, default=True, help='If set to False, do not save network')
 
 parser.add_argument('--use_complementary_labels', type=is_true, default=True, help='If False, ignore all complementary labels')
 parser.add_argument('--weight_decay', type=float, default=1.0, help='Weight decay [default: 1.0]')
@@ -248,7 +249,8 @@ for classifier_epoch in range(options['classifier_epochs']):
         save_networks({classifier_name: networks[classifier_name]}, epoch=current_epoch, result_dir=options['result_dir'])
 
 print("Trained with {} active points, {} negative points".format(len(active_points), len(complementary_points)))
-save_evaluation(best_results, options['result_dir'], get_current_epoch(options['result_dir']))
+if options['save']:
+    save_evaluation(best_results, options['result_dir'], get_current_epoch(options['result_dir']))
 print("Best Results:")
 pprint(best_results)
 print("Best epoch: {}".format(best_epoch))
