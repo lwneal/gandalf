@@ -93,7 +93,8 @@ def train_counterfactual(networks, optimizers, dataloader, epoch=None, **options
         noise = gen_noise(noise, spherical)
         fake = netG(noise)
         reencoded = netE(fake)
-        errEG = torch.mean(torch.abs(reencoded - noise)**2)
+        #errEG = torch.mean(reencoded - noise)  # cycle consistency loss
+        errEG = torch.mean((netG(reencoded) - fake) ** 2)  # reconstruction loss
         if options['perceptual_loss']:
             errEG += torch.mean((netP(netG(netE(images))) - netP(images))**2)
         errEG *= options['autoencoder_weight']
