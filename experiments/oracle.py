@@ -53,6 +53,7 @@ labels_dir = os.path.join(options['result_dir'], 'labels')
 if not os.path.exists(labels_dir):
     os.mkdir(labels_dir)
 trajectory_filenames = os.listdir(trajectory_dir)
+labeled_count = 0
 for trajectory_filename in trajectory_filenames:
     if not trajectory_filename.endswith('npy'):
         continue
@@ -82,6 +83,7 @@ for trajectory_filename in trajectory_filenames:
     label_filename = os.path.join(labels_dir, trajectory_id + '.json')
     with open(label_filename, 'w') as fp:
         fp.write(json.dumps(label, indent=2, sort_keys=True))
+    labeled_count += 1
 
-print("Oracle labeled {} trajectories".format(len(trajectory_filenames)))
+print("Oracle labeled {} trajectories".format(labeled_count))
 
