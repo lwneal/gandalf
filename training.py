@@ -88,15 +88,14 @@ def train_counterfactual(networks, optimizers, dataloader, epoch=None, **options
         ###########################
 
         ############################
-        # Consistency: minimize z - E(G(z))
+        # Consistency: minimize x - G(E(x))
         ############################
         noise = gen_noise(noise, spherical)
-        fake = netG(noise)
-        reencoded = netE(fake)
-        #errEG = torch.mean(reencoded - noise)  # cycle consistency loss
-        errEG = torch.mean((netG(reencoded) - fake) ** 2)  # reconstruction loss
+        hallucination = netG(noise)
+        regenerated = netG(netE(hallucination))
+        errEG = torch.mean(torch.abs(regenerated - hallucination))
         if options['perceptual_loss']:
-            errEG += torch.mean((netP(netG(netE(images))) - netP(images))**2)
+            errEG += torch.mean((netP(regenerated) - netP(hallucination))**2)
         errEG *= options['autoencoder_weight']
         errEG.backward()
         ############################
