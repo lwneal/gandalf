@@ -32,7 +32,10 @@ def get_dataset_name(result_dir):
 
 def epoch_from_filename(filename):
     numbers = filename.split('epoch_')[-1].rstrip('.pth')
-    return int(numbers)
+    try:
+        return int(numbers)
+    except ValueError:
+        return 0
 
 
 def is_valid_directory(result_dir):
