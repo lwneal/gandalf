@@ -11,6 +11,7 @@ import numpy as np
 import random
 import imutil
 
+DATA_DIR = '/mnt/data'
 
 # Converters can be used like a function, on a single example or a batch
 class Converter(object):
@@ -46,6 +47,8 @@ class ImageConverter(Converter):
 
     def to_array(self, example):
         filename = os.path.expanduser(example['filename'])
+        if not filename.startswith('/'):
+            filename = os.path.join(DATA_DIR, filename)
         box = example.get('box') if self.bounding_box else None
         img = imutil.decode_jpg(filename, 
                 resize_to=self.img_shape, 
