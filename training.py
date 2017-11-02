@@ -45,9 +45,6 @@ def train_counterfactual(networks, optimizers, dataloader, epoch=None, **options
         clamp_to_unit_sphere(fixed_noise)
     demo_images, _, _ = next(d for d in dataloader)
 
-    label_one = torch.FloatTensor(batch_size).cuda().fill_(1)
-    label_zero = torch.FloatTensor(batch_size).cuda().fill_(0)
-    label_minus_one = torch.FloatTensor(batch_size).cuda().fill_(-1)
     correct = 0
     total = 0
     attr_correct = 0
@@ -66,7 +63,8 @@ def train_counterfactual(networks, optimizers, dataloader, epoch=None, **options
             netD.zero_grad()
             noise = gen_noise(noise, spherical)
             fake_images = netG(noise).detach()
-            errD = (netD(images).mean() - netD(fake_images).mean())  * options['gan_weight']
+            errD = netD(images).mean() - netD(fake_images).mean()
+            errD *= options['gan_weight']
             errD.backward()
             optimizerD.step()
         ###########################
