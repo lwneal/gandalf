@@ -76,6 +76,6 @@ try:
         # Train for one epoch
         video_filename = train_counterfactual(networks, optimizers, dataloader, epoch=epoch, **options)
         save_networks(networks, epoch, options['result_dir'])
+    encode_video(video_filename)
 finally:
     release_lock(options['result_dir'])
-    encode_video(video_filename)
