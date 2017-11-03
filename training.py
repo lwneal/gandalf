@@ -100,15 +100,29 @@ def train_counterfactual(networks, optimizers, dataloader, epoch=None, **options
         optimizerG.step()
         optimizerE.step()
 
+        ############################
+        # Train Classifier
+        ############################
+        netC.zero_grad()
+        preds = netC(netE(images))
+        errC = nll_loss(preds, labels)
+        optimizerC.step()
+
+        confidence, pred_idx = preds.max(1)
+        correct += sum(pred_idx == labels).data.cpu().numpy()[0]
+        total += len(labels)
+        ############################
 
         if i % 100 == 0:
-            msg = '[{}][{}/{}] D:{:.3f} G:{:.3f} EG:{:.3f}'
+            msg = '[{}][{}/{}] D:{:.3f} G:{:.3f} EG:{:.3f} Acc. {:.3f}'
             msg = msg.format(
                   epoch, i, len(dataloader),
                   errD.data[0],
                   errG.data[0],
-                  errEG.data[0])
+                  errEG.data[0],
+                  correct / max(total, 1))
             print(msg)
+
             caption = "Epoch {:04d} iter {:05d}".format(epoch, i)
             reconstructed = netG(netE(Variable(demo_images)))
             demo_fakes = netG(fixed_noise)
