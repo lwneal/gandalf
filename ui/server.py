@@ -155,7 +155,8 @@ def submit_value(result_dir):
         'trajectory_id': flask.request.form['trajectory_id'],
         'start_class': flask.request.form['start_class'],
         'target_class': flask.request.form['target_class'],
-        'label_point': flask.request.form['frame'],
+        'start_label_point': flask.request.form['start_label_point'],
+        'end_label_point': flask.request.form['end_label_point'],
     }
     save_active_label(label, result_dir)
     return flask.redirect(flask.request.referrer)

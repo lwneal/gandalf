@@ -45,9 +45,6 @@ def train_counterfactual(networks, optimizers, dataloader, epoch=None, **options
         clamp_to_unit_sphere(fixed_noise)
     demo_images, _, _ = next(d for d in dataloader)
 
-    label_one = torch.FloatTensor(batch_size).cuda().fill_(1)
-    label_zero = torch.FloatTensor(batch_size).cuda().fill_(0)
-    label_minus_one = torch.FloatTensor(batch_size).cuda().fill_(-1)
     correct = 0
     total = 0
     attr_correct = 0
@@ -66,7 +63,8 @@ def train_counterfactual(networks, optimizers, dataloader, epoch=None, **options
             netD.zero_grad()
             noise = gen_noise(noise, spherical)
             fake_images = netG(noise).detach()
-            errD = (netD(images).mean() - netD(fake_images).mean())  * options['gan_weight']
+            errD = netD(images).mean() - netD(fake_images).mean()
+            errD *= options['gan_weight']
             errD.backward()
             optimizerD.step()
         ###########################
@@ -102,15 +100,35 @@ def train_counterfactual(networks, optimizers, dataloader, epoch=None, **options
         optimizerG.step()
         optimizerE.step()
 
+        ############################
+        # Train Classifier
+        ############################
+        if options['supervised_encoder']:
+            netE.zero_grad()
+        netC.zero_grad()
+        preds = netC(netE(images))
+        errC = nll_loss(preds, labels)
+        errC.backward()
+        optimizerC.step()
+        if options['supervised_encoder']:
+            optimizerE.step()
+
+        confidence, pred_idx = preds.max(1)
+        correct += sum(pred_idx == labels).data.cpu().numpy()[0]
+        total += len(labels)
+        ############################
 
         if i % 100 == 0:
-            msg = '[{}][{}/{}] D:{:.3f} G:{:.3f} EG:{:.3f}'
+            msg = '[{}][{}/{}] D:{:.3f} G:{:.3f} EG:{:.3f} EC: {:.3f} Acc. {:.3f}'
             msg = msg.format(
                   epoch, i, len(dataloader),
                   errD.data[0],
                   errG.data[0],
-                  errEG.data[0])
+                  errEG.data[0],
+                  errC.data[0],
+                  correct / max(total, 1))
             print(msg)
+
             caption = "Epoch {:04d} iter {:05d}".format(epoch, i)
             reconstructed = netG(netE(Variable(demo_images)))
             demo_fakes = netG(fixed_noise)
@@ -118,6 +136,7 @@ def train_counterfactual(networks, optimizers, dataloader, epoch=None, **options
             filename = "{}/demo_{}.jpg".format(result_dir, int(time.time()))
             imutil.show(img, caption=msg, font_size=8, filename=filename)
     return video_filename
+
 
 
 def gen_noise(noise, spherical_noise):

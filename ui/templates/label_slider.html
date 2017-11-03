@@ -47,29 +47,38 @@ Come back when more are available!
     <source src="{{file_url}}"></source>
     <p>Error loading video</p>
   </video>
-  <p>
+  <p id="prompt_a">
     The computer thinks this is a <b>{{start_class}}</b>.</br>
-    Move the slider right until it <b>no longer</b> looks like a {{start_class}}.
+    Move the slider right until it no longer looks like a <b>{{start_class}}</b>.
+  </p>
+  <p id="prompt_b" hidden=true>
+  Great job! Now move the slider <b>further</b> right until it looks like a <b>{{target_class}}</b>.
   </p>
   <form action="/submit/{{result_dir}}" method=post>
     <input id="slider" name=frame type="range" />
-    <input id="submit" type=submit />
+    <input id="submitbtn" type=submit hidden=true onclick="lastPrompt()" />
+    <button type="button" id="promptbtn" onclick="nextPrompt()">Click Here</button>
     <input id="max_frames_input" name="maxframes" hidden=true />
     <input id="trajectory_id" name="trajectory_id" value="{{trajectory_id}}" hidden=true />
     <input id="start_class" name="start_class" value="{{start_class}}" hidden=true />
     <input id="target_class" name="target_class" value="{{target_class}}" hidden=true />
+    <input id="start_label_point" name="start_label_point" hidden=true />
+    <input id="end_label_point" name="end_label_point" hidden=true />
   </form>
 {% endif %}
-<p>
-    Only {{unlabeled_count}} more to go!
-</p>
 </center>
 </body>
 
 <script>
 FPS = 25;
-vid = document.getElementById('vid'); 
-slider = document.getElementById('slider');
+var vid = document.getElementById('vid'); 
+var slider = document.getElementById('slider');
+var prompta = document.getElementById('prompt_a')
+var promptb = document.getElementById('prompt_b')
+var submitbtn = document.getElementById('submitbtn')
+var promptbtn = document.getElementById('promptbtn')
+var start_label_point = document.getElementById('start_label_point')
+var end_label_point = document.getElementById('end_label_point')
 
 // On load, set the slider range
 vid.addEventListener('loadedmetadata', function() {
@@ -87,6 +96,20 @@ function playFrame(){
   var frameNumber  = slider.value / FPS;
   vid.currentTime  = frameNumber;
   window.requestAnimationFrame(playFrame);
+}
+
+function nextPrompt() {
+  start_label_point.value = slider.value;
+  promptbtn.hidden = true;
+  prompta.hidden = true;
+  submitbtn.hidden = false;
+  submitbtn.hidden = false;
+  promptb.hidden = false;
+  slider.style.background = "#445588";
+}
+function lastPrompt() {
+  end_label_point.value = slider.value;
+  console.log("Submitting with end label point " + end_label_point);
 }
 
 window.requestAnimationFrame(playFrame);
