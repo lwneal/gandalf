@@ -196,19 +196,23 @@ def generate_trajectory_active(networks, dataloader, strategy='random', **option
         most_likely_class, least_likely_class, start_score, start_img = select_uncertain_example(dataloader, netE, netC, reverse=True)
         start_class = most_likely_class
         target_class = least_likely_class
+    elif strategy == 'random-interpolate':
+        start_class, _, _, start_img = select_uncertain_example(dataloader, netE, netC, pool_size=1)
+        target_class, _, _, target_img = select_uncertain_example(dataloader, netE, netC, pool_size=1)
     else:
         raise ValueError("Unknown strategy")
 
-
-    # Generate a path in latent space from start_img to a known classification
-    z = netE(Variable(start_img))
-    z_trajectory = generate_z_trajectory(z, target_class, netC, dataloader, speed, momentum_mu, max_iters=max_iters)
-
-    video_filename = make_video_filename(result_dir, dataloader, start_class, target_class)
+    if strategy == 'random-interpolate':
+        z_trajectory = [to_np(netE(Variable(start_img))), to_np(netE(Variable(target_img)))]
+    else:
+        # Generate a path in latent space from start_img to a known classification
+        z = netE(Variable(start_img))
+        z_trajectory = generate_z_trajectory(z, target_class, netC, dataloader, speed, momentum_mu, max_iters=max_iters)
 
     sampled_trajectory = sample_trajectory(z_trajectory, output_frame_count)
 
     # Save the trajectory in .npy to later load
+    video_filename = make_video_filename(result_dir, dataloader, start_class, target_class)
     trajectory_filename = video_filename.replace('.mjpeg', '.npy')
     print("Saving trajectory length {} to {}".format(len(sampled_trajectory), trajectory_filename))
     np.save(trajectory_filename, np.array(sampled_trajectory))
