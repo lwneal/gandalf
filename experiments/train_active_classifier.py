@@ -16,7 +16,7 @@ parser.add_argument('--classifier_name', type=str, default='active_learning_clas
         help='Name of the classifier to use [default: active_learning_classifier]')
 parser.add_argument('--init_label_count', type=int, help='Number of labels to initialize with. [default: 1000]', default=1000)
 parser.add_argument('--query_count', type=int, help='Number of active learning queries to apply')
-parser.add_argument('--experiment_type', type=str, help='One of: semisupervised, uncertainty_sampling, counterfactual')
+parser.add_argument('--experiment_type', type=str, default='semisupervised', help='One of: semisupervised, uncertainty_sampling, counterfactual')
 parser.add_argument('--classifier_epochs', type=int, default=10, help='Number of epochs')
 parser.add_argument('--best_epoch', type=is_true, default=False, help='Select best-fit epoch (only use for oracle training)')
 parser.add_argument('--save', type=is_true, default=True, help='If set to False, do not save network')
