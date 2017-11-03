@@ -392,20 +392,33 @@ class generator40(nn.Module):
 class generator64(nn.Module):
     def __init__(self, latent_size=100, **kwargs):
         super(self.__class__, self).__init__()
+        # A branch for the low-rank parts of images we can encode
         self.conv1 = nn.ConvTranspose2d(latent_size, 512, 4, 1, 0, bias=False)
         self.conv2 = nn.ConvTranspose2d(   512,    256, 4, 2, 1, bias=False)
         self.conv3 = nn.ConvTranspose2d(   256,    128, 4, 2, 1, bias=False)
         self.conv4 = nn.ConvTranspose2d(   128,     64, 4, 2, 1, bias=False)
-        self.conv5 = nn.ConvTranspose2d(    64,      3, 4, 2, 1, bias=False)
         self.bn1 = nn.BatchNorm2d(512)
         self.bn2 = nn.BatchNorm2d(256)
         self.bn3 = nn.BatchNorm2d(128)
         self.bn4 = nn.BatchNorm2d(64)
+
+        # Another branch for the exogenous stuff we can't encode
+        self.rconv1 = nn.ConvTranspose2d(latent_size, 512, 4, 1, 0, bias=False)
+        self.rconv2 = nn.ConvTranspose2d(   512,    256, 4, 2, 1, bias=False)
+        self.rconv3 = nn.ConvTranspose2d(   256,    128, 4, 2, 1, bias=False)
+        self.rconv4 = nn.ConvTranspose2d(   128,     64, 4, 2, 1, bias=False)
+        self.rbn1 = nn.BatchNorm2d(512)
+        self.rbn2 = nn.BatchNorm2d(256)
+        self.rbn3 = nn.BatchNorm2d(128)
+        self.rbn4 = nn.BatchNorm2d(64)
+
+        # They come together at the very end
+        self.conv5 = nn.ConvTranspose2d(    128,     3, 4, 2, 1, bias=False)
         self.apply(weights_init)
         self.cuda()
 
-    def forward(self, x):
-        x = x.unsqueeze(-1).unsqueeze(-1)
+    def forward(self, latent_vector, exo_noise):
+        x = latent_vector.unsqueeze(-1).unsqueeze(-1)
         x = self.conv1(x)
         x = self.bn1(x)
         x = nn.LeakyReLU(0.2, inplace=True)(x)
@@ -418,7 +431,24 @@ class generator64(nn.Module):
         x = self.conv4(x)
         x = self.bn4(x)
         x = nn.LeakyReLU(0.2, inplace=True)(x)
-        x = self.conv5(x)
+
+        # r is for residual
+        r = exo_noise.unsqueeze(-1).unsqueeze(-1)
+        r = self.rconv1(r)
+        r = self.rbn1(r)
+        r = nn.LeakyReLU(0.2, inplace=True)(r)
+        r = self.rconv2(r)
+        r = self.rbn2(r)
+        r = nn.LeakyReLU(0.2, inplace=True)(r)
+        r = self.rconv3(r)
+        r = self.rbn3(r)
+        r = nn.LeakyReLU(0.2, inplace=True)(r)
+        r = self.rconv4(r)
+        r = self.rbn4(r)
+        r = nn.LeakyReLU(0.2, inplace=True)(r)
+
+        xr = torch.cat([x, r], dim=1)
+        x = self.conv5(xr)
         x = nn.Sigmoid()(x)
         return x
 

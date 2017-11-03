@@ -39,8 +39,13 @@ def train_counterfactual(networks, optimizers, dataloader, epoch=None, **options
     # By convention, if it ends with 'sphere' it uses the unit sphere
     spherical = type(netE).__name__.endswith('sphere')
 
+    # There's regular noise: it represents the big important low-dimensional manifold of things we can learn
     noise = Variable(torch.FloatTensor(batch_size, latent_size).cuda())
     fixed_noise = Variable(torch.FloatTensor(batch_size, latent_size).normal_(0, 1)).cuda()
+
+    # Then there's exogenous noise: the sparse random stuff we can't predict
+    exo_noise = Variable(torch.FloatTensor(batch_size, latent_size).cuda())
+
     if spherical:
         clamp_to_unit_sphere(fixed_noise)
     demo_images, _, _ = next(d for d in dataloader)
@@ -62,7 +67,8 @@ def train_counterfactual(networks, optimizers, dataloader, epoch=None, **options
         for _ in range(5):
             netD.zero_grad()
             noise = gen_noise(noise, spherical)
-            fake_images = netG(noise).detach()
+            exo_noise.data.normal_(0, 1)
+            fake_images = netG(noise, exo_noise).detach()
             errD = netD(images).mean() - netD(fake_images).mean()
             errD *= options['gan_weight']
             errD.backward()
@@ -81,7 +87,8 @@ def train_counterfactual(networks, optimizers, dataloader, epoch=None, **options
         netE.zero_grad()
         netG.zero_grad()
         noise = gen_noise(noise, spherical)
-        errG = netD(netG(noise)).mean() * options['gan_weight']
+        exo_noise.data.normal_(0, 1)
+        errG = netD(netG(noise, exo_noise)).mean() * options['gan_weight']
         errG.backward()
         ###########################
 
@@ -89,8 +96,9 @@ def train_counterfactual(networks, optimizers, dataloader, epoch=None, **options
         # Consistency: minimize x - G(E(x))
         ############################
         noise = gen_noise(noise, spherical)
-        hallucination = netG(noise)
-        regenerated = netG(netE(hallucination))
+        exo_noise.data.normal_(0, 1)
+        hallucination = netG(noise, exo_noise)
+        regenerated = netG(netE(hallucination), exo_noise)  # it's the same noise, see
         errEG = torch.mean(torch.abs(regenerated - hallucination))
         if options['perceptual_loss']:
             errEG += torch.mean((netP(regenerated) - netP(hallucination))**2)
@@ -128,9 +136,8 @@ def train_counterfactual(networks, optimizers, dataloader, epoch=None, **options
                   errC.data[0],
                   correct / max(total, 1))
             print(msg)
-
-            reconstructed = netG(netE(Variable(demo_images)))
-            demo_fakes = netG(fixed_noise)
+            reconstructed = netG(netE(Variable(demo_images)), exo_noise)
+            demo_fakes = netG(fixed_noise, exo_noise)
             if image_size == 40:  # For Atari visuals
                 filename = "{}/demo_{}.png".format(result_dir, int(time.time()))
                 img = torch.cat([demo_images[:3], reconstructed.data[:3], demo_fakes.data[:3]])
