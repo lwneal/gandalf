@@ -103,10 +103,15 @@ def train_counterfactual(networks, optimizers, dataloader, epoch=None, **options
         ############################
         # Train Classifier
         ############################
+        if options['supervised_encoder']:
+            netE.zero_grad()
         netC.zero_grad()
         preds = netC(netE(images))
         errC = nll_loss(preds, labels)
+        errC.backward()
         optimizerC.step()
+        if options['supervised_encoder']:
+            optimizerE.step()
 
         confidence, pred_idx = preds.max(1)
         correct += sum(pred_idx == labels).data.cpu().numpy()[0]
@@ -114,12 +119,13 @@ def train_counterfactual(networks, optimizers, dataloader, epoch=None, **options
         ############################
 
         if i % 100 == 0:
-            msg = '[{}][{}/{}] D:{:.3f} G:{:.3f} EG:{:.3f} Acc. {:.3f}'
+            msg = '[{}][{}/{}] D:{:.3f} G:{:.3f} EG:{:.3f} EC: {:.3f} Acc. {:.3f}'
             msg = msg.format(
                   epoch, i, len(dataloader),
                   errD.data[0],
                   errG.data[0],
                   errEG.data[0],
+                  errC.data[0],
                   correct / max(total, 1))
             print(msg)
 
@@ -130,6 +136,7 @@ def train_counterfactual(networks, optimizers, dataloader, epoch=None, **options
             filename = "{}/demo_{}.jpg".format(result_dir, int(time.time()))
             imutil.show(img, caption=msg, font_size=8, filename=filename)
     return video_filename
+
 
 
 def gen_noise(noise, spherical_noise):
