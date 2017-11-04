@@ -268,7 +268,7 @@ def random_target_class(dataloader, start_class):
 
 
 def generate_z_trajectory(z, target_class, netC, dataloader,
-        speed=.001, momentum_mu=.95, max_iters=1000):
+        speed=.001, momentum_mu=.95, max_iters=1000, spherical=True):
     # Generate z_trajectory
     z_trajectory = []
     z_trajectory.append(to_np(z))  # initial point
@@ -287,6 +287,9 @@ def generate_z_trajectory(z, target_class, netC, dataloader,
         momentum -= dc_dz * speed
         z += momentum
         momentum *= momentum_mu
+        if spherical:
+            l2_norm = torch.mul(z, z).sum()
+            z /= l2_norm
 
         preds = netC(z)
         predicted_class = to_np(preds.max(1)[1])[0]
