@@ -56,8 +56,8 @@ Come back when more are available!
   </p>
   <form action="/submit/{{result_dir}}" method=post>
     <input id="slider" name=frame type="range" />
-    <input id="submitbtn" type=submit hidden=true onclick="lastPrompt()" />
     <button type="button" id="promptbtn" onclick="nextPrompt()">Click Here</button>
+    <input id="submitbtn" type=submit hidden=true onclick="lastPrompt()" />
     <input id="max_frames_input" name="maxframes" hidden=true />
     <input id="trajectory_id" name="trajectory_id" value="{{trajectory_id}}" hidden=true />
     <input id="start_class" name="start_class" value="{{start_class}}" hidden=true />
@@ -106,6 +106,7 @@ function nextPrompt() {
   submitbtn.hidden = false;
   promptb.hidden = false;
   slider.style.background = "#445588";
+  slider.focus();
 }
 function lastPrompt() {
   end_label_point.value = slider.value;
