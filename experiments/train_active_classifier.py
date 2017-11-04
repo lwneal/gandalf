@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 import time
+import random
 import argparse
 import json
 import os
@@ -179,7 +180,6 @@ else:
 print("Loaded {} trajectories totalling {} positive points and {} negative points".format(
 	len(labels), len(active_points), len(complementary_points)))
 
-
 # Every run starts with a set of eg. 1k initial labels
 INIT_LABELS = options['init_label_count']
 extra_points = []
@@ -205,6 +205,55 @@ training_len = 30 * 1000
 if len(active_points) < training_len:
     print("Padding active label dataset for training stability")
     active_points, active_labels = augment_to_length(active_points, active_labels, required_len=training_len)
+active_points = np.array(active_points)
+active_labels = np.array(active_labels)
+
+def to_torch(x):
+    from torch import FloatTensor
+    from torch.autograd import Variable
+    if len(x.shape) == 1:
+        x = np.expand_dims(x, axis=0)
+    return Variable(FloatTensor(x)).cuda()
+
+def gen(z):
+    from imutil import show
+    netG = networks['generator']
+    show(netG(to_torch(z)))
+
+
+################################################
+# Every class is a convex hull in latent space
+################################################
+
+# Sort the positive labeled points
+label_indices = active_labels.argsort()
+active_labels = active_labels[label_indices]
+active_points = active_points[label_indices]
+
+rightmost = [0]
+for i in range(len(active_labels) - 1):
+    if active_labels[i] != active_labels[i+1]:
+        rightmost.append(i)
+rightmost.append(len(active_labels) - 1)
+
+interpolated_points = []
+interpolated_labels = []
+for i in range(10000):
+    cls = random.randint(0, len(rightmost) - 2)
+    left_idx, right_idx = (rightmost[cls], rightmost[cls+1])
+    a = active_points[np.random.randint(left_idx, right_idx)]
+    b = active_points[np.random.randint(left_idx, right_idx)]
+    theta = np.random.random()
+    zerp = theta * a + (1 - theta) * b
+    #zerp /= np.linalg.norm(zerp)
+    interpolated_points.append(zerp)
+    interpolated_labels.append(cls)
+active_labels = np.concatenate([active_labels, interpolated_labels])
+active_points = np.concatenate([active_points, interpolated_points])
+
+################################################
+
+
 
 print("Re-training classifier {} using {} active-learning label points".format(
     classifier_name, len(active_points) + len(complementary_points)))
@@ -214,7 +263,7 @@ best_acc = 0
 for classifier_epoch in range(options['classifier_epochs']):
     # Apply learning rate decay and train for one pseudo-epoch
     for optimizer in optimizers.values():
-        optimizer.param_groups[0]['lr'] = .0002 * (.9 ** classifier_epoch)
+        optimizer.param_groups[0]['lr'] = .0001 * (.9 ** classifier_epoch)
     start_time = time.time()
     train_active_learning(networks, optimizers, active_points, active_labels, complementary_points, complementary_labels, **options)
     print("Ran train_active_learning in {:.3f}s".format(time.time() - start_time))
