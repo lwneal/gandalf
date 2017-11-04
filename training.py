@@ -269,7 +269,8 @@ def train_active_learning(networks, optimizers, active_points, active_labels, co
         ############################
         # Update C(Z) only
         ############################
-        class_predictions = netC(latent_points)
+        #class_predictions = netC(latent_points)
+        class_predictions = netC(netE(netG(latent_points).detach()))
         errPos = masked_nll_loss(class_predictions, labels, is_positive_mask)
 
         if use_negative_labels and negative_count > 0:
@@ -283,6 +284,7 @@ def train_active_learning(networks, optimizers, active_points, active_labels, co
         errC = errPos + errNeg
         errC.backward()
         optimizerC.step()
+        #optimizerE.step()
         ############################
 
         _, predicted = class_predictions.max(1)
