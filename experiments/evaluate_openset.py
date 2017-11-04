@@ -11,6 +11,7 @@ parser.add_argument('--result_dir', required=True, help='Output directory for im
 parser.add_argument('--fold', default="test", help='Name of evaluation fold [default: test]')
 parser.add_argument('--epoch', type=int, help='Epoch to evaluate (latest epoch if none chosen)')
 parser.add_argument('--comparison_dataset', type=str, help='Dataset for off-manifold comparison')
+parser.add_argument('--classifier_name', type=str, help='Name of classifier to use (eg active_learning_classifier)')
 options = vars(parser.parse_args())
 
 # Import the rest of the project
@@ -36,7 +37,11 @@ networks = build_networks(dataloader_on.num_classes, **options)
 statistics = evaluate_openset(networks, dataloader_on, dataloader_off, **options)
 pprint(statistics)
 
-fold_name = 'openset_{}_comparison_{}'.format(options['fold'], dataloader_off.dsf.name)
+label_count = 0
+label_path = os.path.join(options['result_dir'], 'labels')
+if os.path.exists(label_path):
+    label_count = len(os.listdir(label_path))
+fold_name = 'openset_{}_comparison_{}_{:06d}'.format(options['fold'], dataloader_off.dsf.name, label_count)
 
 results = {fold_name: statistics}
 print("Saving evaluation statistics:")

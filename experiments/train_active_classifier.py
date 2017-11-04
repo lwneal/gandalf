@@ -20,6 +20,8 @@ parser.add_argument('--experiment_type', type=str, default='baseline', help='One
 parser.add_argument('--classifier_epochs', type=int, default=10, help='Number of epochs')
 parser.add_argument('--best_epoch', type=is_true, default=False, help='Select best-fit epoch (only use for oracle training)')
 parser.add_argument('--save', type=is_true, default=True, help='If set to False, do not save network')
+parser.add_argument('--positive_margin', type=int, default=1, help='Number of positive points near the boundary to discard')
+parser.add_argument('--negative_margin', type=int, default=2, help='Number of negative points near the boundary to discard')
 
 parser.add_argument('--use_complementary_labels', type=is_true, default=True, help='If False, ignore all complementary labels')
 parser.add_argument('--weight_decay', type=float, default=1.0, help='Weight decay [default: 1.0]')
@@ -75,7 +77,7 @@ def get_trajectory_filename(result_dir, trajectory_id):
     return None
 
 
-def load_active_learning_trajectories(labels, train_dataloader, margin):
+def load_active_learning_trajectories(labels, train_dataloader, positive_margin, negative_margin):
     active_points = []
     active_labels = []
     complementary_points = []
@@ -90,12 +92,13 @@ def load_active_learning_trajectories(labels, train_dataloader, margin):
         #  In the middle, negative (complementary) labels for both classes
         left_class = train_dataloader.lab_conv.idx[label['start_class']]
         right_class = train_dataloader.lab_conv.idx[label['target_class']]
-        left_boundary = int(label['start_label_point'])
+        left_boundary = int(label['start_label_point']) if label['start_label_point'] else 0
         right_boundary = int(label['end_label_point'])
 
-        left_points = slice_with_margin(points, 0, left_boundary, right_margin=margin)
-        right_points = slice_with_margin(points, right_boundary, len(points), left_margin=margin)
-        center_points = slice_with_margin(points, left_boundary, right_boundary, margin, margin)
+
+        left_points = slice_with_margin(points, 0, left_boundary, right_margin=positive_margin)
+        center_points = slice_with_margin(points, left_boundary, right_boundary, negative_margin, negative_margin)
+        right_points = slice_with_margin(points, right_boundary, len(points), left_margin=positive_margin)
 
         active_points.extend(left_points)
         active_labels.extend([left_class] * len(left_points))
@@ -157,7 +160,7 @@ print("Loaded {} labels from {}".format(len(labels), active_label_dir))
 import numpy as np
 
 if options['experiment_type'] == 'counterfactual':
-    active_points, active_labels, complementary_points, complementary_labels = load_active_learning_trajectories(labels, train_dataloader, margin=0)
+    active_points, active_labels, complementary_points, complementary_labels = load_active_learning_trajectories(labels, train_dataloader, positive_margin=options['positive_margin'], negative_margin=options['negative_margin'])
 elif options['experiment_type'] == 'uncertainty_sampling':
     active_points, active_labels = load_active_learning_points(labels, train_dataloader)
     complementary_points = np.array([])
@@ -197,25 +200,6 @@ if len(active_points) > 0:
 else:
     active_points = extra_points[:INIT_LABELS]
     active_labels = extra_labels[:INIT_LABELS]
-
-"""
-# Add a lot of complementary points
-extra_points = []
-extra_labels = []
-netE = networks['encoder']
-from torch.autograd import Variable
-for (images, labels, _) in train_dataloader:
-    z = netE(Variable(images)).data.cpu().numpy()
-    extra_points.extend(z)
-    # Pick a label, any label... except the real one
-    K = 10
-    labels = (labels + np.random.randint(1, K)) % K
-    extra_labels.extend(labels.cpu().numpy())
-    if len(extra_points) > 3000:
-        break
-complementary_points = np.array(extra_points)
-complementary_labels = np.array(extra_labels)
-"""
 
 training_len = 30 * 1000
 if len(active_points) < training_len:
