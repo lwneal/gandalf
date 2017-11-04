@@ -37,11 +37,14 @@ import numpy as np
 import torch
 from torch.autograd import Variable
 
-def classify(z, netC, dataloader):
+def classify(z, networks, dataloader):
     import torch
+    netC = networks['classifier']
+    netG = networks['generator']
+    netE = networks['encoder']
     from torch.autograd import Variable
     z = Variable(torch.FloatTensor(z)).cuda()
-    pred = netC(z)
+    pred = netC(netE(netG(z)))
     pred_conf, pred_max = pred.max(1)
     pred_idx = pred_max.data.cpu().numpy()[0]
     return dataloader.lab_conv.labels[pred_idx]
@@ -63,7 +66,7 @@ for trajectory_filename in trajectory_filenames:
     trajectory_id = trajectory_filename.split('-')[-3]
 
     points = np.load(trajectory_filename)
-    labels = [classify(p, netC, dataloader) for p in points]
+    labels = [classify(p, networks, dataloader) for p in points]
     for left_boundary in range(len(labels)):
         if labels[left_boundary] != start_class:
             break
