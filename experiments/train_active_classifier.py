@@ -245,7 +245,7 @@ for i in range(10000):
     b = active_points[np.random.randint(left_idx, right_idx)]
     theta = np.random.random()
     zerp = theta * a + (1 - theta) * b
-    #zerp /= np.linalg.norm(zerp)
+    zerp /= np.linalg.norm(zerp)
     interpolated_points.append(zerp)
     interpolated_labels.append(cls)
 active_labels = np.concatenate([active_labels, interpolated_labels])
@@ -260,7 +260,7 @@ for i in range(10000):
     b = active_points[np.random.randint(left_idx, right_idx)]
     theta = np.random.random()
     zerp = theta * a + (1 - theta) * b
-    #zerp /= np.linalg.norm(zerp)
+    zerp /= np.linalg.norm(zerp)
     interpolated_points.append(zerp)
     interpolated_labels.append(cls)
 active_labels = np.concatenate([active_labels, interpolated_labels])
