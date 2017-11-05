@@ -165,12 +165,17 @@ def generate_trajectory_active(networks, dataloader, strategy='random', **option
     momentum_mu = options['momentum_mu']
     max_iters = options['counterfactual_max_iters']
     result_dir = options['result_dir']
+    if options['target_class']:
+        target_class = dataloader.lab_conv.idx[int(options['target_class'])]
+    else:
+        target_class = None
 
     if strategy == 'random':
         # Start with a random example, move it to a random class
         most_likely_class, least_likely_class, start_score, start_img = select_uncertain_example(dataloader, netE, netC, pool_size=1)
         start_class = most_likely_class
-        target_class = random_target_class(dataloader, start_class)
+        if target_class is None:
+            target_class = random_target_class(dataloader, start_class)
     elif strategy == 'random-nearest':
         # Start with a random example, move it to the nearest decision boundary
         most_likely_class, least_likely_class, start_score, start_img = select_uncertain_example(dataloader, netE, netC, pool_size=1)
