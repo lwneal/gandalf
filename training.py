@@ -129,12 +129,17 @@ def train_counterfactual(networks, optimizers, dataloader, epoch=None, **options
                   correct / max(total, 1))
             print(msg)
 
-            caption = "Epoch {:04d} iter {:05d}".format(epoch, i)
             reconstructed = netG(netE(Variable(demo_images)))
             demo_fakes = netG(fixed_noise)
-            img = torch.cat([demo_images[:12], reconstructed.data[:12], demo_fakes.data[:12]])
-            filename = "{}/demo_{}.jpg".format(result_dir, int(time.time()))
-            imutil.show(img, caption=msg, font_size=8, filename=filename)
+            if image_size == 40:  # For Atari visuals
+                filename = "{}/demo_{}.png".format(result_dir, int(time.time()))
+                img = torch.cat([demo_images[:3], reconstructed.data[:3], demo_fakes.data[:3]])
+                msg = 'Top: Original  Mid: Reconstructions  Bot: Hallucinations'
+                imutil.show(img, caption=msg, font_size=12, filename=filename, resize_to=(680,680))
+            else:
+                filename = "{}/demo_{}.jpg".format(result_dir, int(time.time()))
+                img = torch.cat([demo_images[:12], reconstructed.data[:12], demo_fakes.data[:12]])
+                imutil.show(img, caption=msg, font_size=8, filename=filename)
     return video_filename
 
 
