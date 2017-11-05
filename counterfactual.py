@@ -206,6 +206,7 @@ def generate_trajectory_active(networks, dataloader, strategy='random', **option
         target_class, _, _, target_img = select_uncertain_example(dataloader, netE, netC, pool_size=1)
     else:
         raise ValueError("Unknown strategy")
+    print("Strategy {} start class {} target class {}".format(strategy, start_class, target_class))
 
     if strategy == 'random-interpolate':
         z_trajectory = [to_np(netE(Variable(start_img))), to_np(netE(Variable(target_img)))]
@@ -236,7 +237,7 @@ def generate_trajectory_active(networks, dataloader, strategy='random', **option
 
 
 def select_uncertain_example(dataloader, netE, netC, pool_size=100, reverse=False):
-    print("Performing uncertainty sampling with dataloader {}".format(dataloader))
+    print("Performing uncertainty sampling with pool size {}, reverse={}".format(pool_size, reverse))
     images = []
     certainties = []
     most_likely_classes = []
