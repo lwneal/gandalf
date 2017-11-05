@@ -360,6 +360,35 @@ class generatorReLU64(nn.Module):
         return x
 
 
+class generator40(nn.Module):
+    def __init__(self, latent_size=100, **kwargs):
+        super(self.__class__, self).__init__()
+        self.conv1 = nn.ConvTranspose2d(latent_size, 512, 5, 1, 0, bias=False)
+        self.conv2 = nn.ConvTranspose2d(   512,    256, 4, 2, 1, bias=False)
+        self.conv3 = nn.ConvTranspose2d(   256,    128, 4, 2, 1, bias=False)
+        self.conv4 = nn.ConvTranspose2d(   128,     3, 4, 2, 1, bias=False)
+        self.bn1 = nn.BatchNorm2d(512)
+        self.bn2 = nn.BatchNorm2d(256)
+        self.bn3 = nn.BatchNorm2d(128)
+        self.apply(weights_init)
+        self.cuda()
+
+    def forward(self, x):
+        x = x.unsqueeze(-1).unsqueeze(-1)
+        x = self.conv1(x)
+        x = self.bn1(x)
+        x = nn.ReLU(True)(x)
+        x = self.conv2(x)
+        x = self.bn2(x)
+        x = nn.ReLU(True)(x)
+        x = self.conv3(x)
+        x = self.bn3(x)
+        x = nn.ReLU(True)(x)
+        x = self.conv4(x)
+        x = nn.Sigmoid()(x)
+        return x
+
+
 class generator64(nn.Module):
     def __init__(self, latent_size=100, **kwargs):
         super(self.__class__, self).__init__()
@@ -589,6 +618,38 @@ class discriminatorLReLU64(nn.Module):
         x = x.mean(-1).mean(-1)
         return x.view(-1, 1).squeeze(1)
 discriminator64 = discriminatorLReLU64
+
+
+class discriminator40(nn.Module):
+    def __init__(self, latent_size=100, **kwargs):
+        super(self.__class__, self).__init__()
+        self.conv1 = nn.Conv2d(3,       64,      4, 2, 1, bias=False)
+        self.conv2 = nn.Conv2d(64,      128,     4, 2, 1, bias=False)
+        self.conv3 = nn.Conv2d(128,     256,     4, 2, 1, bias=False)
+        self.conv4 = nn.Conv2d(256,     512,     4, 1, 1, bias=False)
+        self.conv5 = nn.Conv2d(512,     1,       4, 1, 0, bias=False)
+        self.bn1 = nn.InstanceNorm2d(128)
+        self.bn2 = nn.InstanceNorm2d(256)
+        self.bn3 = nn.InstanceNorm2d(512)
+        self.apply(weights_init)
+        self.cuda()
+
+    def forward(self, x):
+        x = self.conv1(x)
+        x = nn.LeakyReLU(0.2, inplace=True)(x)
+        x = self.conv2(x)
+        x = self.bn1(x)
+        x = nn.LeakyReLU(0.2, inplace=True)(x)
+        x = self.conv3(x)
+        x = self.bn2(x)
+        x = nn.LeakyReLU(0.2, inplace=True)(x)
+        x = self.conv4(x)
+        x = self.bn3(x)
+        x = nn.LeakyReLU(0.2, inplace=True)(x)
+        x = self.conv5(x)
+        # Global average pooling
+        x = x.mean(-1).mean(-1)
+        return x.view(-1, 1).squeeze(1)
 
 
 class discriminator64instancenorm(nn.Module):
@@ -1111,6 +1172,46 @@ class encoder64sphere(nn.Module):
         x = nn.LeakyReLU(0.2, inplace=True)(x)
         x = self.conv5(x)
         x = nn.LeakyReLU(0.2, inplace=True)(x)
+        x = x.squeeze(-1).squeeze(-1)
+
+        x = self.fc1(x)
+        xnorm = torch.norm(x, p=2, dim=1).detach()
+        xnorm = xnorm.expand(1, x.size()[0])
+        xnorm = xnorm.transpose(1,0)
+        x = x.div(xnorm)
+        return x
+
+
+class encoder40(nn.Module):
+    def __init__(self, latent_size=100, **kwargs):
+        super(self.__class__, self).__init__()
+        self.latent_size = latent_size
+        self.conv1 = nn.Conv2d(3,       64,     4, 2, 1, bias=False)
+        self.conv2 = nn.Conv2d(64,      128,    4, 2, 1, bias=False)
+        self.conv3 = nn.Conv2d(128,     256,    4, 2, 1, bias=False)
+        self.conv4 = nn.Conv2d(256,     512,    4, 1, 1, bias=False)
+        self.conv5 = nn.Conv2d(512,     1024,   4, 1, 0, bias=False)
+        self.bn1 = nn.BatchNorm2d(128)
+        self.bn2 = nn.BatchNorm2d(256)
+        self.bn3 = nn.BatchNorm2d(512)
+        self.fc1 = nn.Linear(1024, self.latent_size, bias=False)
+        self.apply(weights_init)
+        self.cuda()
+
+    def forward(self, x):
+        x = self.conv1(x)
+        x = nn.ReLU(True)(x)
+        x = self.conv2(x)
+        x = self.bn1(x)
+        x = nn.ReLU(True)(x)
+        x = self.conv3(x)
+        x = self.bn2(x)
+        x = nn.ReLU(True)(x)
+        x = self.conv4(x)
+        x = self.bn3(x)
+        x = nn.ReLU(True)(x)
+        x = self.conv5(x)
+        x = nn.ReLU(True)(x)
         x = x.squeeze(-1).squeeze(-1)
 
         x = self.fc1(x)
