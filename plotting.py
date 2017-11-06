@@ -30,17 +30,21 @@ def plot_xy(x, y, x_axis="X", y_axis="Y", title="Plot"):
     return plot
 
 
-def parse_active_learning_series(eval_filename):
+def parse_active_learning_series(eval_filename, prefix='active_trajectories'):
     try:
         evaluations = json.load(open(eval_filename))
     except:
         print("Error: could not load JSON from file {}".format(eval_filename))
         raise NoDataAvailable
-    keys = sorted([k for k in evaluations if k.startswith('active_trajectories')])
+    keys = sorted([k for k in evaluations if k.startswith(prefix)])
     if len(keys) == 0:
         raise NoDataAvailable
     x = [int(k.split('_')[-1]) for k in keys]
-    y = [evaluations[k]['accuracy'] for k in keys]
+    if prefix == 'active_trajectories':
+        y_key = 'accuracy' 
+    elif prefix == 'openset':
+        y_key = 'auc_softmax'
+    y = [evaluations[k][y_key] for k in keys]
     return x, y
 
 
@@ -78,12 +82,12 @@ def compare_active_learning(eval_filename, baseline_eval_filename, title=None, t
     return fig_filename
 
 
-def compare_multiple(list_of_filenames, list_of_names, output_filename, title=None):
+def compare_multiple(list_of_filenames, list_of_names, output_filename, title=None, prefix='active_trajectories'):
     styles = ['-', '--', '-.', ':', '-', '--', '-.', ':']
     assert len(list_of_filenames) <= len(styles)
     plt.figure(figsize=(9.5,6))
     for filename, style in zip(list_of_filenames, styles):
-        x, y = parse_active_learning_series(filename)
+        x, y = parse_active_learning_series(filename, prefix=prefix)
         plt.plot(x, y, style)
     plt.ylabel('Accuracy')
     plt.xlabel('Number of Queries')
