@@ -530,7 +530,77 @@ class generatorLeakyReLU128(nn.Module):
         x = self.conv6(x)
         x = nn.Sigmoid()(x)
         return x
-generator128 = generatorLeakyReLU128
+
+
+class generator128exo(nn.Module):
+    def __init__(self, latent_size=100, **kwargs):
+        super(self.__class__, self).__init__()
+        Z = latent_size
+        self.conv1 = nn.ConvTranspose2d(     Z,   1024, 4, 1, 0, bias=False)
+        self.conv2 = nn.ConvTranspose2d(  1024,    512, 4, 2, 1, bias=False)
+        self.conv3 = nn.ConvTranspose2d(   512,    256, 4, 2, 1, bias=False)
+        self.conv4 = nn.ConvTranspose2d(   256,    128, 4, 2, 1, bias=False)
+        self.conv5 = nn.ConvTranspose2d(   128,     64, 4, 2, 1, bias=False)
+        self.bn1 = nn.BatchNorm2d(1024)
+        self.bn2 = nn.BatchNorm2d(512)
+        self.bn3 = nn.BatchNorm2d(256)
+        self.bn4 = nn.BatchNorm2d(128)
+        self.bn5 = nn.BatchNorm2d(64)
+
+        self.rconv1 = nn.ConvTranspose2d(     Z,   1024, 4, 1, 0, bias=False)
+        self.rconv2 = nn.ConvTranspose2d(  1024,    512, 4, 2, 1, bias=False)
+        self.rconv3 = nn.ConvTranspose2d(   512,    256, 4, 2, 1, bias=False)
+        self.rconv4 = nn.ConvTranspose2d(   256,    128, 4, 2, 1, bias=False)
+        self.rconv5 = nn.ConvTranspose2d(   128,     64, 4, 2, 1, bias=False)
+        self.rbn1 = nn.BatchNorm2d(1024)
+        self.rbn2 = nn.BatchNorm2d(512)
+        self.rbn3 = nn.BatchNorm2d(256)
+        self.rbn4 = nn.BatchNorm2d(128)
+        self.rbn5 = nn.BatchNorm2d(64)
+
+        self.conv6 = nn.ConvTranspose2d(   128,      3, 4, 2, 1, bias=False)
+
+        self.apply(weights_init)
+        self.cuda()
+
+    def forward(self, z, exo_noise):
+        x = z.unsqueeze(-1).unsqueeze(-1)
+        x = self.conv1(x)
+        x = self.bn1(x)
+        x = nn.LeakyReLU(True)(x)
+        x = self.conv2(x)
+        x = self.bn2(x)
+        x = nn.LeakyReLU(True)(x)
+        x = self.conv3(x)
+        x = self.bn3(x)
+        x = nn.LeakyReLU(True)(x)
+        x = self.conv4(x)
+        x = self.bn4(x)
+        x = nn.LeakyReLU(True)(x)
+        x = self.conv5(x)
+        x = self.bn5(x)
+        x = nn.LeakyReLU(True)(x)
+
+        r = exo_noise.unsqueeze(-1).unsqueeze(-1)
+        r = self.rconv1(r)
+        r = self.rbn1(r)
+        r = nn.LeakyReLU(True)(r)
+        r = self.rconv2(r)
+        r = self.rbn2(r)
+        r = nn.LeakyReLU(True)(r)
+        r = self.rconv3(r)
+        r = self.rbn3(r)
+        r = nn.LeakyReLU(True)(r)
+        r = self.rconv4(r)
+        r = self.rbn4(r)
+        r = nn.LeakyReLU(True)(r)
+        r = self.rconv5(r)
+        r = self.rbn5(r)
+        r = nn.LeakyReLU(True)(r)
+
+        x = self.conv6(x)
+        x = nn.Sigmoid()(x)
+        return x
 
 
 class discriminator32(nn.Module):
