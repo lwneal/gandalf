@@ -598,7 +598,8 @@ class generator128exo(nn.Module):
         r = self.rbn5(r)
         r = nn.LeakyReLU(True)(r)
 
-        x = self.conv6(x)
+        xr = torch.cat([x, r], dim=1)
+        x = self.conv6(xr)
         x = nn.Sigmoid()(x)
         return x
 
