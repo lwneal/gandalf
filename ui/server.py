@@ -158,6 +158,14 @@ def submit_value(result_dir):
         'start_label_point': flask.request.form['start_label_point'],
         'end_label_point': flask.request.form['end_label_point'],
     }
+    submitted_true_start_class = flask.request.form['true_start_class']
+    submitted_true_target_class = flask.request.form['true_target_class']
+    if not submitted_true_start_class:
+        submitted_true_start_class = label['start_class']
+    if not submitted_true_target_class:
+        submitted_true_target_class = label['target_class']
+    label['true_start_class'] = submitted_true_start_class
+    label['true_target_class'] = submitted_true_target_class
     save_active_label(label, result_dir)
     return flask.redirect(flask.request.referrer)
 

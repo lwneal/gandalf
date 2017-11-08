@@ -32,6 +32,10 @@ input[type=range]::-webkit-slider-runnable-track {
   background: #55ee55;
   border-radius: 5px;
 }
+.bigbutton {
+    width: 100;
+    height: 40;
+}
 </style>
 
 <body>
@@ -56,8 +60,18 @@ Come back when more are available!
   </p>
   <form action="/submit/{{result_dir}}" method=post>
     <input id="slider" name=frame type="range" />
-    <button type="button" id="promptbtn" onclick="nextPrompt()">Click Here</button>
-    <input id="submitbtn" type=submit hidden=true onclick="lastPrompt()" />
+
+    If the computer is wrong, enter the true start class label and end class label:
+    <div id=left_class_label>
+        True start label:
+        <input id="true_start_class_box" name="true_start_class" type="text" />
+        &nbsp; &nbsp; &nbsp;
+        True end label:
+        <input id="true_target_class_box" name="true_target_class" type="text" />
+        <button type="button" class="bigbutton" id="promptbtn" onclick="nextPrompt()">Click Here</button>
+        <input id="submitbtn" class="bigbutton" type=submit hidden=true onclick="lastPrompt()" />
+    </div>
+
     <input id="max_frames_input" name="maxframes" hidden=true />
     <input id="trajectory_id" name="trajectory_id" value="{{trajectory_id}}" hidden=true />
     <input id="start_class" name="start_class" value="{{start_class}}" hidden=true />
