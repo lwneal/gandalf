@@ -91,8 +91,8 @@ def load_active_learning_trajectories(labels, train_dataloader, positive_margin,
         #  On the left, positive labels for the left class
         #  On the right, positive labels for the right class
         #  In the middle, negative (complementary) labels for both classes
-        left_class = train_dataloader.lab_conv.idx[label['start_class']]
-        right_class = train_dataloader.lab_conv.idx[label['target_class']]
+        left_class = train_dataloader.lab_conv.idx[label['true_start_class']]
+        right_class = train_dataloader.lab_conv.idx[label['true_target_class']]
         left_boundary = int(label['start_label_point']) if label['start_label_point'] else 0
         right_boundary = int(label['end_label_point'])
 
