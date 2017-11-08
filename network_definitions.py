@@ -1220,6 +1220,7 @@ class encoder40(nn.Module):
         xnorm = xnorm.transpose(1,0)
         x = x.div(xnorm)
         return x
+encoder40sphere = encoder40
 
 
 class encoderLReLU128(nn.Module):
