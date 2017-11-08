@@ -650,6 +650,7 @@ class discriminator40(nn.Module):
         # Global average pooling
         x = x.mean(-1).mean(-1)
         return x.view(-1, 1).squeeze(1)
+discriminator40instancenorm = discriminator40
 
 
 class discriminator64instancenorm(nn.Module):
