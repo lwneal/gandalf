@@ -7,6 +7,10 @@ import os
 import sys
 from pprint import pprint
 
+import torch
+import numpy as np
+from torch.autograd import Variable
+
 def is_true(x):
     return not not x and x.lower().startswith('t')
 
@@ -78,7 +82,7 @@ def get_trajectory_filename(result_dir, trajectory_id):
     return None
 
 
-def load_active_learning_trajectories(labels, train_dataloader, positive_margin, negative_margin):
+def load_trajectories(labels, train_dataloader, positive_margin, negative_margin):
     active_points = []
     active_labels = []
     complementary_points = []
@@ -151,6 +155,19 @@ def augment_to_length(points, labels, required_len=2000):
     return augmented_points, augmented_labels
 
 
+# Every run starts with a set of eg. 1k initial labels
+init_images = []
+init_labels = []
+netE = networks['encoder']
+from torch.autograd import Variable
+for (images, labels, _) in train_dataloader:
+    init_images.extend(images.cpu().numpy())
+    init_labels.extend(labels.cpu().numpy())
+    if len(init_images) > options['init_label_count']:
+        break
+init_images = np.array(init_images)
+init_labels = np.array(init_labels)
+
 
 print("Loading all available active-learning labels...")
 active_label_dir = os.path.join(options['result_dir'], 'labels')
@@ -158,129 +175,36 @@ labels = load_labels(active_label_dir, label_count=options['query_count'])
 foldname = 'active_trajectories_{:06d}'.format(len(labels))
 print("Loaded {} labels from {}".format(len(labels), active_label_dir))
 
-import numpy as np
 
-if options['experiment_type'] == 'counterfactual':
-    active_points, active_labels, complementary_points, complementary_labels = load_active_learning_trajectories(labels, train_dataloader, positive_margin=options['positive_margin'], negative_margin=options['negative_margin'])
-elif options['experiment_type'] == 'uncertainty_sampling':
-    active_points, active_labels = load_active_learning_points(labels, train_dataloader)
-    complementary_points = np.array([])
-    complementary_labels = np.array([])
-elif options['experiment_type'] == 'semisupervised':
-    active_points, active_labels = load_active_learning_points(labels, train_dataloader)
-    complementary_points = np.array([])
-    complementary_labels = np.array([])
-elif options['experiment_type'] == 'baseline':
-    active_points = np.array([])
-    active_labels = np.array([])
-    complementary_points = np.array([])
-    complementary_labels = np.array([])
-else:
-    raise ValueError("Unknown experiment_type")
-print("Loaded {} trajectories totalling {} positive points and {} negative points".format(
-	len(labels), len(active_points), len(complementary_points)))
+active_points, active_labels, complementary_points, complementary_labels = load_trajectories(
+        labels,
+        train_dataloader,
+        positive_margin=options['positive_margin'],
+        negative_margin=options['negative_margin'])
 
-# Every run starts with a set of eg. 1k initial labels
-INIT_LABELS = options['init_label_count']
-extra_points = []
-extra_labels = []
-netE = networks['encoder']
-from torch.autograd import Variable
-for (images, labels, _) in train_dataloader:
-    extra_points.extend(netE(Variable(images)).data.cpu().numpy())
-    extra_labels.extend(labels.cpu().numpy())
-    if len(extra_points) > INIT_LABELS:
-        break
-if len(active_points) > 0:
-    _, _, M = np.array(active_points).shape
-    extra_points = np.expand_dims(np.array(extra_points), axis=1)
-    extra_labels = np.array(extra_labels)
-    active_points = np.concatenate([active_points, extra_points[:INIT_LABELS]])
-    active_labels = np.concatenate([active_labels, extra_labels[:INIT_LABELS]])
-else:
-    active_points = extra_points[:INIT_LABELS]
-    active_labels = extra_labels[:INIT_LABELS]
-
-training_len = 30 * 1000
-if len(active_points) < training_len:
-    print("Padding active label dataset for training stability")
-    active_points, active_labels = augment_to_length(active_points, active_labels, required_len=training_len)
-active_points = np.array(active_points)
-active_labels = np.array(active_labels)
-
-def to_torch(x):
-    from torch import FloatTensor
-    from torch.autograd import Variable
-    if len(x.shape) == 1:
-        x = np.expand_dims(x, axis=0)
-    return Variable(FloatTensor(x)).cuda()
-
-def gen(z):
-    from imutil import show
+# Generate images for each point in each trajectory
+def generate_image(z):
     netG = networks['generator']
-    show(netG(to_torch(z)))
+    netG.cuda()
+    torch_var = netG(Variable(torch.FloatTensor(z)).cuda())
+    return torch_var.data.cpu().numpy()[0]
 
+active_images = np.array([generate_image(z) for z in active_points])
 
-################################################
-# Every class is a convex hull in latent space
-################################################
+print("Loaded {} trajectories totalling {} positive points and {} negative points".format(
+	len(labels), len(active_images), len(complementary_points)))
 
-# Sort the positive labeled points
-label_indices = active_labels.argsort()
-active_labels = active_labels[label_indices]
-active_points = active_points[label_indices]
-
-rightmost = [0]
-for i in range(len(active_labels) - 1):
-    if active_labels[i] != active_labels[i+1]:
-        rightmost.append(i)
-rightmost.append(len(active_labels) - 1)
-
-interpolated_points = []
-interpolated_labels = []
-for i in range(10000):
-    cls = random.randint(0, len(rightmost) - 2)
-    left_idx, right_idx = (rightmost[cls], rightmost[cls+1])
-    a = active_points[np.random.randint(left_idx, right_idx)]
-    b = active_points[np.random.randint(left_idx, right_idx)]
-    theta = np.random.random()
-    zerp = theta * a + (1 - theta) * b
-    zerp /= np.linalg.norm(zerp)
-    interpolated_points.append(zerp)
-    interpolated_labels.append(cls)
-active_labels = np.concatenate([active_labels, interpolated_labels])
-active_points = np.concatenate([active_points, interpolated_points])
-
-interpolated_points = []
-interpolated_labels = []
-for i in range(10000):
-    cls = random.randint(0, len(rightmost) - 2)
-    left_idx, right_idx = (rightmost[cls], rightmost[cls+1])
-    a = active_points[np.random.randint(left_idx, right_idx)]
-    b = active_points[np.random.randint(left_idx, right_idx)]
-    theta = np.random.random()
-    zerp = theta * a + (1 - theta) * b
-    zerp /= np.linalg.norm(zerp)
-    interpolated_points.append(zerp)
-    interpolated_labels.append(cls)
-active_labels = np.concatenate([active_labels, interpolated_labels])
-active_points = np.concatenate([active_points, interpolated_points])
-
-################################################
-
-
-
-print("Re-training classifier {} using {} active-learning label points".format(
-    classifier_name, len(active_points) + len(complementary_points)))
+images = np.concatenate([active_images, init_images])
+labels = np.concatenate([active_labels, init_labels])
 
 best_epoch = 0
 best_acc = 0
 for classifier_epoch in range(options['classifier_epochs']):
     # Apply learning rate decay and train for one pseudo-epoch
     for optimizer in optimizers.values():
-        optimizer.param_groups[0]['lr'] = .0001 * (.9 ** classifier_epoch)
+        optimizer.param_groups[0]['lr'] = .5 * (.9 ** classifier_epoch)
     start_time = time.time()
-    train_active_learning(networks, optimizers, active_points, active_labels, complementary_points, complementary_labels, **options)
+    train_active_learning(networks, optimizers, images, labels, complementary_points, complementary_labels, **options)
     print("Ran train_active_learning in {:.3f}s".format(time.time() - start_time))
 
     if options['best_epoch'] == False and classifier_epoch < options['classifier_epochs'] - 1:

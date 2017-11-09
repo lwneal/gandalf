@@ -210,7 +210,7 @@ def shuffle(a, b, c):
     np.random.shuffle(c)
 
 
-def train_active_learning(networks, optimizers, active_points, active_labels, complementary_points, complementary_labels, classifier_name, **options):
+def train_active_learning(networks, optimizers, images, labels, complementary_points, complementary_labels, classifier_name, **options):
     netC = networks[classifier_name]
     netE = networks['encoder']
     netG = networks['generator']
@@ -226,14 +226,17 @@ def train_active_learning(networks, optimizers, active_points, active_labels, co
     batch_size = options['batch_size']
     use_negative_labels = options['use_complementary_labels']
 
-    is_positive = np.array([1.] * len(active_points) + [0] * len(complementary_points))
+    is_positive = np.array([1.] * len(images) + [0] * len(complementary_points))
+    """
     if len(complementary_points) > 0:
         points = np.concatenate([np.array(active_points).squeeze(1), complementary_points.squeeze(1)])
         labels = np.concatenate([active_labels, complementary_labels])
     else:
         points = active_points
         labels = active_labels
+    """
 
+    """
     if len(points) == 0:
         print("Warning: no input data available, skipping training")
         return 0
@@ -241,6 +244,7 @@ def train_active_learning(networks, optimizers, active_points, active_labels, co
         print("Warning: not enough data to fill one batch")
         batch_size = len(points) - 1
         print("Setting batch size to {}".format(batch_size))
+    """
 
     def generator(points, labels, is_positive):
         assert len(points) == len(labels)
@@ -255,27 +259,27 @@ def train_active_learning(networks, optimizers, active_points, active_labels, co
                 i += batch_size
 
     # Train on combined normal and complementary labels
-    dataloader = generator(points, labels, is_positive)
+    dataloader = generator(images, labels, is_positive)
 
     complementary_weight = 1.00
     correct = 0
     total = 0
 
-    batches = (len(active_points) + len(complementary_points)) // batch_size
+    batches = (len(images) + len(complementary_points)) // batch_size
     print("Training on {} batches".format(batches))
     for i in range(batches):
-        latent_points, labels, is_positive_mask = next(dataloader)
-        latent_points = Variable(latent_points).cuda()
+        images, labels, is_positive_mask = next(dataloader)
+        images = Variable(images).cuda()
         labels = Variable(labels).cuda()
         is_positive_mask = Variable(is_positive_mask).cuda()
         is_negative_mask = 1 - is_positive_mask
         negative_count = is_negative_mask.sum().data.cpu().numpy()[0]
 
         ############################
-        # Update C(Z) only
+        # Update C(E(X))
         ############################
-        class_predictions = netC(latent_points)
-        #class_predictions = netC(netE(netG(latent_points).detach()))
+        #class_predictions = netC(latent_points)
+        class_predictions = netC(netE(images))
         errPos = masked_nll_loss(class_predictions, labels, is_positive_mask)
 
         if use_negative_labels and negative_count > 0:
