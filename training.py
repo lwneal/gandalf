@@ -201,16 +201,14 @@ def train_classifier(networks, optimizers, dataloader, **options):
     return float(correct) / total
 
 
-def shuffle(a, b, c):
+def shuffle(a, b):
     rng_state = np.random.get_state()
     np.random.shuffle(a)
     np.random.set_state(rng_state)
     np.random.shuffle(b)
-    np.random.set_state(rng_state)
-    np.random.shuffle(c)
 
 
-def train_active_learning(networks, optimizers, images, labels, complementary_points, complementary_labels, classifier_name, **options):
+def train_active_learning(networks, optimizers, images, labels, classifier_name, **options):
     netC = networks[classifier_name]
     netE = networks['encoder']
     netG = networks['generator']
@@ -226,82 +224,47 @@ def train_active_learning(networks, optimizers, images, labels, complementary_po
     batch_size = options['batch_size']
     use_negative_labels = options['use_complementary_labels']
 
-    is_positive = np.array([1.] * len(images) + [0] * len(complementary_points))
-    """
-    if len(complementary_points) > 0:
-        points = np.concatenate([np.array(active_points).squeeze(1), complementary_points.squeeze(1)])
-        labels = np.concatenate([active_labels, complementary_labels])
-    else:
-        points = active_points
-        labels = active_labels
-    """
-
-    """
-    if len(points) == 0:
-        print("Warning: no input data available, skipping training")
-        return 0
-    if len(points) < batch_size:
-        print("Warning: not enough data to fill one batch")
-        batch_size = len(points) - 1
-        print("Setting batch size to {}".format(batch_size))
-    """
-
-    def generator(points, labels, is_positive):
+    def generator(points, labels):
         assert len(points) == len(labels)
         while True:
             i = 0
-            shuffle(points, labels, is_positive)
+            shuffle(points, labels)
             while i < len(points) - batch_size:
                 x = torch.FloatTensor(np.array(points[i:i+batch_size]))
                 y = torch.LongTensor(np.array(labels[i:i+batch_size]))
-                is_positive_mask = torch.FloatTensor(np.array(is_positive[i:i+batch_size]))
-                yield x.squeeze(1), y, is_positive_mask
+                yield x.squeeze(1), y
                 i += batch_size
 
     # Train on combined normal and complementary labels
-    dataloader = generator(images, labels, is_positive)
+    dataloader = generator(images, labels)
 
-    complementary_weight = 1.00
     correct = 0
     total = 0
 
-    batches = (len(images) + len(complementary_points)) // batch_size
+    batches = (len(images)) // batch_size
     print("Training on {} batches".format(batches))
     for i in range(batches):
-        images, labels, is_positive_mask = next(dataloader)
+        images, labels = next(dataloader)
         images = Variable(images).cuda()
         labels = Variable(labels).cuda()
-        is_positive_mask = Variable(is_positive_mask).cuda()
-        is_negative_mask = 1 - is_positive_mask
-        negative_count = is_negative_mask.sum().data.cpu().numpy()[0]
 
         ############################
         # Update C(E(X))
         ############################
-        #class_predictions = netC(latent_points)
         class_predictions = netC(netE(images))
-        errPos = masked_nll_loss(class_predictions, labels, is_positive_mask)
-
-        if use_negative_labels and negative_count > 0:
-            epsilon = .0001  # for numerical stability
-            y_preds = torch.exp(torch.gather(class_predictions, 1, labels.view(-1, 1)))
-            errNeg = -torch.mean(torch.log(1 - y_preds + epsilon) * is_negative_mask)
-            errNeg *= complementary_weight / negative_count
-        else:
-            errNeg = errPos * 0
-
-        errC = errPos + errNeg
+        errC = nll_loss(class_predictions, labels)
         errC.backward()
         optimizerC.step()
+        # Fine-tune encoder (only do this if --save=False)
         #optimizerE.step()
         ############################
 
         _, predicted = class_predictions.max(1)
-        correct += sum((predicted.data == labels.data) * (is_positive_mask > 0).data)
-        total += sum(is_positive_mask).data[0]
+        correct += sum(predicted.data == labels.data)
+        total += len(images)
 
-    print('[{}/{}] Pos Loss: {:.3f} Neg Loss: {:.3f} Classifier Accuracy:{:.3f}'.format(
-        i, batches, errPos.data[0], errNeg.data[0], float(correct) / total))
+    print('[{}/{}] Pos Loss: {:.3f} Classifier Accuracy:{:.3f}'.format(
+        i, batches, errC.data[0], float(correct) / total))
 
     return float(correct) / total
 

@@ -49,3 +49,8 @@ networks = build_networks(dataloader.num_classes, dataloader.num_attributes, **o
 
 for i in range(options['count']):
     counterfactual.generate_trajectory_active(networks, dataloader, **options)
+"""
+from imutil import show_figure
+print("Displaying figure...")
+show_figure(filename='output.png')
+"""

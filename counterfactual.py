@@ -204,6 +204,9 @@ def generate_trajectory_active(networks, dataloader, strategy='random', **option
     elif strategy == 'random-interpolate':
         start_class, _, _, start_img = select_uncertain_example(dataloader, netE, netC, pool_size=1)
         target_class, _, _, target_img = select_uncertain_example(dataloader, netE, netC, pool_size=1)
+    elif strategy == 'certainty-nearest':
+        start_class, _, _, start_img = select_uncertain_example(dataloader, netE, netC, pool_size=100, reverse=True)
+        target_class = start_class
     else:
         raise ValueError("Unknown strategy")
     print("Strategy {} start class {} target class {}".format(strategy, start_class, target_class))
@@ -216,6 +219,14 @@ def generate_trajectory_active(networks, dataloader, strategy='random', **option
         z_trajectory = generate_z_trajectory(z, target_class, netC, dataloader, speed, momentum_mu, max_iters=max_iters)
 
     sampled_trajectory = sample_trajectory(z_trajectory, output_frame_count)
+    """
+    # Save the last frame as a jpg
+    z = sampled_trajectory[-1]
+    img = to_np(netG(to_torch(z))).squeeze().transpose([1,2,0])
+    filename = 'images/{}_{}.jpg'.format(target_class, int(time.time() * 1000))
+    #show(img, filename=filename)
+    imutil.add_to_figure(img)
+    """
 
     # Save the trajectory in .npy to later load
     video_filename = make_video_filename(result_dir, dataloader, start_class, target_class)
@@ -275,6 +286,7 @@ def random_target_class(dataloader, start_class):
 
 def generate_z_trajectory(z, target_class, netC, dataloader,
         speed=.001, momentum_mu=.95, max_iters=1000, spherical=True):
+    original_z = z.clone()
     # Generate z_trajectory
     z_trajectory = []
     z_trajectory.append(to_np(z))  # initial point
@@ -287,7 +299,9 @@ def generate_z_trajectory(z, target_class, netC, dataloader,
         cf_loss = nll_loss(preds, target_label)
 
         # Distance in latent space from original point
-        #cf_loss += .0001 * torch.sum((z - original_z) ** 2)
+        distance = torch.sum((z - original_z) ** 2)
+        # HACK: We want to find the furthest point classified as target_class
+        cf_loss -= .001 * distance
 
         dc_dz = autograd.grad(cf_loss, z, cf_loss, retain_graph=True)[0]
         momentum -= dc_dz * speed
@@ -302,10 +316,13 @@ def generate_z_trajectory(z, target_class, netC, dataloader,
         pred_confidence = np.exp(to_np(preds.max(1)[0])[0])
         z_trajectory.append(to_np(z))
         predicted_class_name = dataloader.lab_conv.labels[predicted_class]
-        print("Class: {} ({:.3f} confidence). Target class {}".format(
-            predicted_class_name, pred_confidence, target_class))
+        print("Class: {} ({:.3f} confidence). Target class {}, norm {:.3f}, distance {:.3f}".format(
+            predicted_class_name, pred_confidence, target_class, 
+            l2_norm.data.cpu().numpy()[0], distance.data.cpu().numpy()[0]))
+        """
         if pred_confidence > .99 and predicted_class == target_class:
             break
+        """
     return z_trajectory
 
 

@@ -21,7 +21,6 @@ parser.add_argument('--classifier_name', type=str, default='active_learning_clas
         help='Name of the classifier to use [default: active_learning_classifier]')
 parser.add_argument('--init_label_count', type=int, help='Number of labels to initialize with. [default: 1000]', default=1000)
 parser.add_argument('--query_count', type=int, help='Number of active learning queries to apply')
-parser.add_argument('--experiment_type', type=str, default='baseline', help='One of: semisupervised, uncertainty_sampling, counterfactual')
 parser.add_argument('--classifier_epochs', type=int, default=10, help='Number of epochs')
 parser.add_argument('--best_epoch', type=is_true, default=False, help='Select best-fit epoch (only use for oracle training)')
 parser.add_argument('--save', type=is_true, default=True, help='If set to False, do not save network')
@@ -100,7 +99,6 @@ def load_trajectories(labels, train_dataloader, positive_margin, negative_margin
         left_boundary = int(label['start_label_point']) if label['start_label_point'] else 0
         right_boundary = int(label['end_label_point'])
 
-
         left_points = slice_with_margin(points, 0, left_boundary, right_margin=positive_margin)
         center_points = slice_with_margin(points, left_boundary, right_boundary, negative_margin, negative_margin)
         right_points = slice_with_margin(points, right_boundary, len(points), left_margin=positive_margin)
@@ -117,7 +115,7 @@ def load_trajectories(labels, train_dataloader, positive_margin, negative_margin
         complementary_labels.extend([right_class] * len(center_points))
 
     active_points = np.expand_dims(np.array(active_points), axis=1)
-    active_labels = np.array(active_labels)
+    active_labels = np.array(active_labels, dtype=int)
     complementary_points = np.expand_dims(np.array(complementary_points), axis=1)
     complementary_labels = np.array(complementary_labels)
     return active_points, active_labels, complementary_points, complementary_labels
@@ -127,19 +125,6 @@ def slice_with_margin(array, left, right, left_margin=0, right_margin=0):
     left_idx = min(left + left_margin, len(array))
     right_idx = max(0, right - right_margin)
     return np.squeeze(array[left_idx:right_idx], axis=1)
-
-
-def load_active_learning_points(labels, train_dataloader):
-    active_points = []
-    active_labels = []
-    for label in labels:
-        trajectory_filename = get_trajectory_filename(result_dir, label['trajectory_id'])
-        points = np.load(trajectory_filename)
-        # A standard active learning setup: only a single point
-        true_start_class = train_dataloader.lab_conv.idx[label['true_start_class']]
-        active_points.append(points[0])
-        active_labels.append(true_start_class)
-    return np.array(active_points), np.array(active_labels)
 
 
 def augment_to_length(points, labels, required_len=2000):
@@ -190,9 +175,16 @@ def generate_image(z):
     return torch_var.data.cpu().numpy()[0]
 
 active_images = np.array([generate_image(z) for z in active_points])
+if len(active_images) == 0:
+    # HACK so concatenate works
+    active_images = np.zeros((0,3,28,28))
 
 print("Loaded {} trajectories totalling {} positive points and {} negative points".format(
 	len(labels), len(active_images), len(complementary_points)))
+
+while len(init_images) < 1000:
+    init_images = np.concatenate([init_images, init_images])
+    init_labels = np.concatenate([init_labels, init_labels])
 
 images = np.concatenate([active_images, init_images])
 labels = np.concatenate([active_labels, init_labels])
@@ -202,9 +194,9 @@ best_acc = 0
 for classifier_epoch in range(options['classifier_epochs']):
     # Apply learning rate decay and train for one pseudo-epoch
     for optimizer in optimizers.values():
-        optimizer.param_groups[0]['lr'] = .5 * (.9 ** classifier_epoch)
+        optimizer.param_groups[0]['lr'] = .005 * (.9 ** classifier_epoch)
     start_time = time.time()
-    train_active_learning(networks, optimizers, images, labels, complementary_points, complementary_labels, **options)
+    train_active_learning(networks, optimizers, images, labels, **options)
     print("Ran train_active_learning in {:.3f}s".format(time.time() - start_time))
 
     if options['best_epoch'] == False and classifier_epoch < options['classifier_epochs'] - 1:
@@ -226,7 +218,7 @@ for classifier_epoch in range(options['classifier_epochs']):
         if options['save']:
             save_networks({classifier_name: networks[classifier_name]}, epoch=current_epoch, result_dir=options['result_dir'])
 
-print("Trained with {} active points, {} negative points".format(len(active_points), len(complementary_points)))
+print("Trained with {} active points".format(len(active_points)))
 if options['save']:
     save_evaluation(best_results, options['result_dir'], get_current_epoch(options['result_dir']))
 print("Best Results:")
