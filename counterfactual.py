@@ -295,6 +295,10 @@ def generate_z_trajectory(z, target_class, netC, dataloader,
     target_label[:] = int(target_class)
     target_label = Variable(target_label).cuda()
 
+    # Hack for uncertainty sampling experiment: just leave the point
+    z_trajectory.append(to_np(z))  # initial point
+    return z_trajectory
+
     # First step: maximize distance while staying within the target_class
     print("Sanity Check: Just Move Toward a Decision Boundary")
     preds = netC(z)
