@@ -295,20 +295,16 @@ def generate_z_trajectory(z, target_class, netC, dataloader,
     target_label[:] = int(target_class)
     target_label = Variable(target_label).cuda()
 
-    # Hack for uncertainty sampling experiment: just leave the point
-    z_trajectory.append(to_np(z))  # initial point
-    return z_trajectory
-
     # First step: maximize distance while staying within the target_class
     print("Sanity Check: Just Move Toward a Decision Boundary")
     preds = netC(z)
     for i in range(max_iters):
         #cf_loss = nll_loss(preds, target_label)
-        cf_loss = -.001 * preds.sum()
+        cf_loss = preds.max()
 
         # Distance in latent space from original point
         distance = torch.sum((z - original_z) ** 2)
-        #cf_loss -= .001 * distance
+        cf_loss -= .01 * distance
 
         dc_dz = autograd.grad(cf_loss, z, cf_loss, retain_graph=True)[0]
         momentum -= dc_dz * speed
