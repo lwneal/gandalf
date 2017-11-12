@@ -99,6 +99,7 @@ def load_trajectories(labels, train_dataloader, positive_margin, negative_margin
         left_boundary = int(label['start_label_point']) if label['start_label_point'] else 0
         right_boundary = int(label['end_label_point'])
 
+        """
         left_points = slice_with_margin(points, 0, left_boundary, right_margin=positive_margin)
         center_points = slice_with_margin(points, left_boundary, right_boundary, negative_margin, negative_margin)
         right_points = slice_with_margin(points, right_boundary, len(points), left_margin=positive_margin)
@@ -113,6 +114,12 @@ def load_trajectories(labels, train_dataloader, positive_margin, negative_margin
         complementary_labels.extend([left_class] * len(center_points))
         complementary_points.extend(center_points)
         complementary_labels.extend([right_class] * len(center_points))
+        """
+
+        # Hack for single-image labeling: only use the first point
+        active_points.extend(slice_with_margin( points, 0, 1))
+        active_labels.append(left_class)
+
 
     active_points = np.expand_dims(np.array(active_points), axis=1)
     active_labels = np.array(active_labels, dtype=int)
