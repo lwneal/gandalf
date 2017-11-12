@@ -40,10 +40,10 @@ def parse_active_learning_series(eval_filename, prefix='active_trajectories'):
     if len(keys) == 0:
         raise NoDataAvailable
     x = [int(k.split('_')[-1]) for k in keys]
-    if prefix == 'active_trajectories':
-        y_key = 'accuracy' 
-    elif prefix == 'openset':
+    if prefix == 'openset':
         y_key = 'auc_softmax'
+    else:
+        y_key = 'accuracy' 
     y = [evaluations[k][y_key] for k in keys]
     return x, y
 
