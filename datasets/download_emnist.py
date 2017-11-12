@@ -24,39 +24,61 @@ def main():
 
     print("Downloading {} dataset files to {}...".format(DATASET_NAME, DATASET_PATH))
     download('matlab.zip', IMAGES_LABELS_URL)
+    
+    generate_emnist_dataset('letters', convert_letters)
+    generate_emnist_dataset('digits', convert_digits)
 
-    print("Converting EMNIST letters...")
-    mkdir(os.path.join(DATASET_PATH, 'letters'))
-    mat_filename = os.path.join(DATASET_PATH, 'matlab', 'emnist-letters.mat')
+
+def generate_emnist_dataset(name, convert_fn):
+    print("Converting EMNIST {}...".format(name))
+    mkdir(os.path.join(DATASET_PATH, name))
+    mat_filename = 'emnist-{}.mat'.format(name)
+    mat_filename = os.path.join(DATASET_PATH, 'matlab', mat_filename)
 
     mat = sio.loadmat(mat_filename)
     dataset = mat['dataset'][0][0]
 
-    # TODO: Convert matlab-format data into numpy matrices
-    train_digits = dataset[0][0][0][0]
+    train_images = dataset[0][0][0][0]
     train_labels = dataset[0][0][0][1]
 
-    test_digits = dataset[1][0][0][0]
+    test_images = dataset[1][0][0][0]
     test_labels = dataset[1][0][0][1]
 
-    print("Converting EMNIST letters training set...")
-    train_examples = convert_emnist(train_digits, train_labels, fold='train')
+    print("Converting EMNIST {} training set...".format(name))
+    train_examples = convert_fn(train_images, train_labels, fold='train')
 
-    print("Converting EMNIST letters testing set...")
-    test_examples = convert_emnist(test_digits, test_labels, fold='test')
+    print("Converting EMNIST {} testing set...".format(name))
+    test_examples = convert_fn(test_images, test_labels, fold='test')
 
-    print("Saving .dataset file...")
-    save_image_dataset(train_examples + test_examples)
+    print("Saving {}.dataset".format(name))
+    save_image_dataset(train_examples + test_examples, name)
     print("Dataset convertion finished")
 
 
-def convert_emnist(digits, labels, fold):
+def convert_letters(letters, labels, fold):
     examples = []
-    assert len(digits) == len(labels)
-    for i in tqdm(range(len(digits))):
+    assert len(letters) == len(labels)
+    for i in tqdm(range(len(letters))):
         label = chr(64 + labels[i])
         filename = 'letter_{:06d}.png'.format(i)
         filename = os.path.join(DATASET_PATH, 'letters', filename)
+        pixels = mnist_to_np(letters[i])
+        Image.fromarray(pixels).save(filename)
+        examples.append({
+            "filename": filename,
+            "fold": fold,
+            "label": label
+        })
+    return examples
+
+
+def convert_digits(digits, labels, fold):
+    examples = []
+    assert len(digits) == len(labels)
+    for i in tqdm(range(len(digits))):
+        label = str(labels[i][0])
+        filename = '{:06d}.png'.format(i)
+        filename = os.path.join(DATASET_PATH, 'digits', filename)
         pixels = mnist_to_np(digits[i])
         Image.fromarray(pixels).save(filename)
         examples.append({
@@ -101,8 +123,8 @@ def train_test_split(filename):
     return [line.strip().endswith('0') for line in open(filename)]
 
 
-def save_image_dataset(examples):
-    output_filename = '{}/{}.dataset'.format(DATA_DIR, DATASET_NAME)
+def save_image_dataset(examples, name):
+    output_filename = '{}/emnist-{}.dataset'.format(DATA_DIR, name)
     fp = open(output_filename, 'w')
     for line in examples:
         fp.write(json.dumps(line) + '\n')
