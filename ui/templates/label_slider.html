@@ -47,7 +47,15 @@ Congratulations, you've finished labeling all the examples.<br>
 Come back when more are available!
 </p>
 {% else %}
+  <video id="vidleft" tabindex="0" autobuffer="autobuffer" preload="preload" height=256px width=256px>
+    <source src="{{file_url}}"></source>
+    <p>Error loading video</p>
+  </video>
   <video id="vid" tabindex="0" autobuffer="autobuffer" preload="preload" height=512px width=512px>
+    <source src="{{file_url}}"></source>
+    <p>Error loading video</p>
+  </video>
+  <video id="vidright" tabindex="0" autobuffer="autobuffer" preload="preload" height=256px width=256px>
     <source src="{{file_url}}"></source>
     <p>Error loading video</p>
   </video>
@@ -86,6 +94,8 @@ Come back when more are available!
 <script>
 FPS = 25;
 var vid = document.getElementById('vid'); 
+var vidleft = document.getElementById('vidleft'); 
+var vidright = document.getElementById('vidright'); 
 var slider = document.getElementById('slider');
 var prompta = document.getElementById('prompt_a')
 var promptb = document.getElementById('prompt_b')
@@ -103,6 +113,7 @@ vid.addEventListener('loadedmetadata', function() {
 
   var maxframes = document.getElementById('max_frames_input')
   maxframes.value = duration_frames;
+
 });
 
 // Use requestAnimationFrame for smooth playback
@@ -110,6 +121,9 @@ function playFrame(){
   var frameNumber  = slider.value / FPS;
   vid.currentTime  = frameNumber;
   window.requestAnimationFrame(playFrame);
+
+  vidleft.currentTime  = 0;
+  vidright.currentTime  = vidright.duration;
 }
 
 function nextPrompt() {
@@ -128,5 +142,6 @@ function lastPrompt() {
 }
 
 window.requestAnimationFrame(playFrame);
+document.getElementById("slider").focus();
 </script>
 </html>
