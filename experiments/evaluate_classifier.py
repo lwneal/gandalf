@@ -37,7 +37,7 @@ if options['comparison_dataset']:
     dataset_name = options['dataset'].split('/')[-1].replace('.dataset', '')
     options['fold'] = 'comparison_{}_{}'.format(dataset_name, options['tag'])
 
-new_results = evaluate_classifier(networks, dataloader, **options)
+new_results = evaluate_classifier(networks, dataloader, verbose=False, skip_reconstruction=True, **options)
 
 save_evaluation(new_results, options['result_dir'], options['epoch'])
 

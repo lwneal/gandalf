@@ -228,6 +228,9 @@ def generate_trajectory_active(networks, dataloader, strategy='random', **option
     imutil.add_to_figure(img)
     """
 
+    # Hack for the max-distance labeling task: Reverse the trajectory, label the LAST image
+    #sampled_trajectory = sampled_trajectory[::-1]
+
     # Save the trajectory in .npy to later load
     video_filename = make_video_filename(result_dir, dataloader, start_class, target_class)
     trajectory_filename = video_filename.replace('.mjpeg', '.npy')
@@ -291,23 +294,25 @@ def generate_z_trajectory(z, target_class, netC, dataloader,
     z_trajectory = []
     z_trajectory.append(to_np(z))  # initial point
     momentum = Variable(torch.zeros(z.size())).cuda()
+    noise = z.data.clone()
     target_label = torch.LongTensor(1)
     target_label[:] = int(target_class)
     target_label = Variable(target_label).cuda()
 
     # First step: maximize distance while staying within the target_class
-    print("Sanity Check: Just Move Toward a Decision Boundary")
-    preds = netC(z)
     for i in range(max_iters):
-        #cf_loss = nll_loss(preds, target_label)
-        cf_loss = preds.max()
+        preds = netC(z)
+        #cf_loss = nll_loss(netC(z), target_label)
+        #cf_loss = torch.sum((torch.exp(netC(z)) - torch.exp(netC(original_z))) ** 2)
+        #cf_loss = 1.0 * preds.max()
+        cf_loss = preds.max() * torch.exp(preds.max())
 
         # Distance in latent space from original point
         distance = torch.sum((z - original_z) ** 2)
-        cf_loss -= .01 * distance
+        cf_loss += 0.0001 * distance
 
         dc_dz = autograd.grad(cf_loss, z, cf_loss, retain_graph=True)[0]
-        momentum -= dc_dz * speed
+        momentum += dc_dz * speed
         z += momentum
         momentum *= momentum_mu
         if spherical:
@@ -317,7 +322,12 @@ def generate_z_trajectory(z, target_class, netC, dataloader,
         preds = netC(z)
         predicted_class = to_np(preds.max(1)[1])[0]
         pred_confidence = np.exp(to_np(preds.max(1)[0])[0])
+
         z_trajectory.append(to_np(z))
+
+        noise.normal_()
+        z += .001 * Variable(noise).detach()
+
         predicted_class_name = dataloader.lab_conv.labels[predicted_class]
         print("Class: {} ({:.3f} confidence). Target class {}, norm {:.3f}, distance {:.3f}".format(
             predicted_class_name, pred_confidence, target_class, 

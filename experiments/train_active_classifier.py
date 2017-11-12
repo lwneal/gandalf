@@ -117,8 +117,18 @@ def load_trajectories(labels, train_dataloader, positive_margin, negative_margin
         """
 
         # Hack for single-image labeling: only use the first point
-        active_points.extend(slice_with_margin( points, 0, 1))
-        active_labels.append(left_class)
+        for i in range(len(points)):
+            active_points.extend(slice_with_margin(points, 0, 1))
+        active_labels.extend([left_class] * len(points))
+
+        # Hack for single-image labeling comparison: use only the last point
+        #for i in range(len(points)):
+        #   active_points.extend(slice_with_margin(points, len(points) - 1, len(points)))
+        #active_labels.extend([right_class] * len(points))
+
+        # Hack: use all points, assume the start label applies to the whole set
+        #active_points.extend(slice_with_margin(points, 0, len(points)))
+        #active_labels.extend([left_class] * len(points))
 
 
     active_points = np.expand_dims(np.array(active_points), axis=1)
