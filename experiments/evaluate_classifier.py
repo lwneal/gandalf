@@ -11,6 +11,7 @@ parser.add_argument('--fold', default="test", help='Name of evaluation fold [def
 parser.add_argument('--epoch', type=int, help='Epoch to evaluate (latest epoch if none chosen)')
 parser.add_argument('--save_latent_vectors', default=False, help='Save Z in .npy format for later visualization')
 parser.add_argument('--comparison_dataset', type=str, help='Dataset for off-manifold comparison')
+parser.add_argument('--tag', help='Name for this run in eval json')
 options = vars(parser.parse_args())
 
 # Import the rest of the project
@@ -34,7 +35,7 @@ if options['comparison_dataset']:
     options['dataset'] = options['comparison_dataset']
     dataloader = CustomDataloader(last_batch=True, shuffle=False, **options)
     dataset_name = options['dataset'].split('/')[-1].replace('.dataset', '')
-    options['fold'] = 'comparison_{}_{}'.format(dataset_name, options['fold'])
+    options['fold'] = 'comparison_{}_{}'.format(dataset_name, options['tag'])
 
 new_results = evaluate_classifier(networks, dataloader, **options)
 
