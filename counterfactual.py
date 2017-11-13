@@ -216,7 +216,7 @@ def generate_trajectory_active(networks, dataloader, strategy='random', **option
     else:
         # Generate a path in latent space from start_img to a known classification
         z = netE(Variable(start_img))
-        z_trajectory = generate_z_trajectory(z, target_class, netC, dataloader, speed, momentum_mu, max_iters=max_iters)
+        z_trajectory = generate_z_trajectory(z, target_class, netC, netE, netG, dataloader, speed, momentum_mu, max_iters=max_iters)
 
     sampled_trajectory = sample_trajectory(z_trajectory, output_frame_count)
     """
@@ -287,7 +287,7 @@ def random_target_class(dataloader, start_class):
     return target_class
 
 
-def generate_z_trajectory(z, target_class, netC, dataloader,
+def generate_z_trajectory(z, target_class, netC, netE, netG, dataloader,
         speed=.001, momentum_mu=.95, max_iters=1000, spherical=True):
     original_z = z.clone()
     # Generate z_trajectory
@@ -300,38 +300,56 @@ def generate_z_trajectory(z, target_class, netC, dataloader,
     target_label = Variable(target_label).cuda()
 
     # First step: maximize distance while staying within the target_class
+    #preds = netC(z)
+    preds = netC(netE(netG(z)))
     for i in range(max_iters):
-        preds = netC(z)
         #cf_loss = nll_loss(netC(z), target_label)
         #cf_loss = torch.sum((torch.exp(netC(z)) - torch.exp(netC(original_z))) ** 2)
-        #cf_loss = 1.0 * preds.max()
-        cf_loss = preds.max() * torch.exp(preds.max())
+        cf_loss = .001 * torch.exp(preds).max()
+        #cf_loss = .5 * preds.max() * torch.exp(preds.max())
 
         # Distance in latent space from original point
-        distance = torch.sum((z - original_z) ** 2)
-        cf_loss += 0.0001 * distance
+        displacement = z - original_z
+        sq_distance = torch.sum(torch.mul(displacement, displacement))
+        cf_loss += .001 * sq_distance
 
         dc_dz = autograd.grad(cf_loss, z, cf_loss, retain_graph=True)[0]
-        momentum += dc_dz * speed
-        z += momentum
-        momentum *= momentum_mu
+        #momentum += dc_dz * speed
+        #z += momentum
+        #momentum *= momentum_mu
+        z -= dc_dz
+
+        #noise.normal_()
+        #z += .001 * Variable(noise).detach()
+
         if spherical:
             l2_norm = torch.mul(z, z).sum()
             z /= l2_norm
 
-        preds = netC(z)
+        #preds = netC(z)
+        preds = netC(netE(netG(z)))
         predicted_class = to_np(preds.max(1)[1])[0]
         pred_confidence = np.exp(to_np(preds.max(1)[0])[0])
 
-        z_trajectory.append(to_np(z))
+        # Any point within the sphere centered at original_z with radius ||displacement||
+        # should have the same label as z
+        orig_z = to_np(original_z)
+        new_z = to_np(z)
+        rand = np.random.normal(0, 1, size=z.size())
+        rand /= np.linalg.norm(rand)
+        displacement = np.linalg.norm(new_z - orig_z)
+        new_point = orig_z + rand * displacement
+        # Clamp to unit sphere
+        new_point /= np.linalg.norm(new_point)
 
-        noise.normal_()
-        z += .001 * Variable(noise).detach()
+        z_trajectory.insert(0, new_point)
+        z_trajectory.append(new_z)
+        print("Distance between original z and new z is {}".format(displacement))
 
         predicted_class_name = dataloader.lab_conv.labels[predicted_class]
-        print("Class: {} ({:.3f} confidence). Target class {}, norm {:.3f}, distance {:.3f}".format(
+        print("Class: {} ({:.3f} confidence). Target class {}, norm {:.3f}, distance {:.6f}".format(
             predicted_class_name, pred_confidence, target_class, 
-            l2_norm.data.cpu().numpy()[0], distance.data.cpu().numpy()[0]))
+            l2_norm.data.cpu().numpy()[0], displacement))
         """
         if pred_confidence > .99 and predicted_class == target_class:
             break
