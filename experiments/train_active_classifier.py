@@ -99,6 +99,7 @@ def load_trajectories(labels, train_dataloader, positive_margin, negative_margin
         left_boundary = int(label['start_label_point']) if label['start_label_point'] else 0
         right_boundary = int(label['end_label_point'])
 
+        """
         left_points = slice_with_margin(points, 0, left_boundary, right_margin=positive_margin)
         center_points = slice_with_margin(points, left_boundary, right_boundary, negative_margin, negative_margin)
         right_points = slice_with_margin(points, right_boundary, len(points), left_margin=positive_margin)
@@ -113,13 +114,12 @@ def load_trajectories(labels, train_dataloader, positive_margin, negative_margin
         complementary_labels.extend([left_class] * len(center_points))
         complementary_points.extend(center_points)
         complementary_labels.extend([right_class] * len(center_points))
+        """
 
         # Hack for single-image labeling: only use the first point
-        """
         for i in range(len(points)):
             active_points.extend(slice_with_margin(points, 0, 1))
         active_labels.extend([left_class] * len(points))
-        """
 
         """
         # Hack for single-image labeling comparison: use only the last point
@@ -209,6 +209,23 @@ while len(init_images) < 1000:
 
 images = np.concatenate([active_images, init_images])
 labels = np.concatenate([active_labels, init_labels])
+
+# Hack: Manually repeat values to enforce a known class balance
+hist, _ = np.histogram(labels)
+target_class_count = np.max(hist)
+
+for class_idx in range(len(hist)):
+    class_count = hist[class_idx]
+    if class_count == target_class_count:
+        continue
+    class_images = np.array([img for (img, label) in zip(images, labels) if label == class_idx])
+    images_to_add = []
+    for i in range(class_count, target_class_count):
+        images_to_add.append(random.choice(class_images))
+    images_to_add = np.array(images_to_add)
+    images = np.concatenate([images, images_to_add])
+    labels = np.concatenate([labels, np.array([class_idx] * (target_class_count - class_count))])
+
 
 best_epoch = 0
 best_acc = 0

@@ -204,6 +204,9 @@ def generate_trajectory_active(networks, dataloader, strategy='random', **option
     elif strategy == 'random-interpolate':
         start_class, _, _, start_img = select_uncertain_example(dataloader, netE, netC, pool_size=1)
         target_class, _, _, target_img = select_uncertain_example(dataloader, netE, netC, pool_size=1)
+    elif strategy == 'uncertainty-interpolate':
+        start_class, _, _, start_img = select_uncertain_example(dataloader, netE, netC, pool_size=100)
+        target_class, _, _, target_img = select_uncertain_example(dataloader, netE, netC, pool_size=100)
     elif strategy == 'certainty-nearest':
         start_class, _, _, start_img = select_uncertain_example(dataloader, netE, netC, pool_size=100, reverse=True)
         target_class = start_class
@@ -300,18 +303,18 @@ def generate_z_trajectory(z, target_class, netC, netE, netG, dataloader,
     target_label = Variable(target_label).cuda()
 
     # First step: maximize distance while staying within the target_class
-    #preds = netC(z)
-    preds = netC(netE(netG(z)))
+    preds = netC(z)
+    #preds = netC(netE(netG(z)))
     for i in range(max_iters):
         cf_loss = nll_loss(netC(z), target_label)
 
         # Distance in latent space from original point
         displacement = z - original_z
         sq_distance = torch.sum(torch.mul(displacement, displacement))
-        cf_loss += .001 * sq_distance
+        cf_loss += 1.0 * sq_distance
 
         dc_dz = autograd.grad(cf_loss, z, cf_loss, retain_graph=True)[0]
-        momentum += dc_dz * speed
+        momentum -= dc_dz * speed
         momentum *= momentum_mu
         z += momentum
 
@@ -322,8 +325,8 @@ def generate_z_trajectory(z, target_class, netC, netE, netG, dataloader,
             l2_norm = torch.mul(z, z).sum()
             z /= l2_norm
 
-        #preds = netC(z)
-        preds = netC(netE(netG(z)))
+        preds = netC(z)
+        #preds = netC(netE(netG(z)))
         predicted_class = to_np(preds.max(1)[1])[0]
         pred_confidence = np.exp(to_np(preds.max(1)[0])[0])
 

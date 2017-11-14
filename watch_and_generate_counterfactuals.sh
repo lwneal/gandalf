@@ -6,7 +6,7 @@ LABEL_COUNT=`ls $RESULT_DIR/labels | wc -l`
 
 if [ $COUNTERFACTUAL_COUNT -lt $(($LABEL_COUNT + 5)) ]; then
     echo "Out of $COUNTERFACTUAL_COUNT counterfactuals $LABEL_COUNT have been labeled; generating more"
-    python experiments/generate_counterfactual.py --result_dir $RESULT_DIR --strategy uncertainty-nearest --count 3 --counterfactual_max_iters 100
+    python experiments/generate_counterfactual.py --result_dir $RESULT_DIR --strategy uncertainty-random --count 3 --counterfactual_max_iters 100
 else
     echo "Labeled: $LABEL_COUNT Total: $COUNTERFACTUAL_COUNT"
 fi
