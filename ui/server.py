@@ -51,7 +51,7 @@ def get_counts(result_dir):
     return trajectory_count, label_count
 
 
-def get_unlabeled_trajectories(result_dir, fold='active'):
+def get_unlabeled_trajectories(result_dir, fold='active', extension='mp4'):
     result_dir = os.path.join(RESULTS_PATH, result_dir)
     if not os.path.exists(result_dir):
         raise ValueError("Could not load result directory {}".format(result_dir))
@@ -62,9 +62,9 @@ def get_unlabeled_trajectories(result_dir, fold='active'):
         os.mkdir(trajectory_dir)
 
     filenames = os.listdir(trajectory_dir)
-    filenames = [f for f in filenames if f.startswith(fold) and f.endswith('.mp4')]
+    filenames = [f for f in filenames if f.startswith(fold) and f.endswith(extension)]
     if len(filenames) == 0:
-        print("No active_learning .mp4 files available")
+        print("No files available to label in {}".format(trajectory_dir))
         return []
 
     unlabeled_filenames = [f for f in filenames if not is_labeled(f, result_dir)]
@@ -149,6 +149,18 @@ def route_label_batch(result_dir):
     return flask.render_template('label_batch.html', **args)
 
 
+@app.route('/grid/<result_dir>')
+def route_label_grid(result_dir):
+    filenames = get_unlabeled_trajectories(result_dir, fold='grid', extension='.jpg')
+    if filenames:
+        filename = random.choice(filenames)
+        args = get_args_batch(filename, result_dir)
+        args['unlabeled_count'] = len(filenames)
+    else:
+        args = {'unlabeled_count': 0}
+    return flask.render_template('label_grid.html', **args)
+
+
 @app.route('/submit/<result_dir>', methods=['POST'])
 def submit_value(result_dir):
     label = {
@@ -165,6 +177,17 @@ def submit_value(result_dir):
 @app.route('/submit_batch/<result_dir>', methods=['POST'])
 def submit_batch(result_dir):
     print("Submitty batchy. Request form: {}".format(flask.request.form))
+    save_active_label(label, result_dir)
+    return flask.redirect(flask.request.referrer)
+
+
+@app.route('/submit_grid/<result_dir>', methods=['POST'])
+def submit_grid(result_dir):
+    print("Submitted grid labels. Request form: {}".format(flask.request.form))
+    label = {
+        'trajectory_id': flask.request.form['trajectory_id'],
+        'labels': flask.request.form['labels'],
+    }
     save_active_label(label, result_dir)
     return flask.redirect(flask.request.referrer)
 

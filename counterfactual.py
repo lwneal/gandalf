@@ -244,32 +244,41 @@ def generate_comparison(networks, dataloader, **options):
     max_iters = options['counterfactual_max_iters']
     result_dir = options['result_dir']
 
-    # Start with a random example
-    most_likely_class, least_likely_class, start_score, start_img = select_uncertain_example(dataloader, netE, netC, pool_size=1)
-    print("Got an example, the classifier thinks it is class: {}".format(most_likely_class))
-    start_class = most_likely_class
 
-
+    # Generate an NxN square visualization where N is the class size
     counterfactual_latent_points = []
-    for class_idx in range(dataloader.num_classes):
-        # Generate a path in latent space from start_img to a known classification
-        z = netE(Variable(start_img))
-        target_class = class_idx
-        z_trajectory = generate_z_trajectory(z, target_class, netC, dataloader, speed, momentum_mu, max_iters=max_iters)
-        print("Generating what the image would look like if it were class {}".format(target_class))
-        counterfactual_latent_points.append(z_trajectory[-1])
+    for _ in range(dataloader.num_classes):
+        # Start with a random example
+        most_likely_class, least_likely_class, start_score, start_img = select_uncertain_example(dataloader, netE, netC, pool_size=1)
+        print("Got an example, the classifier thinks it is class: {}".format(most_likely_class))
+        start_class = most_likely_class
+
+        for class_idx in range(dataloader.num_classes):
+            # Generate a path in latent space from start_img to a known classification
+            z = netE(Variable(start_img))
+            target_class = class_idx
+            z_trajectory = generate_z_trajectory(z, target_class, netC, dataloader, speed, momentum_mu, max_iters=max_iters)
+            print("Generating what the image would look like if it were class {}".format(target_class))
+            counterfactual_latent_points.append(z_trajectory[-1])
 
     images = []
     original_img = start_img.cpu().numpy().squeeze(0)
     reencoded = to_np(netG(netE(Variable(start_img)))).squeeze(0)
-    images.append(original_img)
-    images.append(reencoded)
+    #images.append(original_img)
+    #images.append(reencoded)
     for z in counterfactual_latent_points:
         img = to_np(netG(to_torch(z))).squeeze(0)
         images.append(img)
-    images = np.array(images).transpose((0,2,3,1))
-    imutil.show(images)
 
+    images = np.array(images).transpose((0,2,3,1))
+    video_filename = make_video_filename(result_dir, dataloader, start_class, start_class, label_type='grid')
+
+    # Save the images in npy format to re-load as training data
+    trajectory_filename = video_filename.replace('.mjpeg', '.npy')
+    np.save(trajectory_filename, images)
+
+    # Save the images in jpg format to display to the user
+    imutil.show(images, filename=video_filename.replace('.mjpeg', '.jpg'))
 
 
 def select_uncertain_example(dataloader, netE, netC, pool_size=100, reverse=False):
@@ -320,7 +329,9 @@ def generate_z_trajectory(z, target_class, netC, dataloader,
     target_label = Variable(target_label).cuda()
     for i in range(max_iters):
         preds = netC(z)
-        cf_loss = nll_loss(preds, target_label)
+        # NOTE: switch likelihood vs NLL here
+        #cf_loss = nll_loss(preds, target_label)
+        cf_loss = nll_loss(torch.log(preds), target_label)
 
         # Distance in latent space from original point
         #cf_loss += .0001 * torch.sum((z - original_z) ** 2)
@@ -335,7 +346,9 @@ def generate_z_trajectory(z, target_class, netC, dataloader,
 
         preds = netC(z)
         predicted_class = to_np(preds.max(1)[1])[0]
-        pred_confidence = np.exp(to_np(preds.max(1)[0])[0])
+        # NOTE: Using softmax for now- can switch for numerical stability
+        #pred_confidence = np.exp(to_np(preds.max(1)[0])[0])
+        pred_confidence = to_np(preds.max(1)[0])[0]
         z_trajectory.append(to_np(z))
         predicted_class_name = dataloader.lab_conv.labels[predicted_class]
         print("Class: {} ({:.3f} confidence). Target class {}".format(
@@ -346,11 +359,11 @@ def generate_z_trajectory(z, target_class, netC, dataloader,
 
 
 # Trajectories are written to result_dir/trajectories/
-def make_video_filename(result_dir, dataloader, start_class, target_class):
+def make_video_filename(result_dir, dataloader, start_class, target_class, label_type='active'):
     trajectory_id = '{}_{}'.format(dataloader.dsf.name, int(time.time() * 1000))
     start_class_name = dataloader.lab_conv.labels[start_class]
     target_class_name = dataloader.lab_conv.labels[target_class]
-    video_filename = 'active-{}-{}-{}.mjpeg'.format(trajectory_id, start_class_name, target_class_name)
+    video_filename = '{}-{}-{}-{}.mjpeg'.format(label_type, trajectory_id, start_class_name, target_class_name)
     video_filename = os.path.join('trajectories', video_filename)
     video_filename = os.path.join(result_dir, video_filename)
     path = os.path.join(result_dir, 'trajectories')

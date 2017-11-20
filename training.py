@@ -196,13 +196,11 @@ def train_classifier(networks, optimizers, dataloader, **options):
     return float(correct) / total
 
 
-def shuffle(a, b, c):
+def shuffle(*args):
     rng_state = np.random.get_state()
-    np.random.shuffle(a)
-    np.random.set_state(rng_state)
-    np.random.shuffle(b)
-    np.random.set_state(rng_state)
-    np.random.shuffle(c)
+    for arg in args:
+        np.random.shuffle(arg)
+        np.random.set_state(rng_state)
 
 
 def train_active_learning(networks, optimizers, active_points, active_labels, complementary_points, complementary_labels, classifier_name, **options):
@@ -305,3 +303,56 @@ def masked_nll_loss(logp, y, binary_mask):
     ymask = Variable(ymask)
     logpy = (logp * ymask).sum(1)
     return -(logpy * binary_mask).mean()
+
+
+def train_classifier(networks, optimizers, images, labels, **options):
+    netC = networks[options['classifier_name']]
+    netE = networks['encoder']
+    netG = networks['generator']
+    for net in networks.values():
+        net.train()
+    # Do not update the generator
+    netG.eval()
+
+    optimizerC = optimizers[options['classifier_name']]
+    optimizerE = optimizers['encoder']
+    result_dir = options['result_dir']
+    latent_size = options['latent_size']
+    batch_size = options['batch_size']
+
+    def generator(points, labels):
+        assert len(points) == len(labels)
+        while True:
+            i = 0
+            shuffle(points, labels)
+            while i < len(points) - batch_size:
+                x = torch.FloatTensor(points[i:i+batch_size].transpose((0,3,1,2)))
+                y = torch.FloatTensor(labels[i:i+batch_size].astype(float))
+                x, y = x.cuda(), y.cuda()
+                yield x.squeeze(1), y
+                i += batch_size
+
+    dataloader = generator(images, labels)
+
+    correct = 0
+    total = 0
+    batch_count = len(images) // batch_size
+    for i in range(batch_count):
+        images, labels = next(dataloader)
+        images = Variable(images).cuda()
+        labels = Variable(labels).cuda()
+
+        class_predictions = netC(netE(images))
+        errC = binary_cross_entropy(class_predictions, labels)
+        errC.backward()
+        optimizerC.step()
+
+        _, predicted = class_predictions.max(1)
+        _, correct_labels = labels.max(1)
+        correct += sum(predicted.data == correct_labels.data)
+        total += len(predicted)
+
+    print('[{}/{}] Pos Loss: {:.3f} Classifier Accuracy:{:.3f}'.format(
+        i, batch_count, errC.data[0], float(correct) / total))
+
+    return float(correct) / total

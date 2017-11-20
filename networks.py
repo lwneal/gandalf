@@ -18,7 +18,7 @@ def build_networks(num_classes, num_attributes=0, epoch=None, latent_size=10, ba
     DiscrimClass = get_network_class(options['discriminator'])
     networks['discriminator'] = DiscrimClass(latent_size=latent_size)
 
-    ClassifierClass = network_definitions.classifierMLP256
+    ClassifierClass = network_definitions.classifierMulticlass
     networks[classifier_name] = ClassifierClass(latent_size, num_classes=num_classes)
 
     # Attribute network is only active for some datasets
