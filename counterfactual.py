@@ -230,6 +230,48 @@ def generate_trajectory_active(networks, dataloader, strategy='random', **option
     vid.finish()
 
 
+def generate_comparison(networks, dataloader, **options):
+    netG = networks['generator']
+    netE = networks['encoder']
+    netC = networks['classifier']
+    netD = networks['discriminator']
+    result_dir = options['result_dir']
+    image_size = options['image_size']
+    latent_size = options['latent_size']
+    output_frame_count = options['counterfactual_frame_count']
+    speed = options['speed']
+    momentum_mu = options['momentum_mu']
+    max_iters = options['counterfactual_max_iters']
+    result_dir = options['result_dir']
+
+    # Start with a random example
+    most_likely_class, least_likely_class, start_score, start_img = select_uncertain_example(dataloader, netE, netC, pool_size=1)
+    print("Got an example, the classifier thinks it is class: {}".format(most_likely_class))
+    start_class = most_likely_class
+
+
+    counterfactual_latent_points = []
+    for class_idx in range(dataloader.num_classes):
+        # Generate a path in latent space from start_img to a known classification
+        z = netE(Variable(start_img))
+        target_class = class_idx
+        z_trajectory = generate_z_trajectory(z, target_class, netC, dataloader, speed, momentum_mu, max_iters=max_iters)
+        print("Generating what the image would look like if it were class {}".format(target_class))
+        counterfactual_latent_points.append(z_trajectory[-1])
+
+    images = []
+    original_img = start_img.cpu().numpy().squeeze(0)
+    reencoded = to_np(netG(netE(Variable(start_img)))).squeeze(0)
+    images.append(original_img)
+    images.append(reencoded)
+    for z in counterfactual_latent_points:
+        img = to_np(netG(to_torch(z))).squeeze(0)
+        images.append(img)
+    images = np.array(images).transpose((0,2,3,1))
+    imutil.show(images)
+
+
+
 def select_uncertain_example(dataloader, netE, netC, pool_size=100, reverse=False):
     print("Performing uncertainty sampling with dataloader {}".format(dataloader))
     images = []

@@ -47,3 +47,6 @@ class CustomDataloader(object):
 
     def count(self):
         return self.dsf.count(self.fold)
+
+    def class_name(self, idx):
+        return lab_conv.labels[idx]
