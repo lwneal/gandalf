@@ -330,6 +330,9 @@ def generate_z_trajectory(z, target_class, netC, netE, netG, dataloader,
     original_z = z.clone()
     for i in range(max_iters):
         preds = netC(netE(netG(z)))
+
+        from torch.nn.functional import softmax
+        preds = softmax(preds[:,:-1])
         #preds = netC(z)
         # NOTE: switch likelihood vs NLL here
         #cf_loss = nll_loss(preds, target_label)
@@ -346,7 +349,7 @@ def generate_z_trajectory(z, target_class, netC, netE, netG, dataloader,
             l2_norm = torch.mul(z, z).sum()
             z /= l2_norm
 
-        preds = netC(z)
+        preds = softmax(netC(z)[:,:-1])
         predicted_class = to_np(preds.max(1)[1])[0]
         # NOTE: Using softmax for now- can switch for numerical stability
         #pred_confidence = np.exp(to_np(preds.max(1)[0])[0])
