@@ -319,6 +319,7 @@ def train_classifier(networks, optimizers, images, labels, **options):
     result_dir = options['result_dir']
     latent_size = options['latent_size']
     batch_size = options['batch_size']
+    num_classes = 10  # TODO
 
     def generator(points, labels):
         assert len(points) == len(labels)
@@ -342,26 +343,31 @@ def train_classifier(networks, optimizers, images, labels, **options):
         images = Variable(images).cuda()
         labels = Variable(labels).cuda()
 
-        class_predictions = netC(netE(images))
-        errC = binary_cross_entropy(class_predictions, labels)
+        net_y = netC(netE(images))
 
-        # Invert sigmoid with -log((1-y)/y) to get the last linear layer
-        preactivation = -torch.log((1 - class_predictions) / class_predictions)
+        # Positive labels: Apply softmax/NLL among K classes
+        is_pos = (labels.sum(dim=1) > 0).type(torch.cuda.FloatTensor)
+        from torch.nn.functional import softmax
+        class_preds = softmax(net_y[:, :num_classes])
+        nll = -(torch.log(class_preds) * labels).sum(dim=1)
+        errPos = .01 * (nll * is_pos).sum()
 
-        # Mask out the positives, apply penalty to negative labels only
-        ymask = (labels == 0).type(torch.cuda.FloatTensor)
+        # Negative labels: Apply a complementary loss among K+1 classes
+        is_neg = 1 - is_pos
+        openmax = softmax(net_y)
+        eps = .0001
+        nnll = -(torch.log(1 + eps - class_preds) * -labels).sum(dim=1)
+        errNeg = .001 * (nnll * is_neg).sum()
 
-        # Penalize any output > 0 for negative labels
-        calibration_loss = torch.mean(nn.ReLU()(preactivation * ymask))
-        errC += calibration_loss
+        errC = errPos + errNeg
 
         errC.backward()
         optimizerC.step()
 
-        _, predicted = class_predictions.max(1)
+        _, predicted = class_preds.max(1)
         _, correct_labels = labels.max(1)
-        correct += sum(predicted.data == correct_labels.data)
-        total += len(predicted)
+        correct += sum((predicted.data == correct_labels.data).type(torch.cuda.FloatTensor) * is_pos.data)
+        total += sum(is_pos.data)
 
     print('[{}/{}] Pos Loss: {:.3f} Classifier Accuracy:{:.3f}'.format(
         i, batch_count, errC.data[0], float(correct) / total))

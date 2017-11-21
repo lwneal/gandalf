@@ -48,7 +48,9 @@ def evaluate_classifier(networks, dataloader, verbose=True, skip_reconstruction=
             mae += torch.mean(torch.abs(reconstructed - images))
             mse += torch.mean((reconstructed - images) ** 2)
 
-        class_predictions = netC(z)
+        from torch.nn.functional import softmax
+        class_predictions = softmax(netC(z)[:, :dataloader.num_classes])
+
         _, predicted = class_predictions.max(1)
         correct += sum(predicted.data == labels)
         total += len(predicted)

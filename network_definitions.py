@@ -1325,7 +1325,7 @@ class encoder128(nn.Module):
         return x
 
 
-class classifierMulticlass(nn.Module):
+class classifierLinear(nn.Module):
     def __init__(self, latent_size=100, num_classes=2, **kwargs):
         super(self.__class__, self).__init__()
         self.latent_size = latent_size
@@ -1338,5 +1338,20 @@ class classifierMulticlass(nn.Module):
         x = self.fc1(x)
         x = nn.LeakyReLU(0.2, inplace=True)(x)
         x = self.fc2(x)
-        x = nn.Sigmoid()(x)
+        return x
+
+
+class classifierLinearPlusOne(nn.Module):
+    def __init__(self, latent_size=100, num_classes=2, **kwargs):
+        super(self.__class__, self).__init__()
+        self.latent_size = latent_size
+        self.fc1 = nn.Linear(latent_size, 256)
+        self.fc2 = nn.Linear(256, num_classes + 1)
+        self.apply(weights_init)
+        self.cuda()
+
+    def forward(self, x):
+        x = self.fc1(x)
+        x = nn.LeakyReLU(0.2, inplace=True)(x)
+        x = self.fc2(x)
         return x
