@@ -1325,26 +1325,6 @@ class encoder128(nn.Module):
         return x
 
 
-class classifierMLP256(nn.Module):
-    def __init__(self, latent_size=100, num_classes=2, **kwargs):
-        super(self.__class__, self).__init__()
-        self.latent_size = latent_size
-        self.fc1 = nn.Linear(latent_size, 512)
-        self.activ1 = nn.ReLU()
-        self.drop1 = nn.Dropout(p=.5)
-        self.fc2 = nn.Linear(512, num_classes)
-        self.apply(weights_init)
-        self.cuda()
-
-    def forward(self, x):
-        x = self.fc1(x)
-        x = self.activ1(x)
-        x = self.drop1(x)
-        x = self.fc2(x)
-        x = log_softmax(x)
-        return x
-
-
 class classifierMulticlass(nn.Module):
     def __init__(self, latent_size=100, num_classes=2, **kwargs):
         super(self.__class__, self).__init__()

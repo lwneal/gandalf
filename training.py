@@ -344,6 +344,17 @@ def train_classifier(networks, optimizers, images, labels, **options):
 
         class_predictions = netC(netE(images))
         errC = binary_cross_entropy(class_predictions, labels)
+
+        # Invert sigmoid with -log((1-y)/y) to get the last linear layer
+        preactivation = -torch.log((1 - class_predictions) / class_predictions)
+
+        # Mask out the positives, apply penalty to negative labels only
+        ymask = (labels == 0).type(torch.cuda.FloatTensor)
+
+        # Penalize any output > 0 for negative labels
+        calibration_loss = torch.mean(nn.ReLU()(preactivation * ymask))
+        errC += calibration_loss
+
         errC.backward()
         optimizerC.step()
 

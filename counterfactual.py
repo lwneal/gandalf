@@ -257,7 +257,7 @@ def generate_comparison(networks, dataloader, **options):
             # Generate a path in latent space from start_img to a known classification
             z = netE(Variable(start_img))
             target_class = class_idx
-            z_trajectory = generate_z_trajectory(z, target_class, netC, dataloader, speed, momentum_mu, max_iters=max_iters)
+            z_trajectory = generate_z_trajectory(z, target_class, netC, netE, netG, dataloader, speed, momentum_mu, max_iters=max_iters)
             print("Generating what the image would look like if it were class {}".format(target_class))
             counterfactual_latent_points.append(z_trajectory[-1])
 
@@ -318,8 +318,8 @@ def random_target_class(dataloader, start_class):
     return target_class
 
 
-def generate_z_trajectory(z, target_class, netC, dataloader,
-        speed=.001, momentum_mu=.95, max_iters=1000, spherical=True):
+def generate_z_trajectory(z, target_class, netC, netE, netG, dataloader,
+        speed=.01, momentum_mu=.96, max_iters=100, spherical=True):
     # Generate z_trajectory
     z_trajectory = []
     z_trajectory.append(to_np(z))  # initial point
@@ -327,14 +327,16 @@ def generate_z_trajectory(z, target_class, netC, dataloader,
     target_label = torch.LongTensor(1)
     target_label[:] = int(target_class)
     target_label = Variable(target_label).cuda()
+    original_z = z.clone()
     for i in range(max_iters):
-        preds = netC(z)
+        preds = netC(netE(netG(z)))
+        #preds = netC(z)
         # NOTE: switch likelihood vs NLL here
         #cf_loss = nll_loss(preds, target_label)
         cf_loss = nll_loss(torch.log(preds), target_label)
 
         # Distance in latent space from original point
-        #cf_loss += .0001 * torch.sum((z - original_z) ** 2)
+        cf_loss += .0001 * torch.sum((z - original_z) ** 2)
 
         dc_dz = autograd.grad(cf_loss, z, cf_loss, retain_graph=True)[0]
         momentum -= dc_dz * speed
@@ -353,7 +355,7 @@ def generate_z_trajectory(z, target_class, netC, dataloader,
         predicted_class_name = dataloader.lab_conv.labels[predicted_class]
         print("Class: {} ({:.3f} confidence). Target class {}".format(
             predicted_class_name, pred_confidence, target_class))
-        if pred_confidence > .99 and predicted_class == target_class:
+        if pred_confidence > .90 and predicted_class == target_class:
             break
     return z_trajectory
 
