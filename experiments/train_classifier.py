@@ -125,7 +125,7 @@ best_acc = 0
 for classifier_epoch in range(options['classifier_epochs']):
     # Apply learning rate decay and train for one pseudo-epoch
     for optimizer in optimizers.values():
-        optimizer.param_groups[0]['lr'] = .001 * (.90 ** classifier_epoch)
+        optimizer.param_groups[0]['lr'] = .01 * (.95 ** classifier_epoch)
     start_time = time.time()
     train_classifier(networks, optimizers, images, image_labels, **options)
     print("Ran train_classifier in {:.3f}s".format(time.time() - start_time))

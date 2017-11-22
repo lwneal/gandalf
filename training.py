@@ -152,50 +152,6 @@ def clamp_to_unit_sphere(x):
     return torch.mul(x, 1/norm.t())
 
 
-def train_classifier(networks, optimizers, dataloader, **options):
-    for net in networks.values():
-        net.train()
-    netD = networks['discriminator']
-    netG = networks['generator']
-    netE = networks['encoder']
-    netC = networks['classifier']
-    optimizerD = optimizers['discriminator']
-    optimizerG = optimizers['generator']
-    optimizerE = optimizers['encoder']
-    optimizerC = optimizers['classifier']
-    result_dir = options['result_dir']
-    batch_size = options['batch_size']
-    image_size = options['image_size']
-    latent_size = options['latent_size']
-
-    correct = 0
-    total = 0
-    
-    for i, (images, labels, _) in enumerate(dataloader):
-        images = Variable(images)
-        labels = Variable(labels)
-
-        ############################
-        # Update C(Z) network:
-        # Categorical Cross-Entropy
-        ############################
-        latent_points = netE(images)
-        class_predictions = netC(latent_points)
-        errC = nll_loss(class_predictions, labels)
-        errC.backward()
-        optimizerC.step()
-        ############################
-
-        _, predicted = class_predictions.max(1)
-        correct += sum(predicted.data == labels.data)
-        total += len(predicted)
-
-        if i % 25 == 0 or i == len(dataloader) - 1:
-            print('[{}/{}] Classifier Loss: {:.3f} Classifier Accuracy:{:.3f}'.format(
-                i, len(dataloader), errC.data[0], float(correct) / total))
-    return float(correct) / total
-
-
 def shuffle(*args):
     rng_state = np.random.get_state()
     for arg in args:

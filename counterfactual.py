@@ -281,6 +281,49 @@ def generate_comparison(networks, dataloader, **options):
     imutil.show(images, filename=video_filename.replace('.mjpeg', '.jpg'))
 
 
+def generate_grid(networks, dataloader, **options):
+    netG = networks['generator']
+    netE = networks['encoder']
+    netC = networks['classifier']
+    netD = networks['discriminator']
+    result_dir = options['result_dir']
+    image_size = options['image_size']
+    latent_size = options['latent_size']
+    output_frame_count = options['counterfactual_frame_count']
+    speed = options['speed']
+    momentum_mu = options['momentum_mu']
+    max_iters = options['counterfactual_max_iters']
+    result_dir = options['result_dir']
+
+
+    # Generate an NxN square visualization where N is the class size
+    N = dataloader.num_classes
+    images = [[] for _ in range(N)]
+    for img_batch, label_batch, _ in dataloader:
+        for img, label in zip(img_batch, label_batch):
+            if len(images[label]) < N:
+                images[label].append(img.cpu().numpy())
+        if all(len(images[i]) == N for i in range(N)):
+            break
+
+    flat = []
+    for i in range(N):
+        for j in range(N):
+            flat.append(images[j][i])
+    images = flat
+
+    images = np.array(images).transpose((0,2,3,1))
+    start_class = 0
+    video_filename = make_video_filename(result_dir, dataloader, start_class, start_class, label_type='grid')
+
+    # Save the images in npy format to re-load as training data
+    trajectory_filename = video_filename.replace('.mjpeg', '.npy')
+    np.save(trajectory_filename, images)
+
+    # Save the images in jpg format to display to the user
+    imutil.show(images, filename=video_filename.replace('.mjpeg', '.jpg'))
+
+
 def select_uncertain_example(dataloader, netE, netC, pool_size=100, reverse=False):
     print("Performing uncertainty sampling with dataloader {}".format(dataloader))
     images = []
