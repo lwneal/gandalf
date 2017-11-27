@@ -245,15 +245,17 @@ def generate_comparison(networks, dataloader, **options):
     result_dir = options['result_dir']
 
 
-    # Generate an NxN square visualization where N is the class size
+    # For MNIST, SVHN
+    # Generate a 6x6 square visualization
+    N = (dataloader.num_classes // 2) + 1
     counterfactual_latent_points = []
-    for _ in range(dataloader.num_classes):
+    for _ in range(N):
         # Start with a random example
         most_likely_class, least_likely_class, start_score, start_img = select_uncertain_example(dataloader, netE, netC, pool_size=1)
         print("Got an example, the classifier thinks it is class: {}".format(most_likely_class))
         start_class = most_likely_class
 
-        for class_idx in range(dataloader.num_classes):
+        for class_idx in range(N):
             # Generate a path in latent space from start_img to a known classification
             z = netE(Variable(start_img))
             target_class = class_idx
@@ -296,12 +298,13 @@ def generate_grid(networks, dataloader, **options):
     result_dir = options['result_dir']
 
 
-    # Generate an NxN square visualization where N is the class size
-    N = dataloader.num_classes
+    # For MNIST, SVHN
+    # Generate a 6x6 square visualization
+    N = (dataloader.num_classes // 2) + 1
     images = [[] for _ in range(N)]
     for img_batch, label_batch, _ in dataloader:
         for img, label in zip(img_batch, label_batch):
-            if len(images[label]) < N:
+            if label < N and len(images[label]) < N:
                 images[label].append(img.cpu().numpy())
         if all(len(images[i]) == N for i in range(N)):
             break
