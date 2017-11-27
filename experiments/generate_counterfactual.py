@@ -26,6 +26,7 @@ parser.add_argument('--counterfactual_max_iters', type=int, default=100, help='M
 parser.add_argument('--start_epoch', type=int, help='Epoch to start from (defaults to most recent epoch)')
 parser.add_argument('--count', type=int, default=1, help='Number of counterfactuals to generate')
 parser.add_argument('--strategy', type=str, default='uncertainty', help='One of: random, uncertainty [default: uncertainty]')
+parser.add_argument('--ground_truth', type=is_true, default=False, help='If True, output ground-truth training examples')
 
 options = vars(parser.parse_args())
 
@@ -48,6 +49,7 @@ dataloader = CustomDataloader(**options)
 networks = build_networks(dataloader.num_classes, dataloader.num_attributes, **options)
 
 for i in range(options['count']):
-    #counterfactual.generate_trajectory_active(networks, dataloader, **options)
-    counterfactual.generate_comparison(networks, dataloader, **options)
-    #counterfactual.generate_grid(networks, dataloader, **options)
+    if options['ground_truth']:
+        counterfactual.generate_grid(networks, dataloader, **options)
+    else:
+        counterfactual.generate_comparison(networks, dataloader, **options)

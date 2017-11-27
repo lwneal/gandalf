@@ -30,17 +30,17 @@ def plot_xy(x, y, x_axis="X", y_axis="Y", title="Plot"):
     return plot
 
 
-def parse_active_learning_series(eval_filename):
+def parse_active_learning_series(eval_filename, prefix='active_trajectories', statistic='accuracy'):
     try:
         evaluations = json.load(open(eval_filename))
     except:
         print("Error: could not load JSON from file {}".format(eval_filename))
         raise NoDataAvailable
-    keys = sorted([k for k in evaluations if k.startswith('active_trajectories')])
+    keys = sorted([k for k in evaluations if k.startswith(prefix)])
     if len(keys) == 0:
         raise NoDataAvailable
     x = [int(k.split('_')[-1]) for k in keys]
-    y = [evaluations[k]['accuracy'] for k in keys]
+    y = [evaluations[k][statistic] for k in keys]
     return x, y
 
 
@@ -55,12 +55,12 @@ def plot_active_learning(eval_filename="results_epoch_0025.json"):
     return plot
 
 
-def compare_active_learning(eval_filename, baseline_eval_filename, title=None, this_name='This Method', baseline_name='Baseline'):
+def compare_active_learning(eval_filename, baseline_eval_filename, title=None, this_name='This Method', baseline_name='Baseline', prefix='grid', statistic='accuracy'):
     try:
-        x, y = parse_active_learning_series(eval_filename)
+        x, y = parse_active_learning_series(eval_filename, prefix=prefix, statistic=statistic)
+        x2, y2 = parse_active_learning_series(baseline_eval_filename, prefix=prefix, statistic=statistic)
     except NoDataAvailable:
         return None
-    x2, y2 = parse_active_learning_series(baseline_eval_filename)
     print("Comparing {} with baseline {}".format(eval_filename, baseline_eval_filename))
 
     plt.plot(x, y, "g") # this method

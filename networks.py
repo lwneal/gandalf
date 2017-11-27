@@ -19,6 +19,8 @@ def build_networks(num_classes, num_attributes=0, epoch=None, latent_size=10, ba
     networks['discriminator'] = DiscrimClass(latent_size=latent_size)
 
     ClassifierClass = network_definitions.classifierLinearPlusOne
+    # Hack: hard-code number of classes
+    num_classes = 6
     networks[classifier_name] = ClassifierClass(latent_size, num_classes=num_classes)
 
     # Attribute network is only active for some datasets
