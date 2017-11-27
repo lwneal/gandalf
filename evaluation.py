@@ -7,6 +7,7 @@ import torch
 from torch.autograd import Variable
 from gradient_penalty import calc_gradient_penalty
 from torch.nn.functional import nll_loss
+from torch.nn.functional import softmax
 import imutil
 
 
@@ -27,46 +28,31 @@ def evaluate_classifier(networks, dataloader, verbose=True, skip_reconstruction=
     image_size = options['image_size']
     latent_size = options['latent_size']
 
-    correct = 0
-    total = 0
-    attr_correct = [0] * dataloader.num_attributes
-    attr_total = 0
-    mae = 0
-    mse = 0
-    latent_vectors = []
-    plot_labels = []
-    discriminator_scores = []
+    classification_correct = 0
+    classification_total = 0
+    openset_correct = 0
+    openset_total = 0
+
+    # TODO: Hard-coded for MNIST/SVHN open set
+    num_classes = 6
     
     for i, (images, labels, attributes) in enumerate(dataloader):
         images = Variable(images, volatile=True)
-        if netA:
-            attributes = Variable(attributes, volatile=True)
         z = netE(images)
 
-        if not skip_reconstruction:
-            reconstructed = netG(z)
-            mae += torch.mean(torch.abs(reconstructed - images))
-            mse += torch.mean((reconstructed - images) ** 2)
+        # Predict whether this is a known class
+        openset_predictions = softmax(netC(z)[:, :num_classes + 1])
+        _, predicted = openset_predictions.max(1)
+        pred_openset = (predicted.data == num_classes)
+        label_openset = (labels >= num_classes)
+        openset_correct += sum(pred_openset == label_openset)
+        openset_total += len(labels)
 
-        from torch.nn.functional import softmax
-        class_predictions = softmax(netC(z)[:, :dataloader.num_classes])
-
+        # Predict a classification among known classes
+        class_predictions = softmax(netC(z)[:, :num_classes])
         _, predicted = class_predictions.max(1)
-        correct += sum(predicted.data == labels)
-        total += len(predicted)
-
-        if netA:
-            attr_predictions = netA(z)
-            _, predicted = attr_predictions.max(1)
-            correct_count = (attr_predictions > 0.5) == (attributes > 0.5)
-            for j in range(dataloader.num_attributes):
-                attr_correct[j] += torch.sum(correct_count[:,j]).data.cpu().numpy()[0]
-            attr_total += attr_predictions.size()[0]
-
-        if not skip_reconstruction:
-            latent_vectors.extend(z.data.cpu().numpy())
-            plot_labels.extend(labels.cpu().numpy())
-            discriminator_scores.extend(netD(images).data.cpu().numpy())
+        classification_correct += sum(predicted.data == labels)
+        classification_total += sum(labels < num_classes)
 
         if verbose:
             print("Accuracy: {:.4f} ({: >12} / {: <12} correct)".format(float(correct) / total, correct, total))
@@ -74,54 +60,15 @@ def evaluate_classifier(networks, dataloader, verbose=True, skip_reconstruction=
             for i, attr in enumerate(dataloader.attr_conv.attributes):
                 print("\t{}: {:.3f} ({}/{})".format(attr, attr_correct[i] / attr_total, attr_correct[i], attr_total))
 
-    # Save latent vectors for later visualization
-    latent_vectors = np.array(latent_vectors)
-    if options.get('save_latent_vectors'):
-        z_filename = 'z_{}_epoch_{:04d}.npy'.format(options['fold'], options['epoch'])
-        z_filename = os.path.join(result_dir, z_filename)
-        np.save(z_filename, latent_vectors)
-
-    if verbose:
-        # Run PCA on the latent vectors to generate a 2d visualization
-        pca_vectors = pca(latent_vectors)
-        plot_filename = 'plot_pca_{}_epoch_{:04d}.png'.format(options['fold'], options['epoch'])
-        plot_filename = os.path.join(result_dir, plot_filename)
-        title = 'PCA: {} epoch {}'.format(options['fold'], options['epoch'])
-        plot(pca_vectors, plot_filename, title=title, labels=plot_labels)
-
-        # Also visualize the first two dimensions of the latent space
-        latent_2d = latent_vectors[:, :2]
-        plot_filename = 'plot_latent2_{}_epoch_{:04d}.png'.format(options['fold'], options['epoch'])
-        plot_filename = os.path.join(result_dir, plot_filename)
-        title = 'Latent Dim #0 vs #1: {} epoch {}'.format(options['fold'], options['epoch'])
-        plot(latent_2d, plot_filename, title=title, labels=plot_labels)
-
-    if not skip_reconstruction:
-        mse = float(to_np(mse / i)[0])
-        mae = float(to_np(mae / i)[0])
-        print("Reconstruction per-pixel MSE: {}".format(mse))
-        print("Reconstruction per-pixel MAE: {}".format(mae))
-
-    discriminator_mean = 0
-    if discriminator_scores:
-        discriminator_mean = float(np.array(discriminator_scores).mean())
-
     stats = {
         options['fold']: {
-            'correct': correct,
-            'total': total,
-            'mse': mse,
-            'mae': mae,
-            'accuracy': float(correct) / total,
-            'discriminator_mean': discriminator_mean,
+            'correct': classification_correct,
+            'total': classification_total,
+            'accuracy': float(classification_correct) / classification_total,
+            'classification_accuracy': float(classification_correct) / classification_total,
+            'openset_accuracy': float(openset_correct) / openset_total,
         }
     }
-    if options.get('save_latent_vectors'):
-        stats[options['fold']]['latent_vectors'] = z_filename
-    if netA:
-        for i, attr in enumerate(dataloader.attr_conv.attributes):
-            key = 'accuracy_{}'.format(attr)
-            stats[options['fold']][key] = attr_correct[i] / attr_total
     return stats
 
 

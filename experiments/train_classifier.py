@@ -104,12 +104,12 @@ for label_info in labels:
     image_batch = load_trajectory(result_dir, label_info['trajectory_id'])
     images.extend(image_batch)
 
-    # TODO: this is hard-coded for 10-class MNIST, should generalize
-    assert len(image_batch) == 100
+    # TODO: this is hard-coded for 6-class open set MNIST
+    assert len(image_batch) == 6*6
     pos_neg = [int(c) for c in label_info['labels'].split(',')]
-    assert len(pos_neg) == 100
-    class_indices = list(range(10)) * 10
-    label_data = np.zeros((10*10,10))
+    assert len(pos_neg) == 6*6
+    class_indices = list(range(6)) * 6
+    label_data = np.zeros((6*6, 6))
     for i, idx in enumerate(class_indices):
         val = 1 if pos_neg[i] > 0 else -1
         label_data[i,idx] = val

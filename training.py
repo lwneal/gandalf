@@ -173,7 +173,7 @@ def train_classifier(networks, optimizers, images, labels, **options):
     result_dir = options['result_dir']
     latent_size = options['latent_size']
     batch_size = options['batch_size']
-    num_classes = 10  # TODO
+    num_classes = 6  # TODO
 
     def generator(points, labels):
         assert len(points) == len(labels)
