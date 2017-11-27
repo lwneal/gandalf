@@ -49,5 +49,5 @@ networks = build_networks(dataloader.num_classes, dataloader.num_attributes, **o
 
 for i in range(options['count']):
     #counterfactual.generate_trajectory_active(networks, dataloader, **options)
-    #counterfactual.generate_comparison(networks, dataloader, **options)
-    counterfactual.generate_grid(networks, dataloader, **options)
+    counterfactual.generate_comparison(networks, dataloader, **options)
+    #counterfactual.generate_grid(networks, dataloader, **options)

@@ -159,108 +159,6 @@ def shuffle(*args):
         np.random.set_state(rng_state)
 
 
-def train_active_learning(networks, optimizers, active_points, active_labels, complementary_points, complementary_labels, classifier_name, **options):
-    netC = networks[classifier_name]
-    netE = networks['encoder']
-    netG = networks['generator']
-    for net in networks.values():
-        net.train()
-    # Do not update the generator
-    netG.eval()
-
-    optimizerC = optimizers[classifier_name]
-    optimizerE = optimizers['encoder']
-    result_dir = options['result_dir']
-    latent_size = options['latent_size']
-    batch_size = options['batch_size']
-    use_negative_labels = options['use_complementary_labels']
-
-    is_positive = np.array([1.] * len(active_points) + [0] * len(complementary_points))
-    if len(complementary_points) > 0:
-        points = np.concatenate([np.array(active_points).squeeze(1), complementary_points.squeeze(1)])
-        labels = np.concatenate([active_labels, complementary_labels])
-    else:
-        points = active_points
-        labels = active_labels
-
-    if len(points) == 0:
-        print("Warning: no input data available, skipping training")
-        return 0
-    if len(points) < batch_size:
-        print("Warning: not enough data to fill one batch")
-        batch_size = len(points) - 1
-        print("Setting batch size to {}".format(batch_size))
-
-    def generator(points, labels, is_positive):
-        assert len(points) == len(labels)
-        while True:
-            i = 0
-            shuffle(points, labels, is_positive)
-            while i < len(points) - batch_size:
-                x = torch.FloatTensor(np.array(points[i:i+batch_size]))
-                y = torch.LongTensor(np.array(labels[i:i+batch_size]))
-                is_positive_mask = torch.FloatTensor(np.array(is_positive[i:i+batch_size]))
-                yield x.squeeze(1), y, is_positive_mask
-                i += batch_size
-
-    # Train on combined normal and complementary labels
-    dataloader = generator(points, labels, is_positive)
-
-    complementary_weight = 1.00
-    correct = 0
-    total = 0
-
-    batches = (len(active_points) + len(complementary_points)) // batch_size
-    print("Training on {} batches".format(batches))
-    for i in range(batches):
-        latent_points, labels, is_positive_mask = next(dataloader)
-        latent_points = Variable(latent_points).cuda()
-        labels = Variable(labels).cuda()
-        is_positive_mask = Variable(is_positive_mask).cuda()
-        is_negative_mask = 1 - is_positive_mask
-        negative_count = is_negative_mask.sum().data.cpu().numpy()[0]
-
-        ############################
-        # Update C(Z) only
-        ############################
-        #class_predictions = netC(latent_points)
-        class_predictions = netC(netE(netG(latent_points).detach()))
-        errPos = masked_nll_loss(class_predictions, labels, is_positive_mask)
-
-        if use_negative_labels and negative_count > 0:
-            epsilon = .0001  # for numerical stability
-            y_preds = torch.exp(torch.gather(class_predictions, 1, labels.view(-1, 1)))
-            errNeg = -torch.mean(torch.log(1 - y_preds + epsilon) * is_negative_mask)
-            errNeg *= complementary_weight / negative_count
-        else:
-            errNeg = errPos * 0
-
-        errC = errPos + errNeg
-        errC.backward()
-        optimizerC.step()
-        #optimizerE.step()
-        ############################
-
-        _, predicted = class_predictions.max(1)
-        correct += sum((predicted.data == labels.data) * (is_positive_mask > 0).data)
-        total += sum(is_positive_mask).data[0]
-
-    print('[{}/{}] Pos Loss: {:.3f} Neg Loss: {:.3f} Classifier Accuracy:{:.3f}'.format(
-        i, batches, errPos.data[0], errNeg.data[0], float(correct) / total))
-
-    return float(correct) / total
-
-
-# https://github.com/pytorch/pytorch/issues/563
-def masked_nll_loss(logp, y, binary_mask):
-    # prepare an (N,C) array of 1s at the locations of ground truth
-    ymask = logp.data.new(logp.size()).zero_() # (N,C) all zero
-    ymask.scatter_(1, y.data.view(-1,1), 1) # have to make y into shape (N,1) for scatter_ to be happy
-    ymask = Variable(ymask)
-    logpy = (logp * ymask).sum(1)
-    return -(logpy * binary_mask).mean()
-
-
 def train_classifier(networks, optimizers, images, labels, **options):
     netC = networks[options['classifier_name']]
     netE = networks['encoder']
@@ -306,19 +204,20 @@ def train_classifier(networks, optimizers, images, labels, **options):
         from torch.nn.functional import softmax
         class_preds = softmax(net_y[:, :num_classes])
         nll = -(torch.log(class_preds) * labels).sum(dim=1)
-        errPos = .01 * (nll * is_pos).sum()
+        errPos = .1 * (nll * is_pos).sum()
 
         # Negative labels: Apply a complementary loss among K+1 classes
         is_neg = 1 - is_pos
         openmax = softmax(net_y)
         eps = .0001
         nnll = -(torch.log(1 + eps - class_preds) * -labels).sum(dim=1)
-        errNeg = .001 * (nnll * is_neg).sum()
+        errNeg = .1 * (nnll * is_neg).sum()
 
         errC = errPos + errNeg
 
         errC.backward()
         optimizerC.step()
+        #optimizerE.step()
 
         _, predicted = class_preds.max(1)
         _, correct_labels = labels.max(1)
