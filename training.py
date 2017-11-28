@@ -197,20 +197,24 @@ def train_classifier(networks, optimizers, images, labels, **options):
         images = Variable(images).cuda()
         labels = Variable(labels).cuda()
 
-        net_y = netC(netE(images))
+        net_y = netC(netE(images))[:,:-1]
 
-        # Positive labels: Apply softmax/NLL among K classes
-        is_pos = (labels.sum(dim=1) > 0).type(torch.cuda.FloatTensor)
+        # Positive and Negative labels: train a 1-vs-all classifier for each class
         from torch.nn.functional import softmax
-        class_preds = softmax(net_y)
-        nll = -(torch.log(class_preds[:,:-1]) * labels).sum(dim=1)
-        errPos = .1 * (nll * is_pos).sum()
+        class_preds = torch.sigmoid(net_y)
 
-        # Negative labels: Apply a complementary loss among K+1 classes
-        is_neg = 1 - is_pos
-        # NOTE: not-X labels are -1, so multiplying by them changes the sign
-        nnll = (torch.log(1.0001 - class_preds[:,:-1]) * labels).sum(dim=1)
-        errNeg = .1 * (nnll * is_neg).sum()
+        maxval, _ = labels.max(dim=1)
+        is_blue = (maxval == 1).type(torch.cuda.FloatTensor)
+
+        nll_pos = -torch.log(.001 + class_preds) * (labels == 1).type(torch.cuda.FloatTensor)
+        nll_neg = -torch.log(1.01 - class_preds) * (labels == -1).type(torch.cuda.FloatTensor)
+        errPos = nll_pos.sum() + nll_neg.sum()
+
+        # Additional term: Hinge loss on the linear layer before the activation
+        from torch.nn.functional import relu
+        hinge = relu(net_y) * (labels == -1).type(torch.cuda.FloatTensor)
+        #hinge += relu(-net_y) * (labels == 1).type(torch.cuda.FloatTensor)
+        errNeg = torch.sum(hinge)
 
         errC = errPos + errNeg
 
@@ -220,8 +224,8 @@ def train_classifier(networks, optimizers, images, labels, **options):
 
         _, predicted = class_preds.max(1)
         _, correct_labels = labels.max(1)
-        correct += sum((predicted.data == correct_labels.data).type(torch.cuda.FloatTensor) * is_pos.data)
-        total += sum(is_pos.data)
+        correct += sum((predicted.data == correct_labels.data).type(torch.cuda.FloatTensor) * is_blue.data)
+        total += sum(is_blue.data)
 
     print('[{}/{}] PosLoss: {:.3f} NegLoss {:.3f} Classifier Accuracy:{:.3f}'.format(
         i, batch_count, errPos.data[0], errNeg.data[0],float(correct) / total))

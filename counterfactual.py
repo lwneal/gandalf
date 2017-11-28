@@ -5,6 +5,7 @@ import torch
 import numpy as np
 from torch import autograd
 from torch.autograd import Variable
+from torch.nn.functional import softmax, sigmoid
 from torch.nn.functional import nll_loss, cross_entropy
 import imutil
 from imutil import VideoMaker
@@ -375,17 +376,23 @@ def generate_z_trajectory(z, target_class, netC, netE, netG, dataloader,
     target_label = Variable(target_label).cuda()
     original_z = z.clone()
     for i in range(max_iters):
-        preds = netC(netE(netG(z)))
+        preds = netC(z)[:,:-1]
+        preds = softmax(preds)
 
-        from torch.nn.functional import softmax
-        preds = softmax(preds[:,:-1])
-        #preds = netC(z)
-        # NOTE: switch likelihood vs NLL here
-        #cf_loss = nll_loss(preds, target_label)
-        cf_loss = nll_loss(torch.log(preds), target_label)
+        predicted_class = to_np(preds.max(1)[1])[0]
+        pred_confidence = to_np(preds.max(1)[0])[0]
+        z_trajectory.append(to_np(z))
+        predicted_class_name = dataloader.lab_conv.labels[predicted_class]
+        print("Class: {} ({:.3f} confidence). Target class {}".format(
+            predicted_class_name, pred_confidence, target_class))
+        if pred_confidence > .90 and predicted_class == target_class:
+            break
+
+        eps = .0001
+        cf_loss = nll_loss(torch.log(preds + eps), target_label) 
 
         # Distance in latent space from original point
-        cf_loss += .0001 * torch.sum((z - original_z) ** 2)
+        cf_loss += .001 * torch.sum((z - original_z) ** 2)
 
         dc_dz = autograd.grad(cf_loss, z, cf_loss, retain_graph=True)[0]
         momentum -= dc_dz * speed
@@ -395,17 +402,6 @@ def generate_z_trajectory(z, target_class, netC, netE, netG, dataloader,
             l2_norm = torch.mul(z, z).sum()
             z /= l2_norm
 
-        preds = softmax(netC(z)[:,:-1])
-        predicted_class = to_np(preds.max(1)[1])[0]
-        # NOTE: Using softmax for now- can switch for numerical stability
-        #pred_confidence = np.exp(to_np(preds.max(1)[0])[0])
-        pred_confidence = to_np(preds.max(1)[0])[0]
-        z_trajectory.append(to_np(z))
-        predicted_class_name = dataloader.lab_conv.labels[predicted_class]
-        print("Class: {} ({:.3f} confidence). Target class {}".format(
-            predicted_class_name, pred_confidence, target_class))
-        if pred_confidence > .90 and predicted_class == target_class:
-            break
     return z_trajectory
 
 

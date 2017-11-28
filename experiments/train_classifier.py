@@ -111,8 +111,11 @@ for label_info in labels:
     class_indices = list(range(6)) * 6
     label_data = np.zeros((6*6, 6))
     for i, idx in enumerate(class_indices):
-        val = 1 if pos_neg[i] > 0 else -1
-        label_data[i,idx] = val
+        if pos_neg[i] > 0:
+            label_data[i, :] = -1
+            label_data[i, idx] = 1
+        else:
+            label_data[i, idx] = -1
     image_labels.extend(label_data)
 
 images = np.array(images)

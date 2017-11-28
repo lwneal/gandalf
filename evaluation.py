@@ -7,8 +7,9 @@ import torch
 from torch.autograd import Variable
 from gradient_penalty import calc_gradient_penalty
 from torch.nn.functional import nll_loss
-from torch.nn.functional import softmax
+from torch.nn.functional import softmax, sigmoid
 import imutil
+from sklearn.metrics import roc_curve, auc
 
 
 def to_np(v):
@@ -40,19 +41,19 @@ def evaluate_classifier(networks, dataloader, verbose=True, skip_reconstruction=
         images = Variable(images, volatile=True)
         z = netE(images)
 
-        # Predict whether this is a known class
-        openset_predictions = softmax(netC(z)[:, :num_classes + 1])
-        _, predicted = openset_predictions.max(1)
-        pred_openset = (predicted.data == num_classes)
-        label_openset = (labels >= num_classes)
+        # Predict a classification among known classes
+        class_predictions = sigmoid(netC(z)[:, :num_classes])
+        max_vals, predicted = class_predictions.max(1)
+        classification_correct += sum(predicted.data == labels)
+        classification_total += sum(labels < num_classes)
+
+        pred_openset = -max_vals.data.cpu().numpy()
+        label_openset = (labels >= num_classes).cpu().numpy()
         openset_correct += sum(pred_openset == label_openset)
         openset_total += len(labels)
 
-        # Predict a classification among known classes
-        class_predictions = softmax(netC(z)[:, :num_classes])
-        _, predicted = class_predictions.max(1)
-        classification_correct += sum(predicted.data == labels)
-        classification_total += sum(labels < num_classes)
+        fpr, tpr, thresholds = roc_curve(label_openset, pred_openset)
+        openset_auc = auc(fpr, tpr)
 
         if verbose:
             print("Accuracy: {:.4f} ({: >12} / {: <12} correct)".format(float(correct) / total, correct, total))
@@ -67,6 +68,7 @@ def evaluate_classifier(networks, dataloader, verbose=True, skip_reconstruction=
             'accuracy': float(classification_correct) / classification_total,
             'classification_accuracy': float(classification_correct) / classification_total,
             'openset_accuracy': float(openset_correct) / openset_total,
+            'openset_auc': openset_auc,
         }
     }
     return stats

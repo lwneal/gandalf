@@ -21,8 +21,8 @@ parser.add_argument('--counterfactual_frame_count', default=60, type=int,
 parser.add_argument('--classifier_name', type=str, default='active_learning_classifier',
         help='Name of the classifier to use [default: active_learning_classifier]')
 parser.add_argument('--speed', type=float, default=.001, help='Learning rate for counterfactual descent [default: .0001]')
-parser.add_argument('--momentum_mu', type=float, default=.95, help='Momentum decay (zero for no momentum) [default: .95]')
-parser.add_argument('--counterfactual_max_iters', type=int, default=100, help='Maximum number of steps to take for CF trajectories [default: 100]')
+parser.add_argument('--momentum_mu', type=float, default=.97, help='Momentum decay (zero for no momentum) [default: .97]')
+parser.add_argument('--counterfactual_max_iters', type=int, default=1000, help='Maximum number of steps to take for CF trajectories [default: 1000]')
 parser.add_argument('--start_epoch', type=int, help='Epoch to start from (defaults to most recent epoch)')
 parser.add_argument('--count', type=int, default=1, help='Number of counterfactuals to generate')
 parser.add_argument('--strategy', type=str, default='uncertainty', help='One of: random, uncertainty [default: uncertainty]')
