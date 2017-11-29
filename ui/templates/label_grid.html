@@ -130,6 +130,13 @@ function onkeypress(evt) {
     else if (evt.key == 'c') { toggle(3, 2); }
     else if (evt.key == 'v') { toggle(3, 3); }
     else if (evt.key == 'b') { toggle(3, 4); }
+    else if (evt.key == 'l') { 
+        for (var i = 0; i < ROWS; i++) {
+            for (var j = 0; j < COLUMNS; j++) {
+                toggle(i, j);
+            }
+        }
+    }
     draw();
 }
 

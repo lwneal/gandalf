@@ -9,6 +9,8 @@ from gradient_penalty import calc_gradient_penalty
 from torch.nn.functional import nll_loss, binary_cross_entropy
 import imutil
 
+torch.manual_seed(123)
+torch.cuda.manual_seed(123)
 
 def train_counterfactual(networks, optimizers, dataloader, epoch=None, **options):
     for net in networks.values():
@@ -197,37 +199,41 @@ def train_classifier(networks, optimizers, images, labels, **options):
         images = Variable(images).cuda()
         labels = Variable(labels).cuda()
 
-        net_y = netC(netE(images))[:,:-1]
-
-        # Positive and Negative labels: train a 1-vs-all classifier for each class
-        from torch.nn.functional import softmax
-        class_preds = torch.sigmoid(net_y)
-
         maxval, _ = labels.max(dim=1)
         is_blue = (maxval == 1).type(torch.cuda.FloatTensor)
+        is_red = (1 - is_blue)
 
-        nll_pos = -torch.log(.001 + class_preds) * (labels == 1).type(torch.cuda.FloatTensor)
-        nll_neg = -torch.log(1.01 - class_preds) * (labels == -1).type(torch.cuda.FloatTensor)
-        errPos = nll_pos.sum() + nll_neg.sum()
+        net_y = netC(netE(images))[:,:-1]
+
+        label_pos = (labels == 1).type(torch.cuda.FloatTensor)
+        label_neg = (labels == -1).type(torch.cuda.FloatTensor)
+
+        # Positive and Negative labels: train a 1-vs-all classifier for each class
+        from torch.nn.functional import log_softmax
+        log_preds = log_softmax(net_y)
+        errClass = -(log_preds * (labels == 1).type(torch.cuda.FloatTensor)).sum()
 
         # Additional term: Hinge loss on the linear layer before the activation
         from torch.nn.functional import relu
-        hinge = relu(net_y) * (labels == -1).type(torch.cuda.FloatTensor)
-        #hinge += relu(-net_y) * (labels == 1).type(torch.cuda.FloatTensor)
-        errNeg = torch.sum(hinge)
+        errHinge = (relu(1+net_y) * label_neg + relu(1-net_y) * label_pos).sum()
 
-        errC = errPos + errNeg
+        # Hack: just use hinge loss
+        #errC = errHinge
+        #errC = errClass
+        errC = errClass + errHinge
 
         errC.backward()
         optimizerC.step()
+        # Optimizing the encoder can improve classification, but at what cost?
         #optimizerE.step()
 
+        class_preds = torch.exp(log_preds)
         _, predicted = class_preds.max(1)
         _, correct_labels = labels.max(1)
         correct += sum((predicted.data == correct_labels.data).type(torch.cuda.FloatTensor) * is_blue.data)
         total += sum(is_blue.data)
 
-    print('[{}/{}] PosLoss: {:.3f} NegLoss {:.3f} Classifier Accuracy:{:.3f}'.format(
-        i, batch_count, errPos.data[0], errNeg.data[0],float(correct) / total))
+    print('[{}/{}] LogLoss: {:.3f}  HingeLoss: {:.3f} Accuracy:{:.3f}'.format(
+        i, batch_count, errClass.data[0], errHinge.data[0],float(correct) / total))
 
     return float(correct) / total
