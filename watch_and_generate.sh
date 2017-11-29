@@ -9,7 +9,7 @@ while true; do
 
     echo Out of $TRAJECTORY_COUNT trajectories, $LABEL_COUNT are labeled
 
-    if (( $TRAJECTORY_COUNT < $(($LABEL_COUNT + 3)) )); then
+    if (( $TRAJECTORY_COUNT < $(($LABEL_COUNT + 2)) )); then
         python experiments/generate_counterfactual.py --result_dir $RESULT_DIR
     fi
 done
