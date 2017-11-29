@@ -52,10 +52,7 @@ def evaluate_classifier(networks, dataloader, verbose=True, skip_reconstruction=
         classification_total += sum(labels < num_classes)
 
         max_vals, max_idx = net_y.max(dim=1)
-        # For K-class classifiers
-        #pred_openset = -max_vals.data.cpu().numpy()
-        # For K+1 classifiers
-        pred_openset = net_y.data[:, -1].cpu().numpy()
+        pred_openset = -max_vals.data.cpu().numpy()
         label_openset = (labels >= num_classes).cpu().numpy()
 
         openset_preds.extend(pred_openset)

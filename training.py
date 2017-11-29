@@ -201,29 +201,27 @@ def train_classifier(networks, optimizers, images, labels, **options):
         labels = Variable(labels).cuda()
 
         maxval, _ = labels.max(dim=1)
-        # Blue: labels marked as positive by the user
-        # Red: labels marked as negative (incorrect)
         is_blue = (maxval == 1).type(torch.cuda.FloatTensor)
         is_red = (1 - is_blue)
 
-        net_y = netC(netE(images))
+        net_y = netC(netE(images))[:,:-1]
 
-        zeros = torch.zeros((labels.data.shape[0], 1))
-        zeros = Variable(zeros).cuda()
-        labels = torch.cat((labels, zeros), dim=1)
         label_pos = (labels == 1).type(torch.cuda.FloatTensor)
         label_neg = (labels == -1).type(torch.cuda.FloatTensor)
 
-        # Positive labels: classification, including the extra open-set class
-        from torch.nn.functional import log_softmax, softmax
+        # Positive and Negative labels: train a 1-vs-all classifier for each class
+        from torch.nn.functional import log_softmax
         log_preds = log_softmax(net_y)
-        errPos = -(log_preds * label_pos).sum()
+        errClass = -(log_preds * (labels == 1).type(torch.cuda.FloatTensor)).sum()
 
-        red_negative = label_neg * is_red.repeat(num_classes + 1, 1).transpose(1, 0)
-        eps = .001
-        errNeg = -(torch.log(1 + eps - softmax(net_y)) * red_negative).sum()
+        # Additional term: Hinge loss on the linear layer before the activation
+        from torch.nn.functional import relu
+        errHinge = (relu(1+net_y) * label_neg + relu(1-net_y) * label_pos).sum()
 
-        errC = errPos + errNeg
+        # Hack: just use hinge loss
+        #errC = errHinge
+        #errC = errClass
+        errC = errClass + errHinge
 
         errC.backward()
         optimizerC.step()
@@ -236,7 +234,7 @@ def train_classifier(networks, optimizers, images, labels, **options):
         correct += sum((predicted.data == correct_labels.data).type(torch.cuda.FloatTensor) * is_blue.data)
         total += sum(is_blue.data)
 
-    print('[{}/{}] PosLoss: {:.3f}  NegLoss: {:.3f} Accuracy:{:.3f}'.format(
-        i, batch_count, errPos.data[0], errNeg.data[0],float(correct) / total))
+    print('[{}/{}] LogLoss: {:.3f}  HingeLoss: {:.3f} Accuracy:{:.3f}'.format(
+        i, batch_count, errClass.data[0], errHinge.data[0],float(correct) / total))
 
     return float(correct) / total
