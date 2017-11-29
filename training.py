@@ -9,6 +9,7 @@ from gradient_penalty import calc_gradient_penalty
 from torch.nn.functional import nll_loss, binary_cross_entropy
 import imutil
 
+np.random.seed(123)
 torch.manual_seed(123)
 torch.cuda.manual_seed(123)
 

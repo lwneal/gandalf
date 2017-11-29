@@ -36,30 +36,30 @@ def evaluate_classifier(networks, dataloader, verbose=True, skip_reconstruction=
 
     # TODO: Hard-coded for MNIST/SVHN open set
     num_classes = 6
+    openset_preds = []
+    openset_labels = []
     
     for i, (images, labels, attributes) in enumerate(dataloader):
         images = Variable(images, volatile=True)
         z = netE(images)
 
         # Predict a classification among known classes
-        class_predictions = sigmoid(netC(z)[:, :num_classes])
-        max_vals, predicted = class_predictions.max(1)
+        net_y = netC(z)[:, :num_classes]
+        class_predictions = softmax(net_y)
+
+        _, predicted = class_predictions.max(1)
         classification_correct += sum(predicted.data == labels)
         classification_total += sum(labels < num_classes)
 
+        max_vals, max_idx = net_y.max(dim=1)
         pred_openset = -max_vals.data.cpu().numpy()
         label_openset = (labels >= num_classes).cpu().numpy()
-        openset_correct += sum(pred_openset == label_openset)
-        openset_total += len(labels)
 
-        fpr, tpr, thresholds = roc_curve(label_openset, pred_openset)
-        openset_auc = auc(fpr, tpr)
+        openset_preds.extend(pred_openset)
+        openset_labels.extend(label_openset)
 
-        if verbose:
-            print("Accuracy: {:.4f} ({: >12} / {: <12} correct)".format(float(correct) / total, correct, total))
-        if verbose and netA:
-            for i, attr in enumerate(dataloader.attr_conv.attributes):
-                print("\t{}: {:.3f} ({}/{})".format(attr, attr_correct[i] / attr_total, attr_correct[i], attr_total))
+    fpr, tpr, thresholds = roc_curve(openset_labels, openset_preds)
+    openset_auc = auc(fpr, tpr)
 
     stats = {
         options['fold']: {
@@ -67,7 +67,6 @@ def evaluate_classifier(networks, dataloader, verbose=True, skip_reconstruction=
             'total': classification_total,
             'accuracy': float(classification_correct) / classification_total,
             'classification_accuracy': float(classification_correct) / classification_total,
-            'openset_accuracy': float(openset_correct) / openset_total,
             'openset_auc': openset_auc,
         }
     }
