@@ -66,7 +66,7 @@ def compare_active_learning(eval_filename, baseline_eval_filename, title=None, t
     plt.plot(x, y, "g") # this method
     plt.plot(x2, y2, "b") # baseline
     this_approach_name = eval_filename.split('/')
-    plt.ylabel('Accuracy')
+    plt.ylabel('AUC')
     plt.xlabel('Number of Queries')
     plt.legend([this_name, baseline_name])
     if title:
