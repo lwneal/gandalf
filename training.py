@@ -218,15 +218,10 @@ def train_classifier(networks, optimizers, images, labels, **options):
         from torch.nn.functional import relu
         errHinge = (relu(1+net_y) * label_neg + relu(1-net_y) * label_pos).sum()
 
-        # Hack: just use hinge loss
-        #errC = errHinge
-        #errC = errClass
         errC = errClass + errHinge
 
         errC.backward()
         optimizerC.step()
-        # Optimizing the encoder can improve classification, but at what cost?
-        #optimizerE.step()
 
         class_preds = torch.exp(log_preds)
         _, predicted = class_preds.max(1)

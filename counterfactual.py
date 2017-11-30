@@ -386,13 +386,9 @@ def generate_z_trajectory(z, target_class, netC, netE, netG, dataloader,
         predicted_class_name = dataloader.lab_conv.labels[predicted_class]
         print("Class: {} ({:.3f} confidence). Target class {}".format(
             predicted_class_name, pred_confidence, target_class))
-        if pred_confidence > 9000 and predicted_class == target_class:
-            print("Result: {} ({:.3f} confidence)".format(
-                predicted_class_name, pred_confidence))
-            break
 
-        # Move in the direction of target_label
-        cf_loss = nll_loss(log_softmax(net_y), target_label) 
+        cf_loss = nll_loss(log_softmax(net_y), target_label)
+
         # Distance in latent space from original point
         cf_loss += .0001 * torch.sum((z - original_z) ** 2)
 
