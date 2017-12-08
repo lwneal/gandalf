@@ -302,19 +302,17 @@ def generate_grid(networks, dataloader, **options):
     # For MNIST, SVHN
     # Generate a 6x6 square visualization
     N = (dataloader.num_classes // 2) + 1
-    images = [[] for _ in range(N+1)]
+    images = [[] for _ in range(N)]
     for img_batch, label_batch, _ in dataloader:
         for img, label in zip(img_batch, label_batch):
             if label < N and len(images[label]) < N:
                 images[label].append(img.cpu().numpy())
-            elif label >= N:
-                images[N].append(img.cpu().numpy())
-        if all(len(images[i]) == N for i in range(N+1)):
+        if all(len(images[i]) == N for i in range(N)):
             break
 
     flat = []
     for i in range(N):
-        for j in range(N+1):
+        for j in range(N):
             flat.append(images[j][i])
     images = flat
 
