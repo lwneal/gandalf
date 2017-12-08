@@ -33,6 +33,8 @@ def evaluate_classifier(networks, dataloader, verbose=True, skip_reconstruction=
     classification_total = 0
     openset_correct = 0
     openset_total = 0
+    combined_correct = 0
+    combined_total = 0
 
     # TODO: Hard-coded for MNIST/SVHN open set
     num_classes = 6
@@ -58,6 +60,9 @@ def evaluate_classifier(networks, dataloader, verbose=True, skip_reconstruction=
         openset_preds.extend(pred_openset)
         openset_labels.extend(label_openset)
 
+        combined_correct += ((labels >= num_classes) * (max_vals.data < 0) + (predicted.data == labels)).sum()
+        combined_total += len(images)
+
     fpr, tpr, thresholds = roc_curve(openset_labels, openset_preds)
     openset_auc = auc(fpr, tpr)
 
@@ -67,6 +72,7 @@ def evaluate_classifier(networks, dataloader, verbose=True, skip_reconstruction=
             'total': classification_total,
             'accuracy': float(classification_correct) / classification_total,
             'classification_accuracy': float(classification_correct) / classification_total,
+            'combined_accuracy': float(combined_correct) / combined_total,
             'openset_auc': openset_auc,
         }
     }

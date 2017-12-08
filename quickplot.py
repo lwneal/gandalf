@@ -1,7 +1,7 @@
 import plotting
 
 fn1 = '/mnt/results/super_mnist/eval_epoch_0101.json'
-fn2 = '/mnt/results/super_mnist/method_5_training_gt/eval_epoch_0101.json'
+fn2 = '/mnt/results/super_mnist/method_5_training_gt/eval_epoch_0101_2.json'
 kwargs = dict(
     this_name="Training with Counterfactuals",
     baseline_name="Training with Ground Truth"
@@ -12,8 +12,15 @@ plotting.compare_active_learning(fn1, fn2,
         prefix='grid',
         statistic='classification_accuracy', **kwargs)
 """
+"""
 plotting.compare_active_learning(fn1, fn2,
         title='Open Set AUC (MNIST 0-5 vs 6-9)',
         prefix='grid',
         statistic='openset_auc',
+        **kwargs)
+"""
+plotting.compare_active_learning(fn1, fn2,
+        title='MNIST accuracy (0-5 labeled, 6-9 open set)',
+        prefix='grid',
+        statistic='combined_accuracy',
         **kwargs)

@@ -118,9 +118,8 @@ for label_info in labels:
             label_data[i, idx] = -1
     image_labels.extend(label_data)
 
-images = np.array(images)
-image_labels = np.array(image_labels).astype(int)
-
+images = np.array(images)[:options['query_count']]
+image_labels = np.array(image_labels).astype(int)[:options['query_count']]
 foldname = 'grid_{:08d}'.format(len(images))
 
 best_epoch = 0
