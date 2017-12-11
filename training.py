@@ -20,12 +20,10 @@ def train_counterfactual(networks, optimizers, dataloader, epoch=None, **options
     netG = networks['generator']
     netE = networks['encoder']
     netC = networks['classifier']
-    netA = networks.get('attribute')
     optimizerD = optimizers['discriminator']
     optimizerG = optimizers['generator']
     optimizerE = optimizers['encoder']
     optimizerC = optimizers['classifier']
-    optimizerA = optimizers.get('attribute')
     result_dir = options['result_dir']
     batch_size = options['batch_size']
     image_size = options['image_size']
@@ -46,18 +44,14 @@ def train_counterfactual(networks, optimizers, dataloader, epoch=None, **options
     fixed_noise = Variable(torch.FloatTensor(batch_size, latent_size).normal_(0, 1)).cuda()
     if spherical:
         clamp_to_unit_sphere(fixed_noise)
-    demo_images, _, _ = next(d for d in dataloader)
+    demo_images, demo_labels = next(d for d in dataloader)
 
     correct = 0
     total = 0
-    attr_correct = 0
-    attr_total = 0
-    
-    for i, (images, class_labels, attributes) in enumerate(dataloader):
+
+    for i, (images, class_labels) in enumerate(dataloader):
         images = Variable(images)
         labels = Variable(class_labels)
-        if netA:
-            attributes = Variable(attributes)
         ############################
         # (1) Update D network
         # WGAN: maximize D(G(z)) - D(x)
