@@ -7,6 +7,7 @@ from torchvision import models
 from torch.autograd import Variable
 from gradient_penalty import calc_gradient_penalty
 from torch.nn.functional import nll_loss, binary_cross_entropy
+from torch.nn.functional import log_softmax
 import imutil
 
 np.random.seed(123)
@@ -103,14 +104,14 @@ def train_counterfactual(networks, optimizers, dataloader, epoch=None, **options
         if options['supervised_encoder']:
             netE.zero_grad()
         netC.zero_grad()
-        preds = netC(netE(images))
+        preds = log_softmax(netC(netE(images)))
         errC = nll_loss(preds, labels)
         errC.backward()
         optimizerC.step()
         if options['supervised_encoder']:
             optimizerE.step()
 
-        confidence, pred_idx = preds.max(1)
+        _, pred_idx = preds.max(1)
         correct += sum(pred_idx == labels).data.cpu().numpy()[0]
         total += len(labels)
         ############################
