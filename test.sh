@@ -28,3 +28,5 @@ experiments/train_aac.py \
     --epochs 1
 
 experiments/example.py --result_dir /mnt/results/mnist_28x28
+
+python experiments/test_dataloader.py
