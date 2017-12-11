@@ -9,6 +9,7 @@ from gradient_penalty import calc_gradient_penalty
 from torch.nn.functional import nll_loss, binary_cross_entropy
 from torch.nn.functional import log_softmax
 import imutil
+from dataloader import CustomDataloader
 
 np.random.seed(123)
 torch.manual_seed(123)
@@ -50,6 +51,14 @@ def train_counterfactual(networks, optimizers, dataloader, epoch=None, **options
     correct = 0
     total = 0
 
+    # TODO: Say we have a dataloader with binary class labels
+    aux_kwargs = {
+        'dataset': '/mnt/results/super_mnist/aux_dataset.dataset',
+        'batch_size': options['batch_size'],
+        'image_size': options['image_size'],
+    }
+    aux_dataloader = CustomDataloader(**aux_kwargs)
+
     for i, (images, class_labels) in enumerate(dataloader):
         images = Variable(images)
         labels = Variable(class_labels)
@@ -65,6 +74,22 @@ def train_counterfactual(networks, optimizers, dataloader, epoch=None, **options
             errD *= options['gan_weight']
             errD.backward()
             optimizerD.step()
+        ###########################
+
+        # Also update D network based on user-provided extra labels
+        aux_images, aux_labels = aux_dataloader.get_batch()
+        aux_images = Variable(aux_images)
+        aux_labels = Variable(aux_labels.type(torch.cuda.FloatTensor))
+        alpha = len(aux_dataloader) / (len(dataloader) + len(aux_dataloader))
+
+        d_aux = netD(aux_images)
+        total_real = aux_labels.sum() + 1
+        total_fake = (1 - aux_labels).sum() + 1
+        errAuxD = ((d_aux * aux_labels).sum() / total_real 
+                - (d_aux * (1 - aux_labels)).sum() / total_fake)
+        errAuxD.backward()
+        optimizerD.step()
+
         ###########################
 
         # WGAN-GP
