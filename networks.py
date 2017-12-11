@@ -20,7 +20,7 @@ def build_networks(num_classes, num_attributes=0, epoch=None, latent_size=10, ba
 
     ClassifierClass = network_definitions.classifierLinearPlusOne
     # Hack: hard-code number of classes
-    num_classes = 6
+    num_classes = 10
     networks[classifier_name] = ClassifierClass(latent_size, num_classes=num_classes)
 
     # Attribute network is only active for some datasets

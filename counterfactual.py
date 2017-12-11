@@ -248,7 +248,8 @@ def generate_comparison(networks, dataloader, **options):
 
     # For MNIST, SVHN
     # Generate a 6x6 square visualization
-    N = (dataloader.num_classes // 2) + 1
+    #N = (dataloader.num_classes // 2) + 1
+    N = dataloader.num_classes
     counterfactual_latent_points = []
     for _ in range(N):
         # Start with a random example
@@ -300,8 +301,8 @@ def generate_grid(networks, dataloader, **options):
 
 
     # For MNIST, SVHN
-    # Generate a 6x6 square visualization
-    N = (dataloader.num_classes // 2) + 1
+    # Generate a 10x10 square visualization
+    N = dataloader.num_classes
     images = [[] for _ in range(N)]
     for img_batch, label_batch, _ in dataloader:
         for img, label in zip(img_batch, label_batch):
@@ -375,10 +376,11 @@ def generate_z_trajectory(z, target_class, netC, netE, netG, dataloader,
     target_label[:] = int(target_class)
     target_label = Variable(target_label).cuda()
     original_z = z.clone()
-    max_iters = 30
+    max_iters = 100
+    momentum_mu = .99
     for i in range(max_iters):
         net_y = netC(z)[:,:-1]
-        preds = softmax(net_y)
+        preds = net_y #softmax(net_y)
 
         predicted_class = to_np(preds.max(1)[1])[0]
         pred_confidence = to_np(preds.max(1)[0])[0]
