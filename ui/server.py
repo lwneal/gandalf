@@ -3,6 +3,8 @@ import json
 import os
 import random
 from pprint import pprint
+import numpy as np
+from PIL import Image
 
 
 FILES_URL = 'http://files.deeplearninggroup.com'
@@ -10,18 +12,90 @@ RESULTS_PATH = '/mnt/results/'
 app = flask.Flask(__name__)
 
 
-def save_active_label(label, result_dir):
+def process_grid_label(form, result_dir):
+    trajectory_id = form['trajectory_id']
+    labels = [int(c) for c in form['labels'].split(',')]
+    info = {
+        'trajectory_id': trajectory_id,
+        'labels': labels,
+    }
+    unpacked_images = unpack_images(result_dir, trajectory_id)
+    write_images_to_file(result_dir, unpacked_images, trajectory_id)
+    save_grid_label(trajectory_id, info, result_dir)
+    examples = build_aux_dataset(result_dir)
+    write_aux_dataset(result_dir, examples)
+
+
+def write_aux_dataset(result_dir, examples):
+    dataset_filename = os.path.join(result_dir, 'aux_dataset.dataset')
+    with open(dataset_filename, 'w') as fp:
+        for example in examples:
+            fp.write(json.dumps(example))
+            fp.write('\n')
+
+
+# Returns a numpy array, containing eg. 100 images
+def unpack_images(result_dir, trajectory_id):
+    trajectories_dir = os.path.join(result_dir, 'trajectories')
+    for trajectory_filename in os.listdir(trajectories_dir):
+        if not trajectory_filename.endswith('.npy'):
+            continue
+        if trajectory_id in trajectory_filename:
+            break
+    else:
+        print("Error: Could not find trajectory id {}".format(trajectory_id))
+        raise ValueError()
+    filename = os.path.join(trajectories_dir, trajectory_filename)
+    return np.load(filename)
+
+
+# Writes eg. 100 .png files result_dir/labeled_images/mnist_12345_0001.png ...
+def write_images_to_file(result_dir, unpacked_images, trajectory_id):
+    images_dir = os.path.join(result_dir, 'labeled_images')
+    if not os.path.exists(images_dir):
+        os.mkdir(images_dir)
+    for i, img in enumerate(unpacked_images):
+        filename = image_filename(result_dir, trajectory_id, i)
+        img = (img * 255).astype(np.uint8)
+        Image.fromarray(img).save(filename)
+
+
+def image_filename(result_dir, trajectory_id, idx):
+    images_dir = os.path.join(result_dir, 'labeled_images')
+    filename = '{}_{:04d}.png'.format(trajectory_id, idx)
+    filename = os.path.join(images_dir, filename)
+    return filename
+
+
+# Writes a label file eg result_dir/labels/mnist_12354.json
+def save_grid_label(trajectory_id, info, result_dir):
     result_dir = os.path.join(RESULTS_PATH, result_dir)
     label_dir = os.path.join(result_dir, 'labels')
     if not os.path.exists(label_dir):
         print("Creating directory {}".format(label_dir))
         os.mkdir(label_dir)
     print("Saving label to {}".format(label_dir))
-    pprint(label)
-    filename = os.path.join(label_dir, '{}.json'.format(label['trajectory_id']))
+    filename = os.path.join(label_dir, '{}.json'.format(trajectory_id))
     with open(filename, 'w') as fp:
-        json.dump(label, fp, indent=2)
+        json.dump(info, fp, indent=2)
     return filename
+
+
+# Creates or overwrites a .dataset file containing all user-provided labels
+def build_aux_dataset(result_dir):
+    examples = []
+    label_dir = os.path.join(result_dir, 'labels')
+    for label_json_filename in os.listdir(label_dir):
+        json_filename = os.path.join(label_dir, label_json_filename)
+        with open(json_filename) as fp:
+            info = json.load(fp)
+        for i, label in enumerate(info['labels']):
+            filename = image_filename(result_dir, info['trajectory_id'], i)
+            examples.append({
+                'filename': filename,
+                'label': label
+            })
+    return examples
 
 
 def is_labeled(filename, result_dir):
@@ -184,11 +258,7 @@ def submit_batch(result_dir):
 @app.route('/submit_grid/<result_dir>', methods=['POST'])
 def submit_grid(result_dir):
     print("Submitted grid labels. Request form: {}".format(flask.request.form))
-    label = {
-        'trajectory_id': flask.request.form['trajectory_id'],
-        'labels': flask.request.form['labels'],
-    }
-    save_active_label(label, result_dir)
+    process_grid_label(flask.request.form, os.path.join(RESULTS_PATH, result_dir))
     return flask.redirect(flask.request.referrer)
 
 
