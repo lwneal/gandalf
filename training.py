@@ -7,7 +7,7 @@ from torchvision import models
 from torch.autograd import Variable
 from gradient_penalty import calc_gradient_penalty
 from torch.nn.functional import nll_loss, binary_cross_entropy
-from torch.nn.functional import log_softmax
+from torch.nn.functional import softmax, log_softmax
 import imutil
 from dataloader import CustomDataloader
 
@@ -31,13 +31,6 @@ def train_counterfactual(networks, optimizers, dataloader, epoch=None, **options
     image_size = options['image_size']
     latent_size = options['latent_size']
     video_filename = "{}/generated.mjpeg".format(result_dir)
-
-    if options['perceptual_loss']:
-        vgg16 = models.vgg.vgg16(pretrained=True)
-        P_layers = list(vgg16.features.children())
-        P_layers = P_layers[:options['perceptual_depth']]
-        netP = nn.Sequential(*P_layers)
-        netP.cuda()
 
     # By convention, if it ends with 'sphere' it uses the unit sphere
     spherical = type(netE).__name__.endswith('sphere')
@@ -75,8 +68,8 @@ def train_counterfactual(networks, optimizers, dataloader, epoch=None, **options
             errD.backward()
             optimizerD.step()
         ###########################
-
         # Also update D network based on user-provided extra labels
+        netD.zero_grad()
         aux_images, aux_labels = aux_dataloader.get_batch()
         aux_images = Variable(aux_images)
         aux_labels = Variable(aux_labels.type(torch.cuda.FloatTensor))
@@ -115,8 +108,6 @@ def train_counterfactual(networks, optimizers, dataloader, epoch=None, **options
         hallucination = netG(noise)
         regenerated = netG(netE(hallucination))
         errEG = torch.mean(torch.abs(regenerated - hallucination))
-        if options['perceptual_loss']:
-            errEG += torch.mean((netP(regenerated) - netP(hallucination))**2)
         errEG *= options['autoencoder_weight']
         errEG.backward()
         ############################
@@ -126,15 +117,12 @@ def train_counterfactual(networks, optimizers, dataloader, epoch=None, **options
         ############################
         # Train Classifier
         ############################
-        if options['supervised_encoder']:
-            netE.zero_grad()
         netC.zero_grad()
-        preds = log_softmax(netC(netE(images)))
-        errC = nll_loss(preds, labels)
+        # Note that the classifier output is linear
+        preds = softmax(netC(netE(images)))
+        errC = nll_loss(torch.log(preds), labels)
         errC.backward()
         optimizerC.step()
-        if options['supervised_encoder']:
-            optimizerE.step()
 
         _, pred_idx = preds.max(1)
         correct += sum(pred_idx == labels).data.cpu().numpy()[0]
