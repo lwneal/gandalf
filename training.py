@@ -53,6 +53,7 @@ def train_counterfactual(networks, optimizers, dataloader, epoch=None, **options
         'image_size': options['image_size'],
     }
     if use_aux_dataset:
+        print("Enabling aux dataset")
         aux_dataloader = CustomDataloader(**aux_kwargs)
 
     for i, (images, class_labels) in enumerate(dataloader):
@@ -60,8 +61,8 @@ def train_counterfactual(networks, optimizers, dataloader, epoch=None, **options
         labels = Variable(class_labels)
         ############################
         # (1) Update D network
-        # WGAN: maximize D(G(z)) - D(x)
         ###########################
+        # WGAN: maximize D(G(z)) - D(x)
         for _ in range(5):
             netD.zero_grad()
             noise = gen_noise(noise, spherical)
@@ -70,7 +71,6 @@ def train_counterfactual(networks, optimizers, dataloader, epoch=None, **options
             errD *= options['gan_weight']
             errD.backward()
             optimizerD.step()
-        ###########################
         # Also update D network based on user-provided extra labels
         if use_aux_dataset:
             netD.zero_grad()
@@ -78,7 +78,6 @@ def train_counterfactual(networks, optimizers, dataloader, epoch=None, **options
             aux_images = Variable(aux_images)
             aux_labels = Variable(aux_labels.type(torch.cuda.FloatTensor))
             alpha = len(aux_dataloader) / (len(dataloader) + len(aux_dataloader))
-
             d_aux = netD(aux_images)
             total_real = aux_labels.sum() + 1
             total_fake = (1 - aux_labels).sum() + 1
@@ -86,8 +85,8 @@ def train_counterfactual(networks, optimizers, dataloader, epoch=None, **options
                     - (d_aux * (1 - aux_labels)).sum() / total_fake)
             errAuxD.backward()
             optimizerD.step()
-        ###########################
-        # WGAN-GP
+
+        # Apply WGAN-GP gradient penalty
         netD.zero_grad()
         errGP = calc_gradient_penalty(netD, images.data, fake_images.data)
         errGP.backward()
@@ -113,20 +112,18 @@ def train_counterfactual(networks, optimizers, dataloader, epoch=None, **options
         errEG = torch.mean(torch.abs(regenerated - hallucination))
         errEG *= options['autoencoder_weight']
         errEG.backward()
-        ############################
         optimizerG.step()
+        optimizerE.step()
+        ############################
 
         ############################
-        # Train Classifier
+        # Classification: Max likelihood C(E(x))
         ############################
-        netE.zero_grad()
         netC.zero_grad()
-        # Note that the classifier output is linear
         preds = log_softmax(netC(netE(images)))
         errC = nll_loss(preds, labels)
         errC.backward()
         optimizerC.step()
-        optimizerE.step()
 
         _, pred_idx = preds.max(1)
         correct += sum(pred_idx == labels).data.cpu().numpy()[0]
