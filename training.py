@@ -1,4 +1,5 @@
 import time
+import os
 import torch
 import torch.nn as nn
 import random
@@ -44,13 +45,15 @@ def train_counterfactual(networks, optimizers, dataloader, epoch=None, **options
     correct = 0
     total = 0
 
-    # TODO: Say we have a dataloader with binary class labels
+    dataset_filename = os.path.join(options['result_dir'], 'aux_dataset.dataset')
+    use_aux_dataset = os.path.exists(dataset_filename) # and options['use_aux_dataset']
     aux_kwargs = {
-        'dataset': '/mnt/results/super_mnist/aux_dataset.dataset',
+        'dataset': dataset_filename,
         'batch_size': options['batch_size'],
         'image_size': options['image_size'],
     }
-    aux_dataloader = CustomDataloader(**aux_kwargs)
+    if use_aux_dataset:
+        aux_dataloader = CustomDataloader(**aux_kwargs)
 
     for i, (images, class_labels) in enumerate(dataloader):
         images = Variable(images)
@@ -69,27 +72,27 @@ def train_counterfactual(networks, optimizers, dataloader, epoch=None, **options
             optimizerD.step()
         ###########################
         # Also update D network based on user-provided extra labels
-        netD.zero_grad()
-        aux_images, aux_labels = aux_dataloader.get_batch()
-        aux_images = Variable(aux_images)
-        aux_labels = Variable(aux_labels.type(torch.cuda.FloatTensor))
-        alpha = len(aux_dataloader) / (len(dataloader) + len(aux_dataloader))
+        if use_aux_dataset:
+            netD.zero_grad()
+            aux_images, aux_labels = aux_dataloader.get_batch()
+            aux_images = Variable(aux_images)
+            aux_labels = Variable(aux_labels.type(torch.cuda.FloatTensor))
+            alpha = len(aux_dataloader) / (len(dataloader) + len(aux_dataloader))
 
-        d_aux = netD(aux_images)
-        total_real = aux_labels.sum() + 1
-        total_fake = (1 - aux_labels).sum() + 1
-        errAuxD = ((d_aux * aux_labels).sum() / total_real 
-                - (d_aux * (1 - aux_labels)).sum() / total_fake)
-        errAuxD.backward()
-        optimizerD.step()
-
+            d_aux = netD(aux_images)
+            total_real = aux_labels.sum() + 1
+            total_fake = (1 - aux_labels).sum() + 1
+            errAuxD = ((d_aux * aux_labels).sum() / total_real 
+                    - (d_aux * (1 - aux_labels)).sum() / total_fake)
+            errAuxD.backward()
+            optimizerD.step()
         ###########################
-
         # WGAN-GP
         netD.zero_grad()
         errGP = calc_gradient_penalty(netD, images.data, fake_images.data)
         errGP.backward()
         optimizerD.step()
+        ###########################
 
         ############################
         # Realism: minimize D(G(z))
