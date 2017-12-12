@@ -220,8 +220,6 @@ def generate_comparison(networks, dataloader, **options):
 
 
     # For MNIST, SVHN
-    # Generate a 6x6 square visualization
-    #N = (dataloader.num_classes // 2) + 1
     N = dataloader.num_classes
     counterfactual_latent_points = []
     for _ in range(N):
