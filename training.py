@@ -112,17 +112,18 @@ def train_counterfactual(networks, optimizers, dataloader, epoch=None, **options
         errEG.backward()
         ############################
         optimizerG.step()
-        optimizerE.step()
 
         ############################
         # Train Classifier
         ############################
+        netE.zero_grad()
         netC.zero_grad()
         # Note that the classifier output is linear
-        preds = softmax(netC(netE(images)))
-        errC = nll_loss(torch.log(preds), labels)
+        preds = log_softmax(netC(netE(images)))
+        errC = nll_loss(preds, labels)
         errC.backward()
         optimizerC.step()
+        optimizerE.step()
 
         _, pred_idx = preds.max(1)
         correct += sum(pred_idx == labels).data.cpu().numpy()[0]
