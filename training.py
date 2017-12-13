@@ -119,11 +119,13 @@ def train_counterfactual(networks, optimizers, dataloader, epoch=None, **options
         ############################
         # Classification: Max likelihood C(E(x))
         ############################
+        netE.zero_grad()
         netC.zero_grad()
         preds = log_softmax(netC(netE(images)))
         errC = nll_loss(preds, labels)
         errC.backward()
         optimizerC.step()
+        optimizerE.step()
 
         _, pred_idx = preds.max(1)
         correct += sum(pred_idx == labels).data.cpu().numpy()[0]
@@ -140,6 +142,8 @@ def train_counterfactual(networks, optimizers, dataloader, epoch=None, **options
                   errC.data[0],
                   correct / max(total, 1))
             print(msg)
+            print("Classifier Network Weights:")
+            show_weights(netC)
 
             caption = "Epoch {:04d} iter {:05d}".format(epoch, i)
             reconstructed = netG(netE(Variable(demo_images)))
@@ -149,6 +153,19 @@ def train_counterfactual(networks, optimizers, dataloader, epoch=None, **options
             imutil.show(img, caption=msg, font_size=8, filename=filename)
     return video_filename
 
+
+def show_weights(net):
+    from imutil import show
+    for layer in net.children():
+        if hasattr(layer, 'weight'):
+            print("\nLayer {}".format(layer))
+            show(layer.weight.data, save=False)
+            print('Weight sum: {}'.format(abs_sum(layer.weight)))
+
+
+def abs_sum(variable):
+    weight_sum = variable.abs().sum()
+    return weight_sum.data.cpu().numpy()[0]
 
 
 def gen_noise(noise, spherical_noise):
