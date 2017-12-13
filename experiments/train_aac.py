@@ -36,9 +36,6 @@ parser.add_argument('--gradient_penalty_lambda', type=float, default=10.0, help=
 parser.add_argument('--autoencoder_weight', type=float, default=1.0, help='Autoencoder training weight [default: 1.0]')
 parser.add_argument('--gan_weight', type=float, default=1.0, help='GAN training weight [default: 1.0]')
 
-# TODO: replace this, it's a hack
-parser.add_argument('--attributes_only', type=is_true, default=False, help='Learn attributes, not classes [default: False]')
-
 # This might change with each run
 parser.add_argument('--epochs', type=int, default=10, help='number of epochs to train for [default: 10]')
 
@@ -56,7 +53,7 @@ if os.path.exists(options['result_dir']):
     options = load_options(options)
 
 dataloader = CustomDataloader(fold='train', **options)
-networks = build_networks(dataloader.num_classes, dataloader.num_attributes, **options)
+networks = build_networks(dataloader.num_classes, **options)
 optimizers = get_optimizers(networks, **options)
 
 save_options(options)
@@ -66,12 +63,7 @@ try:
     for epoch in range(start_epoch, start_epoch + options['epochs']):
         # Apply learning rate decay
         for name, optimizer in optimizers.items():
-            # Hack: Attribute networks need a higher learning rate
-            if name == 'attribute':
-                lr = options['lr'] * (options['decay'] ** epoch) * dataloader.num_attributes
-            else:
-                lr = options['lr'] * (options['decay'] ** epoch)
-            optimizer.param_groups[0]['lr'] = lr
+            optimizer.param_groups[0]['lr'] = options['lr'] * (options['decay'] ** epoch)
 
         # Train for one epoch
         video_filename = train_counterfactual(networks, optimizers, dataloader, epoch=epoch, **options)

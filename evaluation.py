@@ -23,7 +23,6 @@ def evaluate_classifier(networks, dataloader, verbose=True, skip_reconstruction=
     netG = networks['generator']
     netC = networks['classifier']
     netD = networks['discriminator']
-    netA = networks.get('attribute')
     result_dir = options['result_dir']
     batch_size = options['batch_size']
     image_size = options['image_size']
@@ -41,7 +40,7 @@ def evaluate_classifier(networks, dataloader, verbose=True, skip_reconstruction=
     openset_preds = []
     openset_labels = []
     
-    for i, (images, labels, attributes) in enumerate(dataloader):
+    for i, (images, labels) in enumerate(dataloader):
         images = Variable(images, volatile=True)
         z = netE(images)
 

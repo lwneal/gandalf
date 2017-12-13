@@ -25,8 +25,8 @@ def time_dataset(dataset_name):
     time_taken = time.time() - start_time
     print("Loaded {} examples from {} in {:.3f}s".format(
         dataloader.count(), dataset_name, time_taken))
-    print("Image size: {0}x{0} \tTime per image: {1:.3f}s".format(
-        dataloader.lab_conv.image_size, time_taken / dataloader.count()))
+    print("Image size: {0}x{0} \tTime per image: {1:.4f}s".format(
+        dataloader.img_conv.img_shape, time_taken / dataloader.count()))
     return time_taken
 
 

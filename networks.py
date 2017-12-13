@@ -5,8 +5,7 @@ from torch import optim
 from torch import nn
 
 
-def build_networks(num_classes, num_attributes=0, epoch=None, latent_size=10, batch_size=64, 
-        load_classifier=True, load_attributes=True, classifier_name='classifier', **options):
+def build_networks(num_classes, epoch=None, latent_size=10, batch_size=64, **options):
     networks = {}
 
     EncoderClass = get_network_class(options['encoder'])
@@ -18,20 +17,10 @@ def build_networks(num_classes, num_attributes=0, epoch=None, latent_size=10, ba
     DiscrimClass = get_network_class(options['discriminator'])
     networks['discriminator'] = DiscrimClass(latent_size=latent_size)
 
-    ClassifierClass = network_definitions.classifierLinearPlusOne
-    # Hack: hard-code number of classes
-    num_classes = 6
-    networks[classifier_name] = ClassifierClass(latent_size, num_classes=num_classes)
-
-    # Attribute network is only active for some datasets
-    if num_attributes > 0 and load_attributes:
-        ClassifierClass = network_definitions.classifierMulticlass
-        networks['attribute'] = ClassifierClass(latent_size, num_classes=num_attributes)
+    ClassifierClass = network_definitions.classifierLinear
+    networks['classifier'] = ClassifierClass(latent_size, num_classes=num_classes)
 
     for net_name in networks:
-        if net_name == classifier_name and load_classifier == False:
-            print("HACK: Skipping classifier load, using randomly-initialized weights for {}".format(net_name))
-            continue
         pth = get_pth_by_epoch(options['result_dir'], net_name, epoch)
         if pth:
             print("Loading {} from checkpoint {}".format(net_name, pth))
@@ -39,7 +28,6 @@ def build_networks(num_classes, num_attributes=0, epoch=None, latent_size=10, ba
         else:
             print("Using randomly-initialized weights for {}".format(net_name))
 
-    networks['classifier'] = networks[classifier_name]
     return networks
 
 

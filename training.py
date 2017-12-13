@@ -1,4 +1,5 @@
 import time
+import os
 import torch
 import torch.nn as nn
 import random
@@ -7,7 +8,9 @@ from torchvision import models
 from torch.autograd import Variable
 from gradient_penalty import calc_gradient_penalty
 from torch.nn.functional import nll_loss, binary_cross_entropy
+from torch.nn.functional import softmax, log_softmax
 import imutil
+from dataloader import CustomDataloader
 
 np.random.seed(123)
 torch.manual_seed(123)
@@ -20,24 +23,15 @@ def train_counterfactual(networks, optimizers, dataloader, epoch=None, **options
     netG = networks['generator']
     netE = networks['encoder']
     netC = networks['classifier']
-    netA = networks.get('attribute')
     optimizerD = optimizers['discriminator']
     optimizerG = optimizers['generator']
     optimizerE = optimizers['encoder']
     optimizerC = optimizers['classifier']
-    optimizerA = optimizers.get('attribute')
     result_dir = options['result_dir']
     batch_size = options['batch_size']
     image_size = options['image_size']
     latent_size = options['latent_size']
     video_filename = "{}/generated.mjpeg".format(result_dir)
-
-    if options['perceptual_loss']:
-        vgg16 = models.vgg.vgg16(pretrained=True)
-        P_layers = list(vgg16.features.children())
-        P_layers = P_layers[:options['perceptual_depth']]
-        netP = nn.Sequential(*P_layers)
-        netP.cuda()
 
     # By convention, if it ends with 'sphere' it uses the unit sphere
     spherical = type(netE).__name__.endswith('sphere')
@@ -46,22 +40,29 @@ def train_counterfactual(networks, optimizers, dataloader, epoch=None, **options
     fixed_noise = Variable(torch.FloatTensor(batch_size, latent_size).normal_(0, 1)).cuda()
     if spherical:
         clamp_to_unit_sphere(fixed_noise)
-    demo_images, _, _ = next(d for d in dataloader)
+    demo_images, demo_labels = next(d for d in dataloader)
 
     correct = 0
     total = 0
-    attr_correct = 0
-    attr_total = 0
-    
-    for i, (images, class_labels, attributes) in enumerate(dataloader):
+
+    dataset_filename = os.path.join(options['result_dir'], 'aux_dataset.dataset')
+    use_aux_dataset = os.path.exists(dataset_filename) # and options['use_aux_dataset']
+    aux_kwargs = {
+        'dataset': dataset_filename,
+        'batch_size': options['batch_size'],
+        'image_size': options['image_size'],
+    }
+    if use_aux_dataset:
+        print("Enabling aux dataset")
+        aux_dataloader = CustomDataloader(**aux_kwargs)
+
+    for i, (images, class_labels) in enumerate(dataloader):
         images = Variable(images)
         labels = Variable(class_labels)
-        if netA:
-            attributes = Variable(attributes)
         ############################
         # (1) Update D network
-        # WGAN: maximize D(G(z)) - D(x)
         ###########################
+        # WGAN: maximize D(G(z)) - D(x)
         for _ in range(5):
             netD.zero_grad()
             noise = gen_noise(noise, spherical)
@@ -70,13 +71,27 @@ def train_counterfactual(networks, optimizers, dataloader, epoch=None, **options
             errD *= options['gan_weight']
             errD.backward()
             optimizerD.step()
-        ###########################
+        # Also update D network based on user-provided extra labels
+        if use_aux_dataset:
+            netD.zero_grad()
+            aux_images, aux_labels = aux_dataloader.get_batch()
+            aux_images = Variable(aux_images)
+            aux_labels = Variable(aux_labels.type(torch.cuda.FloatTensor))
+            alpha = len(aux_dataloader) / (len(dataloader) + len(aux_dataloader))
+            d_aux = netD(aux_images)
+            total_real = aux_labels.sum() + 1
+            total_fake = (1 - aux_labels).sum() + 1
+            errAuxD = ((d_aux * aux_labels).sum() / total_real 
+                    - (d_aux * (1 - aux_labels)).sum() / total_fake)
+            errAuxD.backward()
+            optimizerD.step()
 
-        # WGAN-GP
+        # Apply WGAN-GP gradient penalty
         netD.zero_grad()
         errGP = calc_gradient_penalty(netD, images.data, fake_images.data)
         errGP.backward()
         optimizerD.step()
+        ###########################
 
         ############################
         # Realism: minimize D(G(z))
@@ -95,28 +110,24 @@ def train_counterfactual(networks, optimizers, dataloader, epoch=None, **options
         hallucination = netG(noise)
         regenerated = netG(netE(hallucination))
         errEG = torch.mean(torch.abs(regenerated - hallucination))
-        if options['perceptual_loss']:
-            errEG += torch.mean((netP(regenerated) - netP(hallucination))**2)
         errEG *= options['autoencoder_weight']
         errEG.backward()
-        ############################
         optimizerG.step()
         optimizerE.step()
+        ############################
 
         ############################
-        # Train Classifier
+        # Classification: Max likelihood C(E(x))
         ############################
-        if options['supervised_encoder']:
-            netE.zero_grad()
+        netE.zero_grad()
         netC.zero_grad()
-        preds = netC(netE(images))
+        preds = log_softmax(netC(netE(images)))
         errC = nll_loss(preds, labels)
         errC.backward()
         optimizerC.step()
-        if options['supervised_encoder']:
-            optimizerE.step()
+        optimizerE.step()
 
-        confidence, pred_idx = preds.max(1)
+        _, pred_idx = preds.max(1)
         correct += sum(pred_idx == labels).data.cpu().numpy()[0]
         total += len(labels)
         ############################
@@ -131,6 +142,8 @@ def train_counterfactual(networks, optimizers, dataloader, epoch=None, **options
                   errC.data[0],
                   correct / max(total, 1))
             print(msg)
+            print("Classifier Network Weights:")
+            show_weights(netC)
 
             caption = "Epoch {:04d} iter {:05d}".format(epoch, i)
             reconstructed = netG(netE(Variable(demo_images)))
@@ -141,6 +154,23 @@ def train_counterfactual(networks, optimizers, dataloader, epoch=None, **options
     return video_filename
 
 
+def show_weights(net):
+    from imutil import show
+    for layer in net.children():
+        if hasattr(layer, 'weight'):
+            print("\nLayer {}".format(layer))
+            show(layer.weight.data, save=False)
+            print('Weight sum: {}'.format(to_scalar(layer.weight.abs().sum())))
+            print('Weight min: {}'.format(to_scalar(layer.weight.min())))
+            print('Weight max: {}'.format(to_scalar(layer.weight.max())))
+
+
+def abs_sum(variable):
+    weight_sum = variable.abs().sum()
+    return to_scalar(weight_sun)
+
+def to_scalar(variable):
+    return variable.data.cpu().numpy()[0]
 
 def gen_noise(noise, spherical_noise):
     noise.data.normal_(0, 1)
@@ -176,7 +206,7 @@ def train_classifier(networks, optimizers, images, labels, **options):
     result_dir = options['result_dir']
     latent_size = options['latent_size']
     batch_size = options['batch_size']
-    num_classes = 6  # TODO
+    num_classes = 10  # TODO
 
     def generator(points, labels):
         assert len(points) == len(labels)

@@ -46,7 +46,7 @@ options['batch_size'] = 1
 # NOTE: This dataloader should sample from a held-out pool of unlabeled examples used only for active learning
 # In these experiments we use the 'validation' fold for this purpose
 dataloader = CustomDataloader(**options)
-networks = build_networks(dataloader.num_classes, dataloader.num_attributes, **options)
+networks = build_networks(dataloader.num_classes, **options)
 
 for i in range(options['count']):
     if options['ground_truth']:
