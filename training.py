@@ -133,6 +133,15 @@ def train_counterfactual(networks, optimizers, dataloader, epoch=None, **options
         ############################
 
         if i % 100 == 0:
+            print("Classifier Network Weights:")
+            show_weights(netC)
+
+            reconstructed = netG(netE(Variable(demo_images)))
+            demo_fakes = netG(fixed_noise)
+            img = torch.cat([demo_images[:12], reconstructed.data[:12], demo_fakes.data[:12]])
+            filename = "{}/demo_{}.jpg".format(result_dir, int(time.time()))
+            imutil.show(img, filename=filename)
+
             msg = '[{}][{}/{}] D:{:.3f} G:{:.3f} EG:{:.3f} EC: {:.3f} Acc. {:.3f}'
             msg = msg.format(
                   epoch, i, len(dataloader),
@@ -142,15 +151,6 @@ def train_counterfactual(networks, optimizers, dataloader, epoch=None, **options
                   errC.data[0],
                   correct / max(total, 1))
             print(msg)
-            print("Classifier Network Weights:")
-            show_weights(netC)
-
-            caption = "Epoch {:04d} iter {:05d}".format(epoch, i)
-            reconstructed = netG(netE(Variable(demo_images)))
-            demo_fakes = netG(fixed_noise)
-            img = torch.cat([demo_images[:12], reconstructed.data[:12], demo_fakes.data[:12]])
-            filename = "{}/demo_{}.jpg".format(result_dir, int(time.time()))
-            imutil.show(img, caption=msg, font_size=8, filename=filename)
     return video_filename
 
 
