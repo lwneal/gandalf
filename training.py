@@ -160,13 +160,17 @@ def show_weights(net):
         if hasattr(layer, 'weight'):
             print("\nLayer {}".format(layer))
             show(layer.weight.data, save=False)
-            print('Weight sum: {}'.format(abs_sum(layer.weight)))
+            print('Weight sum: {}'.format(to_scalar(layer.weight.abs().sum())))
+            print('Weight min: {}'.format(to_scalar(layer.weight.min())))
+            print('Weight max: {}'.format(to_scalar(layer.weight.max())))
 
 
 def abs_sum(variable):
     weight_sum = variable.abs().sum()
-    return weight_sum.data.cpu().numpy()[0]
+    return to_scalar(weight_sun)
 
+def to_scalar(variable):
+    return variable.data.cpu().numpy()[0]
 
 def gen_noise(noise, spherical_noise):
     noise.data.normal_(0, 1)
