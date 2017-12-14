@@ -81,8 +81,9 @@ def train_counterfactual(networks, optimizers, dataloader, epoch=None, **options
             d_aux = netD(aux_images)
             total_real = aux_labels.sum() + 1
             total_fake = (1 - aux_labels).sum() + 1
-            errAuxD = ((d_aux * aux_labels).sum() / total_real 
+            errAuxD = alpha * ((d_aux * aux_labels).sum() / total_real 
                     - (d_aux * (1 - aux_labels)).sum() / total_fake)
+            print("AuxD Error: {:.3f}".format(errAuxD.data[0]))
             errAuxD.backward()
             optimizerD.step()
 
@@ -119,13 +120,11 @@ def train_counterfactual(networks, optimizers, dataloader, epoch=None, **options
         ############################
         # Classification: Max likelihood C(E(x))
         ############################
-        netE.zero_grad()
         netC.zero_grad()
         preds = log_softmax(netC(netE(images)))
         errC = nll_loss(preds, labels)
         errC.backward()
         optimizerC.step()
-        optimizerE.step()
 
         _, pred_idx = preds.max(1)
         correct += sum(pred_idx == labels).data.cpu().numpy()[0]
