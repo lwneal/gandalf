@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 from __future__ import print_function
 import argparse
+import time
 import os
 import sys
 
@@ -29,6 +30,7 @@ import numpy as np
 import torch
 from torch import autograd
 from torch.autograd import Variable
+import imutil
 
 def to_torch(z, requires_grad=False):
     return Variable(torch.FloatTensor(z), requires_grad=requires_grad).cuda()
@@ -59,28 +61,27 @@ result_dir = options['result_dir']
 #for i in range(options['count']):
 	# For MNIST, SVHN
 # Generate a 10x10 square visualization
-N = 2#dataloader.num_classes
+N = 10#dataloader.num_classes
 
-imagess = []
+images = []
 for _ in range(N*N):
     rand_vec = np.random.normal(size=(1,latent_size))
     mag = np.linalg.norm(rand_vec)
     z = rand_vec/mag
-    img = netG(to_torch(z))
-    imagess.append(img)
+    img = to_np(netG(to_torch(z))).squeeze()
+    images.append(img)
 
-import pdb; pdb.set_trace()
-images = np.array(imagess).transpose((0,2,3,1))
+images = np.array(images).transpose((0,2,3,1))
 
-trajectory_id = '{}_{}.jpeg'.format(dataloader.dsf.name, int(time.time() * 1000))
-path = os.path.join(result_dir, 'randomly_generated')
+trajectory_id = 'random_generated_{}_{}.jpg'.format(dataloader.dsf.name, int(time.time() * 1000))
+path = os.path.join(result_dir, 'trajectories')
 filename = os.path.join(path, trajectory_id)
 
 if not os.path.exists(path):
     print("Creating randomly_generated directory {}".format(path))
     os.mkdir(path)
 # Save the images in npy format to re-load as training data
-np.save(filename, images)
+np.save(filename.replace('.jpg', '.npy'), images)
 
 # Save the images in jpg format to display to the user
 imutil.show(images, filename=filename)
