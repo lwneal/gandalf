@@ -187,7 +187,7 @@ def get_openset_scores(dataloader, networks):
     discriminator_scores = []
     softmax_scores = []
 
-    for i, (images, labels, _) in enumerate(dataloader):
+    for i, (images, labels) in enumerate(dataloader):
         images = Variable(images, volatile=True)
         z = netE(images)
         reconstructed = netG(z)
