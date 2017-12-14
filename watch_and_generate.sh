@@ -1,5 +1,5 @@
 #!/bin/bash
-RESULT_DIR=/mnt/results/super_mnist
+RESULT_DIR=/mnt/results/mnist_standalone_classifier
 
 echo "Watching $RESULT_DIR..."
 while true; do

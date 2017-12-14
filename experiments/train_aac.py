@@ -63,7 +63,8 @@ try:
     for epoch in range(start_epoch, start_epoch + options['epochs']):
         # Apply learning rate decay
         for name, optimizer in optimizers.items():
-            optimizer.param_groups[0]['lr'] = options['lr'] * (options['decay'] ** epoch)
+            max_epoch = min(epoch, 10)
+            optimizer.param_groups[0]['lr'] = options['lr'] * (options['decay'] ** max_epoch)
 
         # Train for one epoch
         video_filename = train_counterfactual(networks, optimizers, dataloader, epoch=epoch, **options)
