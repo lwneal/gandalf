@@ -1,5 +1,5 @@
 #!/bin/bash
-RESULT_DIR=/mnt/results/mnist_standalone_classifier
+RESULT_DIR=/mnt/results/mnist_active_learning_counterfactual
 
 echo "Watching $RESULT_DIR..."
 while true; do
