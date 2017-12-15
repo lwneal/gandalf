@@ -73,7 +73,7 @@ for _ in range(N*N):
 
 images = np.array(images).transpose((0,2,3,1))
 
-trajectory_id = 'random_generated_{}_{}.jpg'.format(dataloader.dsf.name, int(time.time() * 1000))
+trajectory_id = 'grid-random_generated_{}_{}-0-0.jpg'.format(dataloader.dsf.name, int(time.time() * 1000))
 path = os.path.join(result_dir, 'trajectories')
 filename = os.path.join(path, trajectory_id)
 
