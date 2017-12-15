@@ -47,7 +47,7 @@ def evaluate_classifier(networks, dataloader, open_set_dataloader=None, verbose=
         classification_total += len(labels)
 
     openset_correct = 0
-    openset_total = 0
+    openset_total = 1
     if open_set_dataloader is not None:
         for images, labels in open_set_dataloader:
             images = Variable(images, volatile=True)

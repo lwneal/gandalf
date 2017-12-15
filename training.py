@@ -10,7 +10,7 @@ from gradient_penalty import calc_gradient_penalty
 from torch.nn.functional import nll_loss, binary_cross_entropy
 from torch.nn.functional import softmax, log_softmax, relu
 import imutil
-from dataloader import CustomDataloader
+from dataloader import FlexibleCustomDataloader
 
 np.random.seed(123)
 torch.manual_seed(123)
@@ -54,8 +54,9 @@ def train_counterfactual(networks, optimizers, dataloader, epoch=None, **options
     }
     if use_aux_dataset:
         print("Enabling aux dataset")
-        aux_dataloader = CustomDataloader(**aux_kwargs)
+        aux_dataloader = FlexibleCustomDataloader(**aux_kwargs)
 
+    start_time = time.time()
     # TODO: Replace integer class labels with -1/0/1 labels for each example, for each class
     # TODO: Combine dataloader and aux_dataloader
     # TODO: include unlabeled images
@@ -124,15 +125,25 @@ def train_counterfactual(networks, optimizers, dataloader, epoch=None, **options
         # Classification: Max likelihood C(E(x))
         ############################
         netC.zero_grad()
-        preds = log_softmax(netC(netE(images)))
-        errC = nll_loss(preds, labels)
-        errC.backward()
+        net_y = netC(netE(images))
 
-        # TODO: add hinge loss here
+        positive_labels = (labels == 1).type(torch.cuda.FloatTensor)
+        negative_labels = (labels == -1).type(torch.cuda.FloatTensor)
+
+        # Standard negative log likelihood classification error for positive labels
+        errNLL = -log_softmax(net_y) * positive_labels
+
+        # Additional hinge loss term for negative and positive labels
+        errHinge = relu(1+net_y) * negative_labels + relu(1-net_y) * positive_labels
+        errC = (1.0 / len(labels)) * errNLL.sum() + errHinge.sum()
+
+        errC.backward()
         optimizerC.step()
 
-        _, pred_idx = preds.max(1)
-        correct += sum(pred_idx == labels).data.cpu().numpy()[0]
+        # Keep track of accuracy on positive-labeled examples for monitoring
+        _, pred_idx = net_y.max(1)
+        _, label_idx = labels.max(1)
+        correct += sum(pred_idx == label_idx).data.cpu().numpy()[0]
         total += len(labels)
         ############################
 
@@ -146,14 +157,15 @@ def train_counterfactual(networks, optimizers, dataloader, epoch=None, **options
             filename = "{}/demo_{}.jpg".format(result_dir, int(time.time()))
             imutil.show(img, filename=filename)
 
-            msg = '[{}][{}/{}] D:{:.3f} G:{:.3f} EG:{:.3f} EC: {:.3f} Acc. {:.3f}'
+            msg = '[{}][{}/{}] D:{:.3f} G:{:.3f} EG:{:.3f} EC: {:.3f} Acc. {:.3f} {:.3f}s/batch'
             msg = msg.format(
                   epoch, i, len(dataloader),
                   errD.data[0],
                   errG.data[0],
                   errEG.data[0],
                   errC.data[0],
-                  correct / max(total, 1))
+                  correct / max(total, 1),
+                  (time.time() - start_time) / (i + 1))
             print(msg)
     return video_filename
 

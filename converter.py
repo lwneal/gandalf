@@ -92,6 +92,31 @@ class LabelConverter(Converter):
         return self.labels[np.argmax(array)]
 
 
+# Each example now has a label for each class:
+#    1 (X belongs to class Y)
+#   -1 (X does not belong to class Y)
+#   0  (X might or might not belong to Y)
+class FlexibleLabelConverter(Converter):
+    def __init__(self, dataset, label_key="label", **kwargs):
+        self.label_key = label_key
+        unique_labels = set()
+        for example in dataset.examples:
+            label = example.get(label_key)
+            unique_labels.add(label)
+        self.labels = sorted(list(unique_labels))
+        self.num_classes = len(self.labels)
+        self.idx = {self.labels[i]: i for i in range(self.num_classes)}
+
+    def to_array(self, example):
+        array = np.zeros(self.num_classes)
+        idx = self.idx[example[self.label_key]]
+        array[idx] = 1
+        return array
+
+    def from_array(self, array):
+        return self.labels[np.argmax(array)]
+
+
 # AttributeConverter extracts boolean attributes from DatasetFile examples
 # An example might have many attributes. Each attribute is True or False.
 class AttributeConverter(Converter):

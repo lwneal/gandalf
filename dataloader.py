@@ -1,7 +1,8 @@
 import math
+import time
 import torch
 from dataset_file import DatasetFile
-from converter import ImageConverter, LabelConverter
+from converter import ImageConverter, LabelConverter, FlexibleLabelConverter
 from torchvision import transforms
 
 
@@ -15,6 +16,8 @@ class CustomDataloader(object):
         self.last_batch = last_batch
         self.shuffle = shuffle
         self.num_classes = self.lab_conv.num_classes
+        self.image_tensor = None
+        self.label_tensor = None
 
     def get_batch(self, **kwargs):
         batch = self.dsf.get_batch(fold=self.fold, batch_size=self.batch_size, **kwargs)
@@ -32,8 +35,10 @@ class CustomDataloader(object):
             yield images, labels
 
     def convert(self, batch):
-        images = torch.FloatTensor(self.img_conv(batch)).cuda()
-        labels = torch.LongTensor(self.lab_conv(batch)).cuda()
+        images = self.img_conv(batch)
+        labels = self.lab_conv(batch)
+        images = torch.FloatTensor(images).cuda()
+        labels = torch.LongTensor(labels).cuda()
         return images, labels
 
     def __len__(self):
@@ -44,3 +49,16 @@ class CustomDataloader(object):
 
     def class_name(self, idx):
         return lab_conv.labels[idx]
+
+
+class FlexibleCustomDataloader(CustomDataloader):
+    def __init__(self, dataset='mnist.dataset', batch_size=16, fold='train', shuffle=True, last_batch=False, example_count=None, **kwargs):
+        super().__init__(dataset, batch_size, fold, shuffle, last_batch, example_count, **kwargs)
+        self.lab_conv = FlexibleLabelConverter(dataset=self.dsf, **kwargs)
+
+    def convert(self, batch):
+        images = self.img_conv(batch)
+        labels = self.lab_conv(batch)
+        images = torch.FloatTensor(images).cuda()
+        labels = torch.FloatTensor(labels).cuda()
+        return images, labels

@@ -42,7 +42,7 @@ parser.add_argument('--epochs', type=int, default=10, help='number of epochs to 
 options = vars(parser.parse_args())
 
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
-from dataloader import CustomDataloader
+from dataloader import FlexibleCustomDataloader
 from training import train_counterfactual
 from networks import build_networks, save_networks, get_optimizers
 from options import save_options, load_options, get_current_epoch
@@ -52,7 +52,7 @@ from imutil import encode_video
 if os.path.exists(options['result_dir']):
     options = load_options(options)
 
-dataloader = CustomDataloader(fold='train', **options)
+dataloader = FlexibleCustomDataloader(fold='train', **options)
 networks = build_networks(dataloader.num_classes, **options)
 optimizers = get_optimizers(networks, **options)
 
