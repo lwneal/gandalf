@@ -27,17 +27,14 @@ options['random_horizontal_flip'] = False
 
 dataloader = CustomDataloader(last_batch=True, shuffle=False, **options)
 
-networks = build_networks(dataloader.num_classes, dataloader.num_attributes, **options)
+networks = build_networks(dataloader.num_classes, **options)
 
+comparison_dataloader = None
 if options['comparison_dataset']:
-    # TODO: Fix differences between this and evaluate_classifier
-    # Hack: Switch to a new dataset and make up a descriptive fold name
-    options['dataset'] = options['comparison_dataset']
-    dataloader = CustomDataloader(last_batch=True, shuffle=False, **options)
-    dataset_name = options['dataset'].split('/')[-1].replace('.dataset', '')
-    options['fold'] = 'comparison_{}_{}'.format(dataset_name, options['fold'])
+    comparison_dataloader = CustomDataloader(last_batch=True, shuffle=False, **options)
+    options['fold'] = 'openset_{}'.format(options['fold'])
 
-new_results = evaluate_classifier(networks, dataloader, **options)
+new_results = evaluate_classifier(networks, dataloader, comparison_dataloader, **options)
 
 save_evaluation(new_results, options['result_dir'], options['epoch'])
 

@@ -8,7 +8,7 @@ from torchvision import models
 from torch.autograd import Variable
 from gradient_penalty import calc_gradient_penalty
 from torch.nn.functional import nll_loss, binary_cross_entropy
-from torch.nn.functional import softmax, log_softmax
+from torch.nn.functional import softmax, log_softmax, relu
 import imutil
 from dataloader import CustomDataloader
 
@@ -56,6 +56,9 @@ def train_counterfactual(networks, optimizers, dataloader, epoch=None, **options
         print("Enabling aux dataset")
         aux_dataloader = CustomDataloader(**aux_kwargs)
 
+    # TODO: Replace integer class labels with -1/0/1 labels for each example, for each class
+    # TODO: Combine dataloader and aux_dataloader
+    # TODO: include unlabeled images
     for i, (images, class_labels) in enumerate(dataloader):
         images = Variable(images)
         labels = Variable(class_labels)
@@ -124,6 +127,8 @@ def train_counterfactual(networks, optimizers, dataloader, epoch=None, **options
         preds = log_softmax(netC(netE(images)))
         errC = nll_loss(preds, labels)
         errC.backward()
+
+        # TODO: add hinge loss here
         optimizerC.step()
 
         _, pred_idx = preds.max(1)

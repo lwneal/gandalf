@@ -4,6 +4,7 @@ import os
 import numpy as np
 import time
 import torch
+from pprint import pprint
 from torch.autograd import Variable
 from gradient_penalty import calc_gradient_penalty
 from torch.nn.functional import nll_loss
@@ -16,7 +17,7 @@ def to_np(v):
     return v.data.cpu().numpy()
 
 
-def evaluate_classifier(networks, dataloader, verbose=True, skip_reconstruction=False, **options):
+def evaluate_classifier(networks, dataloader, open_set_dataloader=None, verbose=True, skip_reconstruction=False, **options):
     for net in networks.values():
         net.eval()
     netE = networks['encoder']
@@ -30,51 +31,41 @@ def evaluate_classifier(networks, dataloader, verbose=True, skip_reconstruction=
 
     classification_correct = 0
     classification_total = 0
-    openset_correct = 0
-    openset_total = 0
-    combined_correct = 0
-    combined_total = 0
-
-    # TODO: Hard-coded for MNIST/SVHN open set
-    num_classes = 6
-    openset_preds = []
-    openset_labels = []
-    
-    for i, (images, labels) in enumerate(dataloader):
+    for images, labels in dataloader:
         images = Variable(images, volatile=True)
         z = netE(images)
 
         # Predict a classification among known classes
-        net_y = netC(z)[:, :num_classes]
+        net_y = netC(z)
         class_predictions = softmax(net_y)
 
+        # Also predict whether each example belongs to any class at all
+        is_known = net_y.max(1)[0] > 0
+
         _, predicted = class_predictions.max(1)
-        classification_correct += sum(predicted.data == labels)
-        classification_total += sum(labels < num_classes)
+        classification_correct += sum((predicted.data == labels) * is_known.data)
+        classification_total += len(labels)
 
-        max_vals, max_idx = net_y.max(dim=1)
-        pred_openset = -max_vals.data.cpu().numpy()
-        label_openset = (labels >= num_classes).cpu().numpy()
-
-        openset_preds.extend(pred_openset)
-        openset_labels.extend(label_openset)
-
-        combined_correct += ((labels >= num_classes) * (max_vals.data < 0) + (predicted.data == labels)).sum()
-        combined_total += len(images)
-
-    fpr, tpr, thresholds = roc_curve(openset_labels, openset_preds)
-    openset_auc = auc(fpr, tpr)
+    openset_correct = 0
+    openset_total = 0
+    if open_set_dataloader is not None:
+        for images, labels in open_set_dataloader:
+            images = Variable(images, volatile=True)
+            z = netE(images)
+            # Predict whether each example is known/unknown
+            net_y = netC(z)
+            is_known = net_y.max(1)[0] > 0
+            openset_correct += sum(is_known.data == 0)
+            openset_total += len(labels)
 
     stats = {
         options['fold']: {
-            'correct': classification_correct,
-            'total': classification_total,
-            'accuracy': float(classification_correct) / classification_total,
-            'classification_accuracy': float(classification_correct) / classification_total,
-            'combined_accuracy': float(combined_correct) / combined_total,
-            'openset_auc': openset_auc,
+            'accuracy': float(classification_correct + openset_correct) / (classification_total + openset_total),
+            'classification_accuracy': float(classification_correct) / (classification_total),
+            'openset_recall': float(openset_correct) / (openset_total),
         }
     }
+    pprint(stats)
     return stats
 
 
