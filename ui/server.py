@@ -83,6 +83,7 @@ def save_grid_label(trajectory_id, info, result_dir):
 
 # Creates or overwrites a .dataset file containing all user-provided labels
 def build_aux_dataset(result_dir):
+    NUM_CLASSES = 10
     examples = []
     label_dir = os.path.join(result_dir, 'labels')
     for label_json_filename in os.listdir(label_dir):
@@ -91,10 +92,17 @@ def build_aux_dataset(result_dir):
             info = json.load(fp)
         for i, label in enumerate(info['labels']):
             filename = image_filename(result_dir, info['trajectory_id'], i)
-            examples.append({
+            class_idx = i % NUM_CLASSES
+            example = {
                 'filename': filename,
-                'label': label
-            })
+            }
+            if label == 1:
+                # Marked blue by the user: positive label
+                example['label'] = class_idx
+            else:
+                # Marked red by the user: negative label
+                example['label_n'] = class_idx
+            examples.append(example)
     return examples
 
 
