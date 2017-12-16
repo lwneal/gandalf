@@ -97,8 +97,9 @@ class LabelConverter(Converter):
 #   -1 (X does not belong to class Y)
 #   0  (X might or might not belong to Y)
 class FlexibleLabelConverter(Converter):
-    def __init__(self, dataset, label_key="label", **kwargs):
+    def __init__(self, dataset, label_key="label", negative_key="label_n", **kwargs):
         self.label_key = label_key
+        self.negative_key = negative_key
         unique_labels = set()
         for example in dataset.examples:
             label = example.get(label_key)
@@ -109,8 +110,13 @@ class FlexibleLabelConverter(Converter):
 
     def to_array(self, example):
         array = np.zeros(self.num_classes)
-        idx = self.idx[example[self.label_key]]
-        array[idx] = 1
+        if self.label_key in example:
+            array[:] = -1  # Negative labels
+            idx = self.idx[example[self.label_key]]
+            array[idx] = 1  # Positive label
+        if self.negative_key in example:
+            idx = self.idx[example[self.negative_key]]
+            array[idx] = -1
         return array
 
     def from_array(self, array):
