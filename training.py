@@ -80,14 +80,18 @@ def train_counterfactual(networks, optimizers, dataloader, epoch=None, **options
             netD.zero_grad()
             aux_images, aux_labels = aux_dataloader.get_batch()
             aux_images = Variable(aux_images)
-            aux_labels = Variable(aux_labels.type(torch.cuda.FloatTensor))
+            looks_real = aux_labels.max(1)[0]
+            looks_real = Variable(looks_real.type(torch.FloatTensor).cuda())
+            looks_fake = 1 - looks_real
+
             alpha = len(aux_dataloader) / (len(dataloader) + len(aux_dataloader))
             d_aux = netD(aux_images)
-            total_real = aux_labels.sum() + 1
-            total_fake = (1 - aux_labels).sum() + 1
-            errAuxD = alpha * ((d_aux * aux_labels).sum() / total_real 
-                    - (d_aux * (1 - aux_labels)).sum() / total_fake)
-            print("AuxD Error: {:.3f}".format(errAuxD.data[0]))
+
+            total_real = looks_real.sum()
+            total_fake = len(aux_labels) - total_real
+            real_loss = (d_aux * looks_real).sum() / (total_real + 1)
+            fake_loss = (d_aux * looks_fake).sum() / (total_fake + 1)
+            errAuxD = alpha * (real_loss - fake_loss)
             errAuxD.backward()
             optimizerD.step()
 
@@ -122,16 +126,23 @@ def train_counterfactual(networks, optimizers, dataloader, epoch=None, **options
         ############################
 
         ############################
-        # Classification: Max likelihood C(E(x))
+        # Classification: Train C(E(x))
         ############################
         netC.zero_grad()
+        if use_aux_dataset:
+            aux_images, aux_labels = aux_dataloader.get_batch()
+            aux_images = Variable(aux_images)
+            aux_labels = Variable(aux_labels)
+            images = torch.cat([images, aux_images])
+            labels = torch.cat([labels, aux_labels])
+
         net_y = netC(netE(images))
 
         positive_labels = (labels == 1).type(torch.cuda.FloatTensor)
         negative_labels = (labels == -1).type(torch.cuda.FloatTensor)
 
         # Standard negative log likelihood classification error for positive labels
-        errNLL = -log_softmax(net_y) * positive_labels
+        errNLL = -log_softmax(net_y, dim=1) * positive_labels
 
         # Additional hinge loss term for negative and positive labels
         errHinge = relu(1+net_y) * negative_labels + relu(1-net_y) * positive_labels
@@ -140,6 +151,7 @@ def train_counterfactual(networks, optimizers, dataloader, epoch=None, **options
         errC.backward()
         optimizerC.step()
 
+        ############################
         # Keep track of accuracy on positive-labeled examples for monitoring
         _, pred_idx = net_y.max(1)
         _, label_idx = labels.max(1)

@@ -77,11 +77,7 @@ class ImageConverter(Converter):
 class LabelConverter(Converter):
     def __init__(self, dataset, label_key="label", **kwargs):
         self.label_key = label_key
-        unique_labels = set()
-        for example in dataset.examples:
-            label = example.get(label_key)
-            unique_labels.add(label)
-        self.labels = sorted(list(unique_labels))
+        self.labels = get_labels(dataset, label_key)
         self.num_classes = len(self.labels)
         self.idx = {self.labels[i]: i for i in range(self.num_classes)}
 
@@ -100,11 +96,7 @@ class FlexibleLabelConverter(Converter):
     def __init__(self, dataset, label_key="label", negative_key="label_n", **kwargs):
         self.label_key = label_key
         self.negative_key = negative_key
-        unique_labels = set()
-        for example in dataset.examples:
-            label = example.get(label_key)
-            unique_labels.add(label)
-        self.labels = sorted(list(unique_labels))
+        self.labels = get_labels(dataset, label_key)
         self.num_classes = len(self.labels)
         self.idx = {self.labels[i]: i for i in range(self.num_classes)}
 
@@ -121,6 +113,14 @@ class FlexibleLabelConverter(Converter):
 
     def from_array(self, array):
         return self.labels[np.argmax(array)]
+
+
+def get_labels(dataset, label_key):
+    unique_labels = set()
+    for example in dataset.examples:
+        if label_key in example:
+            unique_labels.add(example[label_key])
+    return sorted(list(unique_labels))
 
 
 # AttributeConverter extracts boolean attributes from DatasetFile examples
