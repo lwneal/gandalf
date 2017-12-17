@@ -205,6 +205,8 @@ def generate_trajectory_active(networks, dataloader, strategy='random', **option
 
 
 def generate_comparison(networks, dataloader, **options):
+    for net in networks:
+        networks[net].eval()
     netG = networks['generator']
     netE = networks['encoder']
     netC = networks['classifier']
