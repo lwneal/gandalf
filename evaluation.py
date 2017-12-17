@@ -29,6 +29,7 @@ def evaluate_classifier(networks, dataloader, open_set_dataloader=None, verbose=
     image_size = options['image_size']
     latent_size = options['latent_size']
 
+    classification_closed_correct = 0
     classification_correct = 0
     classification_total = 0
     for images, labels in dataloader:
@@ -43,6 +44,7 @@ def evaluate_classifier(networks, dataloader, open_set_dataloader=None, verbose=
         is_known = net_y.max(1)[0] > 0
 
         _, predicted = class_predictions.max(1)
+        classification_closed_correct += sum(predicted.data == labels)
         classification_correct += sum((predicted.data == labels) * is_known.data)
         classification_total += len(labels)
 
@@ -62,6 +64,7 @@ def evaluate_classifier(networks, dataloader, open_set_dataloader=None, verbose=
         options['fold']: {
             'accuracy': float(classification_correct + openset_correct) / (classification_total + openset_total),
             'classification_accuracy': float(classification_correct) / (classification_total),
+            'closed_set_accuracy': float(classification_closed_correct) / (classification_total),
             'openset_recall': float(openset_correct) / (openset_total),
         }
     }
