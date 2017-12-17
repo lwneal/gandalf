@@ -122,7 +122,6 @@ def train_counterfactual(networks, optimizers, dataloader, epoch=None, **options
         errEG *= options['autoencoder_weight']
         errEG.backward()
         optimizerG.step()
-        optimizerE.step()
         ############################
 
         ############################
@@ -150,6 +149,7 @@ def train_counterfactual(networks, optimizers, dataloader, epoch=None, **options
 
         errC.backward()
         optimizerC.step()
+        optimizerE.step()
 
         ############################
         # Keep track of accuracy on positive-labeled examples for monitoring
@@ -169,13 +169,14 @@ def train_counterfactual(networks, optimizers, dataloader, epoch=None, **options
             filename = "{}/demo_{}.jpg".format(result_dir, int(time.time()))
             imutil.show(img, filename=filename)
 
-            msg = '[{}][{}/{}] D:{:.3f} G:{:.3f} EG:{:.3f} EC: {:.3f} Acc. {:.3f} {:.3f}s/batch'
+            msg = '[{}][{}/{}] D:{:.3f} G:{:.3f} EG:{:.3f} ErrNLL: {:.3f} ErrH: {:.3f} Acc. {:.3f} {:.3f}s/batch'
             msg = msg.format(
                   epoch, i, len(dataloader),
                   errD.data[0],
                   errG.data[0],
                   errEG.data[0],
-                  errC.data[0],
+                  errNLL.sum().data[0],
+                  errHinge.sum().data[0],
                   correct / max(total, 1),
                   (time.time() - start_time) / (i + 1))
             print(msg)
