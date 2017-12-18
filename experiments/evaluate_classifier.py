@@ -34,7 +34,9 @@ if options['comparison_dataset']:
     comparison_options = options.copy()
     comparison_options['dataset'] = options['comparison_dataset']
     comparison_dataloader = CustomDataloader(last_batch=True, shuffle=False, **comparison_options)
-    options['fold'] = 'openset_{}'.format(options['fold'])
+    comparison_name = options['comparison_dataset'].split('/')[-1].split('.')[0]
+    label_count = len(os.listdir(os.path.join(options['result_dir'], 'labels')))
+    options['fold'] = 'openset_{}_{:04d}'.format(comparison_name, label_count)
 
 new_results = evaluate_classifier(networks, dataloader, comparison_dataloader, **options)
 
