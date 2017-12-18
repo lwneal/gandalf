@@ -349,11 +349,12 @@ def generate_z_trajectory(z, target_class, netC, netE, netG, dataloader,
     target_label[:] = int(target_class)
     target_label = Variable(target_label).cuda()
     original_z = z.clone()
-    max_iters = 150
-    momentum_mu = .999
-    speed = .05
+    max_iters = 250
+    momentum_mu = .9999
+    speed = .01
     for i in range(max_iters):
         net_y = netC(netE(netG(z)))
+        #net_y = netC(z)
         preds = softmax(net_y)
 
         predicted_class = to_np(preds.max(1)[1])[0]
@@ -366,7 +367,7 @@ def generate_z_trajectory(z, target_class, netC, netE, netG, dataloader,
         cf_loss = nll_loss(log_softmax(net_y), target_label)
 
         # Distance in latent space from original point
-        cf_loss += .0001 * torch.sum((z - original_z) ** 2)
+        #cf_loss += .00001 * torch.sum((z - original_z) ** 2)
 
         dc_dz = autograd.grad(cf_loss, z, cf_loss, retain_graph=True)[0]
         momentum -= dc_dz * speed
