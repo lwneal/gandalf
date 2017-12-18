@@ -349,8 +349,9 @@ def generate_z_trajectory(z, target_class, netC, netE, netG, dataloader,
     target_label[:] = int(target_class)
     target_label = Variable(target_label).cuda()
     original_z = z.clone()
-    max_iters = 100
-    momentum_mu = .99
+    max_iters = 150
+    momentum_mu = .999
+    speed = .05
     for i in range(max_iters):
         net_y = netC(netE(netG(z)))
         preds = softmax(net_y)
@@ -374,6 +375,8 @@ def generate_z_trajectory(z, target_class, netC, netE, netG, dataloader,
         if spherical:
             # Project z to the unit sphere
             z /= torch.sqrt(torch.mul(z, z).sum())
+        if predicted_class == target_class and pred_confidence > .9:
+            break
     return z_trajectory
 
 
