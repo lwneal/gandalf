@@ -31,7 +31,9 @@ networks = build_networks(dataloader.num_classes, **options)
 
 comparison_dataloader = None
 if options['comparison_dataset']:
-    comparison_dataloader = CustomDataloader(last_batch=True, shuffle=False, **options)
+    comparison_options = options.copy()
+    comparison_options['dataset'] = options['comparison_dataset']
+    comparison_dataloader = CustomDataloader(last_batch=True, shuffle=False, **comparison_options)
     options['fold'] = 'openset_{}'.format(options['fold'])
 
 new_results = evaluate_classifier(networks, dataloader, comparison_dataloader, **options)
