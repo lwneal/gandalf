@@ -17,6 +17,15 @@ def to_np(v):
     return v.data.cpu().numpy()
 
 
+def predict_openset(networks, images, threshold=0.1):
+    netE = networks['encoder']
+    netG = networks['generator']
+    netD = networks['discriminator']
+    diffs = (images - netG(netE(images))) ** 2
+    mse = diffs.mean(dim=-1).mean(dim=-1).mean(dim=-1)
+    return mse < threshold
+
+
 def evaluate_classifier(networks, dataloader, open_set_dataloader=None, verbose=True, skip_reconstruction=False, **options):
     for net in networks.values():
         net.eval()
@@ -41,7 +50,7 @@ def evaluate_classifier(networks, dataloader, open_set_dataloader=None, verbose=
         class_predictions = softmax(net_y, dim=1)
 
         # Also predict whether each example belongs to any class at all
-        is_known = net_y.max(1)[0] > 0
+        is_known = predict_openset(networks, images)
 
         _, predicted = class_predictions.max(1)
         classification_closed_correct += sum(predicted.data == labels)
@@ -53,10 +62,8 @@ def evaluate_classifier(networks, dataloader, open_set_dataloader=None, verbose=
     if open_set_dataloader is not None:
         for images, labels in open_set_dataloader:
             images = Variable(images, volatile=True)
-            z = netE(images)
             # Predict whether each example is known/unknown
-            net_y = netC(z)
-            is_known = net_y.max(1)[0] > 0
+            is_known = predict_openset(networks, images)
             openset_correct += sum(is_known.data == 0)
             openset_total += len(labels)
 
