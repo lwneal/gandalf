@@ -352,7 +352,7 @@ def generate_z_trajectory(z, target_class, netC, netE, netG, dataloader,
     max_iters = 100
     momentum_mu = .99
     for i in range(max_iters):
-        net_y = netC(z)
+        net_y = netC(netE(netG(z)))
         preds = softmax(net_y)
 
         predicted_class = to_np(preds.max(1)[1])[0]
