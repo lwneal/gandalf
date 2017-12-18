@@ -1329,13 +1329,15 @@ class classifierLinear(nn.Module):
     def __init__(self, latent_size=100, num_classes=2, **kwargs):
         super(self.__class__, self).__init__()
         self.latent_size = latent_size
-        self.fc1 = nn.Linear(latent_size, 256)
+        self.fc1 = nn.Linear(latent_size, 256, bias=False)
+        self.bn1 = nn.BatchNorm1d(256)
         self.fc2 = nn.Linear(256, num_classes)
         self.apply(weights_init)
         self.cuda()
 
     def forward(self, x):
         x = self.fc1(x)
+        x = self.bn1(x)
         x = nn.LeakyReLU(0.2, inplace=True)(x)
         x = self.fc2(x)
         return x
