@@ -351,7 +351,7 @@ def generate_z_trajectory(z, target_class, netC, netE, netG, dataloader,
     original_z = z.clone()
     max_iters = 250
     momentum_mu = .9999
-    speed = .01
+    speed = .02
     for i in range(max_iters):
         net_y = netC(netE(netG(z)))
         #net_y = netC(z)

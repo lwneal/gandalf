@@ -6,6 +6,8 @@ from pprint import pprint
 import numpy as np
 from PIL import Image
 
+# TODO: hard-coded class count
+NUM_CLASSES = 5
 
 FILES_URL = 'http://files.deeplearninggroup.com'
 RESULTS_PATH = '/mnt/results/'
@@ -83,7 +85,6 @@ def save_grid_label(trajectory_id, info, result_dir):
 
 # Creates or overwrites a .dataset file containing all user-provided labels
 def build_aux_dataset(result_dir):
-    NUM_CLASSES = 10
     examples = []
     label_dir = os.path.join(result_dir, 'labels')
     for label_json_filename in os.listdir(label_dir):
@@ -107,7 +108,7 @@ def build_aux_dataset(result_dir):
 
 
 def is_labeled(filename, result_dir):
-    key = filename.split('-')[1]
+    key = filename.split('-')[-3]
     labels = os.path.join(result_dir, 'labels')
     if not os.path.exists(labels):
         print("Labels directory does not exist, creating it")

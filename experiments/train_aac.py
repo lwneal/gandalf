@@ -66,7 +66,6 @@ try:
             MAX_EPOCH = 10
             optimizer.param_groups[0]['lr'] = options['lr'] * (options['decay'] ** min(epoch, MAX_EPOCH))
 
-        # Train for one epoch
         video_filename = train_counterfactual(networks, optimizers, dataloader, epoch=epoch, **options)
         save_networks(networks, epoch, options['result_dir'])
 finally:

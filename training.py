@@ -91,7 +91,7 @@ def train_counterfactual(networks, optimizers, dataloader, epoch=None, **options
             total_fake = len(aux_labels) - total_real
             real_loss = (d_aux * looks_real).sum() / (total_real + 1)
             fake_loss = (d_aux * looks_fake).sum() / (total_fake + 1)
-            errAuxD = 100 * alpha * (real_loss - fake_loss)
+            errAuxD = alpha * (real_loss - fake_loss)
             errAuxD.backward()
             optimizerD.step()
 
@@ -128,12 +128,14 @@ def train_counterfactual(networks, optimizers, dataloader, epoch=None, **options
         # Classification: Train C(E(x))
         ############################
         netC.zero_grad()
+        """
         if use_aux_dataset:
             aux_images, aux_labels = aux_dataloader.get_batch()
             aux_images = Variable(aux_images)
             aux_labels = Variable(aux_labels)
             images = torch.cat([images, aux_images])
             labels = torch.cat([labels, aux_labels])
+        """
 
         net_y = netC(netE(images))
 
