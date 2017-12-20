@@ -91,7 +91,7 @@ def train_counterfactual(networks, optimizers, dataloader, epoch=None, **options
             total_fake = len(aux_labels) - total_real
             real_loss = (d_aux * looks_real).sum() / (total_real + 1)
             fake_loss = (d_aux * looks_fake).sum() / (total_fake + 1)
-            errAuxD = alpha * (real_loss - fake_loss)
+            errAuxD = 100 * alpha * (real_loss - fake_loss)
             errAuxD.backward()
             optimizerD.step()
 
@@ -119,7 +119,7 @@ def train_counterfactual(networks, optimizers, dataloader, epoch=None, **options
         hallucination = netG(noise)
         regenerated = netG(netE(hallucination))
         errEG = torch.mean(torch.abs(regenerated - hallucination))
-        errEG *= options['autoencoder_weight']
+        errEG *= 100 * options['autoencoder_weight']
         errEG.backward()
         optimizerG.step()
         ############################

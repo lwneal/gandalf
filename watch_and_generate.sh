@@ -1,5 +1,5 @@
 #!/bin/bash
-RESULT_DIR=/mnt/results/mnist_baseline_a
+RESULT_DIR=/mnt/results/mnist_semisupervised_10
 
 echo "Watching $RESULT_DIR..."
 while true; do
