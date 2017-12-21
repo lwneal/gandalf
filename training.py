@@ -29,11 +29,9 @@ def train_counterfactual(networks, optimizers, dataloader, epoch=None, **options
     latent_size = options['latent_size']
     video_filename = "{}/generated.mjpeg".format(result_dir)
 
-    spherical = True
     noise = Variable(torch.FloatTensor(batch_size, latent_size).cuda())
     fixed_noise = Variable(torch.FloatTensor(batch_size, latent_size).normal_(0, 1)).cuda()
-    if spherical:
-        clamp_to_unit_sphere(fixed_noise)
+    clamp_to_unit_sphere(fixed_noise)
     demo_images, demo_labels = next(d for d in dataloader)
 
 
@@ -61,7 +59,7 @@ def train_counterfactual(networks, optimizers, dataloader, epoch=None, **options
         ############################
         if i % 4 == 0:
             netG.zero_grad()
-            noise = gen_noise(noise, spherical)
+            noise = gen_noise(noise)
             errG = -netD(netG(noise)).max(dim=1)[0].mean()
             errG *= options['gan_weight']
             errG.backward()
@@ -74,34 +72,24 @@ def train_counterfactual(networks, optimizers, dataloader, epoch=None, **options
         ###########################
         netD.zero_grad()
 
-        # Train discriminator as a classifier
-        net_y = netD(images)
-        positive_labels = (labels == 1).type(torch.cuda.FloatTensor)
-        negative_labels = (labels == -1).type(torch.cuda.FloatTensor)
+        errC, errD, errGP = train_discriminator(images, labels, netD, netG, noise)
 
-        # Hinge loss term for negative and positive labels
-        errHinge = relu(1+net_y) * negative_labels + relu(1-net_y) * positive_labels
-        # Log-Likelihood to calibrate the K separate one-vs-all classifiers
-        errNLL = -log_softmax(net_y, dim=1) * positive_labels
-        errC = errHinge.sum() + errNLL.sum()
-        errC *= 0.1
-        errC.backward()
+        if use_aux_dataset:
+            aux_images, aux_labels = aux_dataloader.get_batch()
+            aux_images = Variable(aux_images)
+            aux_labels = Variable(aux_labels)
+            errCa, errDa, errGPa = train_discriminator(aux_images, aux_labels, netD, netG, noise)
+            errC += errCa
+            errD += errDa
+            errGP += errGPa
 
-        # Every generated image is a negative example
-        noise = gen_noise(noise, spherical)
-        fake_images = netG(noise).detach()
-        errD = netD(fake_images).max(dim=1)[0].mean() - netD(images).max(dim=1)[0].mean()
-        errD.backward()
-
-        # Apply WGAN-GP gradient penalty
-        errGP = calc_gradient_penalty(netD, images.data, fake_images.data)
-        errGP.backward()
+        total_error = errC + errD + errGP
+        total_error.backward()
         optimizerD.step()
         ############################
 
-
-
         # Keep track of accuracy on positive-labeled examples for monitoring
+        net_y = netD(images)
         _, pred_idx = net_y.max(1)
         _, label_idx = labels.max(1)
         correct += sum(pred_idx == label_idx).data.cpu().numpy()[0]
@@ -114,19 +102,40 @@ def train_counterfactual(networks, optimizers, dataloader, epoch=None, **options
             filename = "{}/demo_{}.jpg".format(result_dir, int(time.time()))
             imutil.show(img, filename=filename, resize_to=(512,512))
 
-            msg = '[{}][{}/{}] GrP {:.3f} D:{:.3f} G:{:.3f} ErrNLL: {:.3f} ErrH: {:.3f} Acc. {:.3f} {:.3f} batch/sec'
+            msg = '[{}][{}/{}] GrP {:.3f} D:{:.3f} G:{:.3f} Acc. {:.3f} {:.3f} batch/sec'
             bps = i / (time.time() - start_time)
             msg = msg.format(
                   epoch, i, len(dataloader),
                   errGP.data[0],
                   errD.data[0],
                   errG.data[0],
-                  errNLL.sum().data[0],
-                  errHinge.sum().data[0],
                   correct / max(total, 1),
                   bps)
             print(msg)
     return video_filename
+
+
+def train_discriminator(images, labels, netD, netG, noise):
+    # Train discriminator as a classifier
+    net_y = netD(images)
+    positive_labels = (labels == 1).type(torch.cuda.FloatTensor)
+    negative_labels = (labels == -1).type(torch.cuda.FloatTensor)
+
+    # Hinge loss term for negative and positive labels
+    errHinge = relu(1+net_y) * negative_labels + relu(1-net_y) * positive_labels
+    # Log-Likelihood to calibrate the K separate one-vs-all classifiers
+    errNLL = -log_softmax(net_y, dim=1) * positive_labels
+    errC = errHinge.sum() + errNLL.sum()
+    errC *= 0.1
+
+    # Every generated image is a negative example
+    noise = gen_noise(noise)
+    fake_images = netG(noise).detach()
+    errD = netD(fake_images).max(dim=1)[0].mean() - netD(images).max(dim=1)[0].mean()
+
+    # Apply WGAN-GP gradient penalty
+    errGP = calc_gradient_penalty(netD, images.data, fake_images.data)
+    return errC, errD, errGP
 
 
 def show_weights(net):
@@ -147,7 +156,7 @@ def abs_sum(variable):
 def to_scalar(variable):
     return variable.data.cpu().numpy()[0]
 
-def gen_noise(noise, spherical_noise):
+def gen_noise(noise, spherical_noise=True):
     noise.data.normal_(0, 1)
     if spherical_noise:
         noise = clamp_to_unit_sphere(noise)
