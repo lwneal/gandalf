@@ -79,7 +79,7 @@ def train_counterfactual(networks, optimizers, dataloader, epoch=None, **options
             aux_images = Variable(aux_images)
             aux_labels = Variable(aux_labels)
             errCa, errDa, errGPa = train_discriminator(aux_images, aux_labels, netD, netG, noise)
-            errC += errCa
+            #errC += errCa
             errD += errDa
             errGP += errGPa
 
@@ -131,7 +131,9 @@ def train_discriminator(images, labels, netD, netG, noise):
     # Every generated image is a negative example
     noise = gen_noise(noise)
     fake_images = netG(noise).detach()
-    errD = netD(fake_images).max(dim=1)[0].mean() - netD(images).max(dim=1)[0].mean()
+    err_fake = relu(1 + netD(fake_images).max(dim=1)[0]).mean() 
+    err_real = relu(1 - netD(images).max(dim=1)[0]).mean()
+    errD = err_fake - err_real
 
     # Apply WGAN-GP gradient penalty
     errGP = calc_gradient_penalty(netD, images.data, fake_images.data)
