@@ -74,12 +74,12 @@ def train_counterfactual(networks, optimizers, dataloader, epoch=None, **options
 
         errC, errD, errGP = train_discriminator(images, labels, netD, netG, noise)
 
-        if use_aux_dataset:
+        if use_aux_dataset and False:
             aux_images, aux_labels = aux_dataloader.get_batch()
             aux_images = Variable(aux_images)
             aux_labels = Variable(aux_labels)
             errCa, errDa, errGPa = train_discriminator(aux_images, aux_labels, netD, netG, noise)
-            #errC += errCa
+            errC += errCa
             errD += errDa
             errGP += errGPa
 
