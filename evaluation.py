@@ -18,36 +18,32 @@ def to_np(v):
 
 
 def select_openset_threshold(networks, dataloader):
-    netE = networks['encoder']
-    netG = networks['generator']
     netD = networks['discriminator']
-    mse = []
 
+    scores = []
     for images, labels in dataloader:
         images = Variable(images, volatile=True)
-        diffs = (images - netG(netE(images))) ** 2
-        mse.extend(diffs.mean(dim=-1).mean(dim=-1).mean(dim=-1).cpu().data.numpy())
-    threshold = np.mean(mse) + 1.5 * np.std(mse)
+        x = netD(images).max(dim=1)[0]
+        x = x.data.cpu().numpy()
+        scores.extend(x)
+
+    threshold = np.mean(scores) - np.std(scores)
     print("Open set threshold set to {}".format(threshold))
     return threshold
 
 
-def predict_openset(networks, images, threshold=0.08):
-    netE = networks['encoder']
-    netG = networks['generator']
+# Returns 1 for items that are known, 0 for unknown
+def predict_openset(networks, images, threshold=0):
     netD = networks['discriminator']
 
-    diffs = (images - netG(netE(images))) ** 2
-    mse = diffs.mean(dim=-1).mean(dim=-1).mean(dim=-1)
-    return mse < threshold
+    scores = netD(images).max(dim=1)[0]
+    return scores > float(threshold)
 
 
 def evaluate_classifier(networks, dataloader, open_set_dataloader=None, verbose=True, skip_reconstruction=False, **options):
     for net in networks.values():
         net.eval()
-    netE = networks['encoder']
     netG = networks['generator']
-    netC = networks['classifier']
     netD = networks['discriminator']
     result_dir = options['result_dir']
     batch_size = options['batch_size']
@@ -61,10 +57,8 @@ def evaluate_classifier(networks, dataloader, open_set_dataloader=None, verbose=
     classification_total = 0
     for images, labels in dataloader:
         images = Variable(images, volatile=True)
-        z = netE(images)
-
         # Predict a classification among known classes
-        net_y = netC(z)
+        net_y = netD(images)
         class_predictions = softmax(net_y, dim=1)
 
         # Also predict whether each example belongs to any class at all
@@ -139,42 +133,18 @@ def evaluate_openset(networks, dataloader_on, dataloader_off, **options):
     image_size = options['image_size']
     latent_size = options['latent_size']
 
-    mae_scores_on, mse_scores_on, d_scores_on, c_scores_on, linear_scores_on = get_openset_scores(dataloader_on, networks)
-    mae_scores_off, mse_scores_off, d_scores_off, c_scores_off, linear_scores_off = get_openset_scores(dataloader_off, networks)
+    d_scores_on = get_openset_scores(dataloader_on, networks)
+    d_scores_off = get_openset_scores(dataloader_off, networks)
 
     y_true = np.array([0] * len(d_scores_on) + [1] * len(d_scores_off))
     y_discriminator = np.concatenate([d_scores_on, d_scores_off])
-    y_mae = np.concatenate([mae_scores_on, mae_scores_off])
-    y_mse = np.concatenate([mse_scores_on, mse_scores_off])
-    y_softmax = np.concatenate([c_scores_on, c_scores_off])
-    y_linear = np.concatenate([linear_scores_on, linear_scores_off])
-
-    y_combined2 = combine_scores([y_discriminator, y_mae])
-    y_combined3 = combine_scores([y_discriminator, y_mae, y_softmax])
 
     auc_d, plot_d = plot_roc(y_true, y_discriminator, 'Discriminator ROC vs {}'.format(dataloader_off.dsf.name))
-    auc_mae, plot_mae = plot_roc(y_true, y_mae, 'Reconstruction MAE ROC vs {}'.format(dataloader_off.dsf.name))
-    auc_mse, plot_mse = plot_roc(y_true, y_mse, 'Reconstruction MSE ROC vs {}'.format(dataloader_off.dsf.name))
-    auc_softmax, plot_softmax = plot_roc(y_true, y_softmax, 'Softmax ROC vs {}'.format(dataloader_off.dsf.name))
-    auc_linear, plot_linear = plot_roc(y_true, y_linear, 'Linear ROC vs {}'.format(dataloader_off.dsf.name))
-    auc_combined2, plot_combined2 = plot_roc(y_true, y_combined2, 'Combined-2 ROC vs {}'.format(dataloader_off.dsf.name))
-    auc_combined3, plot_combined3 = plot_roc(y_true, y_combined3, 'Combined-3 ROC vs {}'.format(dataloader_off.dsf.name))
 
     save_plot(plot_d, 'roc_discriminator', **options)
-    save_plot(plot_mae, 'roc_mae', **options)
-    save_plot(plot_mse, 'roc_mse', **options)
-    save_plot(plot_softmax, 'roc_softmax', **options)
-    save_plot(plot_combined2, 'roc_combined2', **options)
-    save_plot(plot_combined3, 'roc_combined3', **options)
 
     return {
         'auc_discriminator': auc_d,
-        'auc_mae': auc_mae,
-        'auc_mse': auc_mse,
-        'auc_softmax': auc_softmax,
-        'auc_linear': auc_linear,
-        'auc_combined2': auc_combined2,
-        'auc_combined3': auc_combined3,
     }
 
 
@@ -199,49 +169,24 @@ def save_plot(plot, title, **options):
     
 
 def get_openset_scores(dataloader, networks):
-    netE = networks['encoder']
-    netG = networks['generator']
     netD = networks['discriminator']
-    netC = networks['classifier']
 
-    mae_scores = []
-    mse_scores = []
     discriminator_scores = []
-    softmax_scores = []
-    linear_scores = []
 
     for i, (images, labels) in enumerate(dataloader):
         images = Variable(images, volatile=True)
-        z = netE(images)
-        reconstructed = netG(z)
-
-        # Classification via autoencoder reconstruction error
-        mae = torch.abs(reconstructed - images)
-        mae = mae.mean(1).mean(1).mean(1)
-        mae_scores.extend(mae.data.cpu().numpy())
-
-        mse = (reconstructed - images) ** 2
-        mse = mse.mean(1).mean(1).mean(1)
-        mse_scores.extend(mse.data.cpu().numpy())
 
         # Classification directly via the discriminator
-        discriminator_scores.extend(netD(images).data.cpu().numpy())
+        net_y = netD(images).data.cpu().numpy()
 
-        # Classification via prediction certainty
-        classifier_scores = netC(z)
-        classifier_softmax = -softmax(classifier_scores, dim=1).max(1)[0]
-        softmax_scores.extend(classifier_softmax.data.cpu().numpy())
+        discriminator_scores.extend(-net_y.max(1))
 
-        # Classification by pre-softmax linear layer (use w/ hinge loss)
-        linear = -classifier_scores.max(1)[0]
-        linear_scores.extend(linear.data.cpu().numpy())
-
-    mae_scores = np.array(mae_scores)
-    mse_scores = np.array(mse_scores)
+    #mae_scores = np.array(mae_scores)
+    #mse_scores = np.array(mse_scores)
     discriminator_scores = np.array(discriminator_scores)
-    softmax_scores = np.array(softmax_scores)
-    linear_scores = np.array(linear_scores)
-    return mae_scores, mse_scores, discriminator_scores, softmax_scores, linear_scores
+    #softmax_scores = np.array(softmax_scores)
+    #linear_scores = np.array(linear_scores)
+    return discriminator_scores
 
 
 def plot_roc(y_true, y_score, title="Receiver Operating Characteristic"):
