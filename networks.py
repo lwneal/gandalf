@@ -8,17 +8,11 @@ from torch import nn
 def build_networks(num_classes, epoch=None, latent_size=10, batch_size=64, **options):
     networks = {}
 
-    EncoderClass = get_network_class(options['encoder'])
-    networks['encoder'] = EncoderClass(latent_size=latent_size, batch_size=batch_size)
-
-    GeneratorClass = get_network_class(options['generator'])
+    GeneratorClass = network_definitions.generator32
     networks['generator'] = GeneratorClass(latent_size=latent_size)
 
-    DiscrimClass = get_network_class(options['discriminator'])
-    networks['discriminator'] = DiscrimClass(latent_size=latent_size)
-
-    ClassifierClass = network_definitions.classifierLinear
-    networks['classifier'] = ClassifierClass(latent_size, num_classes=num_classes)
+    DiscrimClass = network_definitions.multiclassDiscriminator32
+    networks['discriminator'] = DiscrimClass(num_classes=num_classes, latent_size=latent_size)
 
     for net_name in networks:
         pth = get_pth_by_epoch(options['result_dir'], net_name, epoch)

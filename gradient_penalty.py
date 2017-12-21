@@ -10,7 +10,6 @@ def calc_gradient_penalty(netD, real_data, fake_data, penalty_lambda=10.0):
     alpha = alpha.expand(real_data.size())
     alpha = alpha.cuda()
     
-    # I don't believe that interpolating in pixel space is correct
     #interpolates = alpha * real_data + (1 - alpha) * fake_data
     interpolates = torch.cat([real_data, fake_data])
     interpolates = interpolates.cuda()

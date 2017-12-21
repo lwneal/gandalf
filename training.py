@@ -21,29 +21,21 @@ def train_counterfactual(networks, optimizers, dataloader, epoch=None, **options
         net.train()
     netD = networks['discriminator']
     netG = networks['generator']
-    netE = networks['encoder']
-    netC = networks['classifier']
     optimizerD = optimizers['discriminator']
     optimizerG = optimizers['generator']
-    optimizerE = optimizers['encoder']
-    optimizerC = optimizers['classifier']
     result_dir = options['result_dir']
     batch_size = options['batch_size']
     image_size = options['image_size']
     latent_size = options['latent_size']
     video_filename = "{}/generated.mjpeg".format(result_dir)
 
-    # By convention, if it ends with 'sphere' it uses the unit sphere
-    spherical = type(netE).__name__.endswith('sphere')
-
+    spherical = True
     noise = Variable(torch.FloatTensor(batch_size, latent_size).cuda())
     fixed_noise = Variable(torch.FloatTensor(batch_size, latent_size).normal_(0, 1)).cuda()
     if spherical:
         clamp_to_unit_sphere(fixed_noise)
     demo_images, demo_labels = next(d for d in dataloader)
 
-    correct = 0
-    total = 0
 
     dataset_filename = os.path.join(options['result_dir'], 'aux_dataset.dataset')
     use_aux_dataset = os.path.exists(dataset_filename) # and options['use_aux_dataset']
@@ -57,130 +49,82 @@ def train_counterfactual(networks, optimizers, dataloader, epoch=None, **options
         aux_dataloader = FlexibleCustomDataloader(**aux_kwargs)
 
     start_time = time.time()
-    # TODO: Replace integer class labels with -1/0/1 labels for each example, for each class
-    # TODO: Combine dataloader and aux_dataloader
-    # TODO: include unlabeled images
+    correct = 0
+    total = 0
+
     for i, (images, class_labels) in enumerate(dataloader):
         images = Variable(images)
         labels = Variable(class_labels)
+
         ############################
-        # (1) Update D network
-        ###########################
-        # WGAN: maximize D(G(z)) - D(x)
-        for _ in range(5):
-            netD.zero_grad()
+        # Generator Updates
+        ############################
+        if i % 4 == 0:
+            netG.zero_grad()
             noise = gen_noise(noise, spherical)
-            fake_images = netG(noise).detach()
-            errD = netD(images).mean() - netD(fake_images).mean()
-            errD *= options['gan_weight']
-            errD.backward()
-            optimizerD.step()
-        # Also update D network based on user-provided extra labels
-        if use_aux_dataset:
-            netD.zero_grad()
-            aux_images, aux_labels = aux_dataloader.get_batch()
-            aux_images = Variable(aux_images)
-            looks_real = aux_labels.max(1)[0]
-            looks_real = Variable(looks_real.type(torch.FloatTensor).cuda())
-            looks_fake = 1 - looks_real
+            errG = -netD(netG(noise)).max(dim=1)[0].mean()
+            errG *= options['gan_weight']
+            errG.backward()
+            optimizerG.step()
+        ###########################
 
-            alpha = len(aux_dataloader) / (len(dataloader) + len(aux_dataloader))
-            d_aux = netD(aux_images)
 
-            total_real = looks_real.sum()
-            total_fake = len(aux_labels) - total_real
-            real_loss = (d_aux * looks_real).sum() / (total_real + 1)
-            fake_loss = (d_aux * looks_fake).sum() / (total_fake + 1)
-            errAuxD = alpha * (real_loss - fake_loss)
-            errAuxD.backward()
-            optimizerD.step()
-
-        # Apply WGAN-GP gradient penalty
+        ############################
+        # Discriminator Updates
+        ###########################
         netD.zero_grad()
-        errGP = calc_gradient_penalty(netD, images.data, fake_images.data)
-        errGP.backward()
-        optimizerD.step()
-        ###########################
 
-        ############################
-        # Realism: minimize D(G(z))
-        ############################
-        netE.zero_grad()
-        netG.zero_grad()
-        noise = gen_noise(noise, spherical)
-        errG = netD(netG(noise)).mean() * options['gan_weight']
-        errG.backward()
-        ###########################
-
-        ############################
-        # Consistency: minimize x - G(E(x))
-        ############################
-        noise = gen_noise(noise, spherical)
-        hallucination = netG(noise)
-        regenerated = netG(netE(hallucination))
-        errEG = torch.mean(torch.abs(regenerated - hallucination))
-        errEG *= 100 * options['autoencoder_weight']
-        errEG.backward()
-        optimizerG.step()
-        ############################
-
-        ############################
-        # Classification: Train C(E(x))
-        ############################
-        netC.zero_grad()
-        """
-        if use_aux_dataset:
-            aux_images, aux_labels = aux_dataloader.get_batch()
-            aux_images = Variable(aux_images)
-            aux_labels = Variable(aux_labels)
-            images = torch.cat([images, aux_images])
-            labels = torch.cat([labels, aux_labels])
-        """
-
-        net_y = netC(netE(images))
-
+        # Train discriminator as a classifier
+        net_y = netD(images)
         positive_labels = (labels == 1).type(torch.cuda.FloatTensor)
         negative_labels = (labels == -1).type(torch.cuda.FloatTensor)
 
-        # Standard negative log likelihood classification error for positive labels
-        errNLL = -log_softmax(net_y, dim=1) * positive_labels
-
-        # Additional hinge loss term for negative and positive labels
+        # Hinge loss term for negative and positive labels
         errHinge = relu(1+net_y) * negative_labels + relu(1-net_y) * positive_labels
-        errC = (1.0 / len(labels)) * errNLL.sum() + errHinge.sum()
-
+        # Log-Likelihood to calibrate the K separate one-vs-all classifiers
+        errNLL = -log_softmax(net_y, dim=1) * positive_labels
+        errC = errHinge.sum() + errNLL.sum()
+        errC *= 0.1
         errC.backward()
-        optimizerC.step()
-        optimizerE.step()
 
+        # Every generated image is a negative example
+        noise = gen_noise(noise, spherical)
+        fake_images = netG(noise).detach()
+        errD = netD(fake_images).max(dim=1)[0].mean() - netD(images).max(dim=1)[0].mean()
+        errD.backward()
+
+        # Apply WGAN-GP gradient penalty
+        errGP = calc_gradient_penalty(netD, images.data, fake_images.data)
+        errGP.backward()
+        optimizerD.step()
         ############################
+
+
+
         # Keep track of accuracy on positive-labeled examples for monitoring
         _, pred_idx = net_y.max(1)
         _, label_idx = labels.max(1)
         correct += sum(pred_idx == label_idx).data.cpu().numpy()[0]
         total += len(labels)
-        ############################
+
 
         if i % 100 == 0:
-            print("Classifier Network Weights:")
-            show_weights(netC)
-
-            reconstructed = netG(netE(Variable(demo_images)))
             demo_fakes = netG(fixed_noise)
-            img = torch.cat([demo_images[:12], reconstructed.data[:12], demo_fakes.data[:12]])
+            img = torch.cat([demo_fakes.data[:36]])
             filename = "{}/demo_{}.jpg".format(result_dir, int(time.time()))
-            imutil.show(img, filename=filename)
+            imutil.show(img, filename=filename, resize_to=(512,512))
 
-            msg = '[{}][{}/{}] D:{:.3f} G:{:.3f} EG:{:.3f} ErrNLL: {:.3f} ErrH: {:.3f} Acc. {:.3f} {:.3f}s/batch'
+            msg = '[{}][{}/{}] GrP {:.3f} D:{:.3f} G:{:.3f} ErrNLL: {:.3f} ErrH: {:.3f} Acc. {:.3f} {:.3f} batch/sec'
+            bps = i / (time.time() - start_time)
             msg = msg.format(
                   epoch, i, len(dataloader),
+                  errGP.data[0],
                   errD.data[0],
                   errG.data[0],
-                  errEG.data[0],
                   errNLL.sum().data[0],
                   errHinge.sum().data[0],
                   correct / max(total, 1),
-                  (time.time() - start_time) / (i + 1))
+                  bps)
             print(msg)
     return video_filename
 
