@@ -72,16 +72,22 @@ def train_counterfactual(networks, optimizers, dataloader, epoch=None, **options
         ###########################
         netD.zero_grad()
 
-        errC, errD, errGP = train_discriminator(images, labels, netD, netG, noise)
+        # Train classifier hinge loss
+        errC = train_discriminator(images, labels, netD, netG, noise)
+
+        # Every generated image is a negative example
+        noise = gen_noise(noise)
+        fake_images = netG(noise).detach()
+        errD = relu(1 + netD(fake_images)).sum()
+
+        # Apply WGAN-GP gradient penalty
+        errGP = calc_gradient_penalty(netD, images.data, fake_images.data)
 
         if use_aux_dataset and False:
             aux_images, aux_labels = aux_dataloader.get_batch()
             aux_images = Variable(aux_images)
             aux_labels = Variable(aux_labels)
-            errCa, errDa, errGPa = train_discriminator(aux_images, aux_labels, netD, netG, noise)
-            errC += errCa
-            errD += errDa
-            errGP += errGPa
+            errC += train_discriminator(aux_images, aux_labels, netD, netG, noise)
 
         total_error = errC + errD + errGP
         total_error.backward()
@@ -122,22 +128,13 @@ def train_discriminator(images, labels, netD, netG, noise):
     negative_labels = (labels == -1).type(torch.cuda.FloatTensor)
 
     # Hinge loss term for negative and positive labels
+    #errHinge = relu(1+net_y) * negative_labels + relu(1-net_y) * positive_labels
     errHinge = relu(1+net_y) * negative_labels + relu(1-net_y) * positive_labels
     # Log-Likelihood to calibrate the K separate one-vs-all classifiers
     errNLL = -log_softmax(net_y, dim=1) * positive_labels
     errC = errHinge.sum() + errNLL.sum()
-    errC *= 0.1
 
-    # Every generated image is a negative example
-    noise = gen_noise(noise)
-    fake_images = netG(noise).detach()
-    err_fake = relu(1 + netD(fake_images).max(dim=1)[0]).mean() 
-    err_real = relu(1 - netD(images).max(dim=1)[0]).mean()
-    errD = err_fake - err_real
-
-    # Apply WGAN-GP gradient penalty
-    errGP = calc_gradient_penalty(netD, images.data, fake_images.data)
-    return errC, errD, errGP
+    return errC
 
 
 def show_weights(net):

@@ -18,6 +18,7 @@ def to_np(v):
 
 
 def select_openset_threshold(networks, dataloader):
+    return 0
     netD = networks['discriminator']
 
     scores = []
