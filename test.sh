@@ -15,9 +15,9 @@ function make_sure_directory_exists() {
 make_sure_directory_exists /mnt/results
 make_sure_directory_exists /mnt/data
 
-rm -r /mnt/results/svhn_32x32_test
+rm -rf /mnt/results/svhn_32x32_test
 
-python datasets/download_mnist.py
+#python datasets/download_svhn.py
 
 experiments/train_model.py \
     --result_dir /mnt/results/svhn_32x32_test \
@@ -26,6 +26,6 @@ experiments/train_model.py \
     --latent_size 10 \
     --epochs 1
 
-experiments/example.py --result_dir /mnt/results/mnist_28x28
+experiments/example.py --result_dir /mnt/results/svhn_32x32_test
 
-python experiments/test_dataloader.py
+#python experiments/test_dataloader.py
