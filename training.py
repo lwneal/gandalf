@@ -16,7 +16,7 @@ np.random.seed(123)
 torch.manual_seed(123)
 torch.cuda.manual_seed(123)
 
-def train_counterfactual(networks, optimizers, dataloader, epoch=None, **options):
+def train_model(networks, optimizers, dataloader, epoch=None, **options):
     for net in networks.values():
         net.train()
     netD = networks['discriminator']

@@ -43,7 +43,7 @@ options = vars(parser.parse_args())
 
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 from dataloader import FlexibleCustomDataloader
-from training import train_counterfactual
+from training import train_model
 from networks import build_networks, save_networks, get_optimizers
 from options import save_options, load_options, get_current_epoch
 from locking import acquire_lock, release_lock
@@ -66,7 +66,7 @@ try:
             MAX_EPOCH = 10
             optimizer.param_groups[0]['lr'] = options['lr'] * (options['decay'] ** min(epoch, MAX_EPOCH))
 
-        video_filename = train_counterfactual(networks, optimizers, dataloader, epoch=epoch, **options)
+        video_filename = train_model(networks, optimizers, dataloader, epoch=epoch, **options)
         save_networks(networks, epoch, options['result_dir'])
 finally:
     release_lock(options['result_dir'])
