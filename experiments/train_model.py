@@ -33,7 +33,7 @@ parser.add_argument('--perceptual_loss', type=is_true, default=False, help='Enab
 parser.add_argument('--perceptual_depth', type=int, default=9, help='Number of layers of perceptual loss [default: 9]')
 # Gradient penalty lambda defaults to 10 following Gulrajani et al https://arxiv.org/abs/1704.00028
 parser.add_argument('--gradient_penalty_lambda', type=float, default=10.0, help='Magnitude of discriminator regularization [default: 10.0]')
-parser.add_argument('--autoencoder_weight', type=float, default=1.0, help='Autoencoder training weight [default: 1.0]')
+parser.add_argument('--discriminator_per_gen', type=int, default=5, help='Discriminator updates per generator update [default: 5]')
 parser.add_argument('--gan_weight', type=float, default=1.0, help='GAN training weight [default: 1.0]')
 
 # This might change with each run

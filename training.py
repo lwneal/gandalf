@@ -27,6 +27,7 @@ def train_model(networks, optimizers, dataloader, epoch=None, **options):
     batch_size = options['batch_size']
     image_size = options['image_size']
     latent_size = options['latent_size']
+    discriminator_updates_per_generator = options['discriminator_per_gen']
     video_filename = "{}/generated.mjpeg".format(result_dir)
 
     noise = Variable(torch.FloatTensor(batch_size, latent_size).cuda())
@@ -57,7 +58,7 @@ def train_model(networks, optimizers, dataloader, epoch=None, **options):
         ############################
         # Generator Updates
         ############################
-        if i % 4 == 0:
+        if i % discriminator_updates_per_generator == 0:
             netG.zero_grad()
             noise = gen_noise(noise)
             errG = -netD(netG(noise)).max(dim=1)[0].mean()
@@ -83,7 +84,7 @@ def train_model(networks, optimizers, dataloader, epoch=None, **options):
         # Apply WGAN-GP gradient penalty
         errGP = calc_gradient_penalty(netD, images.data, fake_images.data)
 
-        if use_aux_dataset and False:
+        if use_aux_dataset:
             aux_images, aux_labels = aux_dataloader.get_batch()
             aux_images = Variable(aux_images)
             aux_labels = Variable(aux_labels)
