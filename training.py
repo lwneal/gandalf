@@ -92,8 +92,8 @@ def train_model(networks, optimizers, dataloader, epoch=None, **options):
         errD.backward()
 
         # Apply WGAN-GP gradient penalty
-        errGP = calc_gradient_penalty(netD, images.data, fake_images.data)
-        errGP.backward()
+        #errGP = calc_gradient_penalty(netD, images.data, fake_images.data)
+        #errGP.backward()
 
         if use_aux_dataset:
             aux_images, aux_labels = aux_dataloader.get_batch()
@@ -120,7 +120,7 @@ def train_model(networks, optimizers, dataloader, epoch=None, **options):
             imutil.show(img, filename=filename, resize_to=(512,512))
 
             bps = i / (time.time() - start_time)
-            egp = errGP.data[0]
+            egp = 0#errGP.data[0]
             ed = errD.data[0]
             eg = errG.data[0]
             acc = correct / max(total, 1)
