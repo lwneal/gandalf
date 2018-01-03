@@ -17,31 +17,15 @@ def to_np(v):
     return v.data.cpu().numpy()
 
 
-def select_openset_threshold(networks, dataloader):
-    return 0
-    netD = networks['discriminator']
-
-    scores = []
-    for images, labels in dataloader:
-        images = Variable(images, volatile=True)
-        x = netD(images).max(dim=1)[0]
-        x = x.data.cpu().numpy()
-        scores.extend(x)
-
-    threshold = np.mean(scores) - np.std(scores)
-    print("Open set threshold set to {}".format(threshold))
-    return threshold
-
-
 # Returns 1 for items that are known, 0 for unknown
-def predict_openset(networks, images, threshold=0):
+def predict_openset(networks, images, threshold=0.):
     netD = networks['discriminator']
+    preds = netD(images)
+    maxval, _ = preds.max(dim=1) 
+    return maxval > threshold
 
-    scores = netD(images).max(dim=1)[0]
-    return scores > float(threshold)
 
-
-def evaluate_classifier(networks, dataloader, open_set_dataloader=None, verbose=True, skip_reconstruction=False, **options):
+def evaluate_classifier(networks, dataloader, open_set_dataloader=None, **options):
     for net in networks.values():
         net.eval()
     netG = networks['generator']
@@ -50,8 +34,6 @@ def evaluate_classifier(networks, dataloader, open_set_dataloader=None, verbose=
     batch_size = options['batch_size']
     image_size = options['image_size']
     latent_size = options['latent_size']
-
-    threshold = select_openset_threshold(networks, dataloader)
 
     classification_closed_correct = 0
     classification_correct = 0
@@ -63,7 +45,7 @@ def evaluate_classifier(networks, dataloader, open_set_dataloader=None, verbose=
         class_predictions = softmax(net_y, dim=1)
 
         # Also predict whether each example belongs to any class at all
-        is_known = predict_openset(networks, images, threshold)
+        is_known = predict_openset(networks, images)
 
         _, predicted = class_predictions.max(1)
         classification_closed_correct += sum(predicted.data == labels)
@@ -76,7 +58,7 @@ def evaluate_classifier(networks, dataloader, open_set_dataloader=None, verbose=
         for images, labels in open_set_dataloader:
             images = Variable(images, volatile=True)
             # Predict whether each example is known/unknown
-            is_known = predict_openset(networks, images, threshold)
+            is_known = predict_openset(networks, images)
             openset_correct += sum(is_known.data == 0)
             openset_total += len(labels)
 
@@ -172,21 +154,19 @@ def save_plot(plot, title, **options):
 def get_openset_scores(dataloader, networks):
     netD = networks['discriminator']
 
+    # The implicit K+1th class (the open set class) is computed
+    #  by assuming an extra linear output with constant value 0
     discriminator_scores = []
-
     for i, (images, labels) in enumerate(dataloader):
         images = Variable(images, volatile=True)
+        preds = netD(images)
+        z = torch.exp(preds).sum(dim=1)
+        prob_known = z / (z + 1)
+        prob_unknown = 1 - prob_known
+        discriminator_scores.extend(prob_unknown.data.cpu().numpy())
+    import pdb; pdb.set_trace()
 
-        # Classification directly via the discriminator
-        net_y = netD(images).data.cpu().numpy()
-
-        discriminator_scores.extend(-net_y.max(1))
-
-    #mae_scores = np.array(mae_scores)
-    #mse_scores = np.array(mse_scores)
     discriminator_scores = np.array(discriminator_scores)
-    #softmax_scores = np.array(softmax_scores)
-    #linear_scores = np.array(linear_scores)
     return discriminator_scores
 
 
