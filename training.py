@@ -8,6 +8,7 @@ from torchvision import models
 from torch.autograd import Variable
 from gradient_penalty import calc_gradient_penalty
 from torch.nn.functional import nll_loss, binary_cross_entropy
+import torch.nn.functional as F
 from torch.nn.functional import softmax, log_softmax, relu
 import imutil
 from dataloader import FlexibleCustomDataloader
@@ -15,6 +16,11 @@ from dataloader import FlexibleCustomDataloader
 np.random.seed(123)
 torch.manual_seed(123)
 torch.cuda.manual_seed(123)
+
+
+def log_sum_exp(inputs, dim=None, keepdim=False):
+    return inputs - log_softmax(inputs, dim=1)
+
 
 def train_model(networks, optimizers, dataloader, epoch=None, **options):
     for net in networks.values():
@@ -58,11 +64,14 @@ def train_model(networks, optimizers, dataloader, epoch=None, **options):
         ############################
         # Generator Updates
         ############################
+        # Fool the discriminator by outputting images that are classified with
+        #  high certainty as being a real (known) class
         if i % discriminator_updates_per_generator == 0:
             netG.zero_grad()
             noise = gen_noise(noise)
-            errG = -netD(netG(noise)).max(dim=1)[0].mean()
-            errG *= options['gan_weight']
+            logits = netD(netG(noise))
+            errG = F.softplus(-log_sum_exp(logits))
+            errG = errG.mean()
             errG.backward()
             optimizerG.step()
         ###########################
@@ -80,18 +89,19 @@ def train_model(networks, optimizers, dataloader, epoch=None, **options):
         noise = gen_noise(noise)
         fake_images = netG(noise).detach()
         errD = relu(1 + netD(fake_images)).sum()
+        errD.backward()
 
         # Apply WGAN-GP gradient penalty
         errGP = calc_gradient_penalty(netD, images.data, fake_images.data)
+        errGP.backward()
 
         if use_aux_dataset:
             aux_images, aux_labels = aux_dataloader.get_batch()
             aux_images = Variable(aux_images)
             aux_labels = Variable(aux_labels)
             errC += train_discriminator(aux_images, aux_labels, netD, netG, noise)
+        errC.backward()
 
-        total_error = errC + errD + errGP
-        total_error.backward()
         optimizerD.step()
         ############################
 
@@ -109,32 +119,31 @@ def train_model(networks, optimizers, dataloader, epoch=None, **options):
             filename = "{}/demo_{}.jpg".format(result_dir, int(time.time()))
             imutil.show(img, filename=filename, resize_to=(512,512))
 
-            msg = '[{}][{}/{}] GrP {:.3f} D:{:.3f} G:{:.3f} Acc. {:.3f} {:.3f} batch/sec'
             bps = i / (time.time() - start_time)
+            egp = errGP.data[0]
+            ed = errD.data[0]
+            eg = errG.data[0]
+            acc = correct / max(total, 1)
+            msg = '[{}][{}/{}] GrP {:.3f} D:{:.3f} G:{:.3f} Acc. {:.3f} {:.3f} batch/sec'
             msg = msg.format(
                   epoch, i, len(dataloader),
-                  errGP.data[0],
-                  errD.data[0],
-                  errG.data[0],
-                  correct / max(total, 1),
-                  bps)
+                  egp, ed, eg, acc, bps)
             print(msg)
     return video_filename
 
 
 def train_discriminator(images, labels, netD, netG, noise):
     # Train discriminator as a classifier
-    net_y = netD(images)
+    logits = netD(images)
     positive_labels = (labels == 1).type(torch.cuda.FloatTensor)
     negative_labels = (labels == -1).type(torch.cuda.FloatTensor)
 
     # Hinge loss term for negative and positive labels
-    #errHinge = relu(1+net_y) * negative_labels + relu(1-net_y) * positive_labels
-    errHinge = relu(1+net_y) * negative_labels + relu(1-net_y) * positive_labels
-    # Log-Likelihood to calibrate the K separate one-vs-all classifiers
-    errNLL = -log_softmax(net_y, dim=1) * positive_labels
-    errC = errHinge.sum() + errNLL.sum()
+    errHinge = relu(1+logits) * negative_labels + relu(1-logits) * positive_labels
 
+    # Log-Likelihood to calibrate the K separate one-vs-all classifiers
+    errNLL = -log_softmax(logits, dim=1) * positive_labels
+    errC = errHinge.sum() + errNLL.sum()
     return errC
 
 
