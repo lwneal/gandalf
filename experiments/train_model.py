@@ -13,9 +13,6 @@ parser.add_argument('--result_dir', required=True, help='Output directory for im
 
 # Core Options: these determine the shape/size of the neural network
 parser.add_argument('--dataset', help='Input filename (must be in .dataset format)')
-parser.add_argument('--encoder', help='Name of encoder network')
-parser.add_argument('--generator', help='Name of generator network')
-parser.add_argument('--discriminator', help='Name of discriminator network')
 parser.add_argument('--latent_size', type=int, default=100, help='Size of the latent z vector [default: 100]')
 parser.add_argument('--image_size', type=int, default=32, help='Height / width of images [default: 32]')
 
@@ -27,14 +24,9 @@ parser.add_argument('--decay', type=float, default=0.9, help='Learning rate deca
 parser.add_argument('--weight_decay', type=float, default=1.0, help='Optimizer L2 weight decay [default: 1.0]')
 parser.add_argument('--random_horizontal_flip', type=is_true, default=False, help='Flip images during training. [default: False]')
 parser.add_argument('--delete_background', type=is_true, default=False, help='Delete non-foreground pixels from images [default: False]')
-parser.add_argument('--supervised_encoder', type=is_true, default=False, help='Train the encoder jointly with the classifier. [default: False]')
-# Perceptual loss at 9 layers (VGG16 relu_2_2) following Johnson et al https://arxiv.org/abs/1603.08155
-parser.add_argument('--perceptual_loss', type=is_true, default=False, help='Enable P-loss [default: False]')
-parser.add_argument('--perceptual_depth', type=int, default=9, help='Number of layers of perceptual loss [default: 9]')
 # Gradient penalty lambda defaults to 10 following Gulrajani et al https://arxiv.org/abs/1704.00028
 parser.add_argument('--gradient_penalty_lambda', type=float, default=10.0, help='Magnitude of discriminator regularization [default: 10.0]')
 parser.add_argument('--discriminator_per_gen', type=int, default=5, help='Discriminator updates per generator update [default: 5]')
-parser.add_argument('--gan_weight', type=float, default=1.0, help='GAN training weight [default: 1.0]')
 
 # This might change with each run
 parser.add_argument('--epochs', type=int, default=10, help='number of epochs to train for [default: 10]')
