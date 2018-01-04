@@ -92,8 +92,10 @@ def train_model(networks, optimizers, dataloader, epoch=None, **options):
         errD.backward()
 
         # Apply gradient penalty
-        errGP = calc_gradient_penalty(netD, images.data, fake_images.data)
-        errGP.backward()
+        if options['gradient_penalty_lambda'] != 0:
+            errGP = calc_gradient_penalty(netD, images.data, fake_images.data)
+            errGP *= options['gradient_penalty_lambda']
+            errGP.backward()
 
         # Apply loss for classification error
         errC = train_discriminator(images, labels, netD, netG)
