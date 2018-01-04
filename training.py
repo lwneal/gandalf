@@ -88,7 +88,7 @@ def train_model(networks, optimizers, dataloader, epoch=None, **options):
         logits = netD(fake_images)
         err_fake = F.softplus(log_sum_exp(netD(fake_images))).mean()
         err_real = F.softplus(-log_sum_exp(netD(images))).mean()
-        errD = err_fake - err_real
+        errD = err_fake + err_real
         errD.backward()
 
         # Apply gradient penalty
