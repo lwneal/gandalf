@@ -85,10 +85,10 @@ def train_model(networks, optimizers, dataloader, epoch=None, **options):
         # Every real image should be classified as NOT open set
         noise = gen_noise(noise)
         fake_images = netG(noise).detach()
-        logits = netD(fake_images)
         err_fake = F.softplus(log_sum_exp(netD(fake_images))).mean()
-        err_real = F.softplus(-log_sum_exp(netD(images))).mean()
-        errD = err_fake + err_real
+        # TODO: Merge this term into the K+1 positive class loss?
+        #err_real = F.softplus(-log_sum_exp(netD(images))).mean()
+        errD = err_fake #+ err_real
         errD.backward()
 
         # Apply gradient penalty
@@ -142,10 +142,15 @@ def train_discriminator(images, labels, netD, netG):
     negative_labels = (labels == -1).type(torch.cuda.FloatTensor)
 
     # Hinge loss term for negative and positive labels
+    # TODO: possibly change
     errHinge = F.softplus(logits) * negative_labels + F.softplus(-logits) * positive_labels
 
     # Log-Likelihood to calibrate the K separate one-vs-all classifiers
-    errNLL = -log_softmax(logits, dim=1) * positive_labels
+    # Among K+1 classes? Test, see which is better
+    openset_positive_labels = F.pad(positive_labels, pad=(0,1))
+    openset_logits = F.pad(logits, pad=(0, 1))
+
+    errNLL = -log_softmax(openset_logits, dim=1) * openset_positive_labels
     errC = errHinge.sum() + errNLL.sum()
     return errC
 
