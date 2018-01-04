@@ -164,7 +164,6 @@ def get_openset_scores(dataloader, networks):
         prob_known = z / (z + 1)
         prob_unknown = 1 - prob_known
         discriminator_scores.extend(prob_unknown.data.cpu().numpy())
-    import pdb; pdb.set_trace()
 
     discriminator_scores = np.array(discriminator_scores)
     return discriminator_scores
