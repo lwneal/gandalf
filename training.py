@@ -158,10 +158,6 @@ def show_weights(net):
             print('Weight max: {}'.format(to_scalar(layer.weight.max())))
 
 
-def abs_sum(variable):
-    weight_sum = variable.abs().sum()
-    return to_scalar(weight_sun)
-
 def to_scalar(variable):
     return variable.data.cpu().numpy()[0]
 

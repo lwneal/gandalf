@@ -3,6 +3,7 @@ import argparse
 import json
 import os
 import sys
+from pprint import pprint
 
 # Print --help message before importing the rest of the project
 parser = argparse.ArgumentParser()
@@ -49,6 +50,7 @@ if options['comparison_dataset']:
 new_results = evaluate_classifier(networks, dataloader, comparison_dataloader, **options)
 if options['comparison_dataset']:
     openset_results = evaluate_openset(networks, dataloader, comparison_dataloader, **options)
+    pprint(openset_results)
     new_results[options['fold'] + '_openset'] = openset_results
 
 save_evaluation(new_results, options['result_dir'], options['epoch'])
