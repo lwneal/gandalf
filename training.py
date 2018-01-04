@@ -123,14 +123,14 @@ def train_model(networks, optimizers, dataloader, epoch=None, **options):
             img = torch.cat([demo_fakes.data[:36]])
             filename = "{}/demo_{}.jpg".format(result_dir, int(time.time()))
             imutil.show(img, filename=filename, resize_to=(512,512))
-
-            bps = i / (time.time() - start_time)
+            iters = i + options['batch_size']
+            bps = iters / (time.time() - start_time)
             ed = errD.data[0]
             eg = errG.data[0]
             acc = correct / max(total, 1)
             msg = '[{}][{}/{}] D:{:.3f} G:{:.3f} Acc. {:.3f} {:.3f} batch/sec'
             msg = msg.format(
-                  epoch, i, len(dataloader),
+                  epoch, iters, len(dataloader),
                   ed, eg, acc, bps)
             print(msg)
     return video_filename
