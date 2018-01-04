@@ -76,30 +76,33 @@ def train_model(networks, optimizers, dataloader, epoch=None, **options):
             optimizerG.step()
         ###########################
 
-
         ############################
         # Discriminator Updates
         ###########################
         netD.zero_grad()
 
-        # Train classifier hinge loss
-        errC = train_discriminator(images, labels, netD, netG, noise)
-
-        # Every generated image is a negative example
+        # Every generated image should be classified as the open set
+        # Every real image should be classified as NOT open set
         noise = gen_noise(noise)
         fake_images = netG(noise).detach()
-        errD = relu(1 + netD(fake_images)).sum()
+        logits = netD(fake_images)
+        err_fake = F.softplus(log_sum_exp(netD(fake_images))).mean()
+        err_real = F.softplus(-log_sum_exp(netD(images))).mean()
+        errD = err_fake - err_real
         errD.backward()
 
-        # Apply WGAN-GP gradient penalty
-        #errGP = calc_gradient_penalty(netD, images.data, fake_images.data)
-        #errGP.backward()
+        # Apply gradient penalty
+        errGP = calc_gradient_penalty(netD, images.data, fake_images.data)
+        errGP.backward()
 
+        # Apply loss for classification error
+        errC = train_discriminator(images, labels, netD, netG)
         if use_aux_dataset:
             aux_images, aux_labels = aux_dataloader.get_batch()
             aux_images = Variable(aux_images)
             aux_labels = Variable(aux_labels)
-            errC += train_discriminator(aux_images, aux_labels, netD, netG, noise)
+            errC += train_discriminator(aux_images, aux_labels, netD, netG)
+        errC *= 0.1
         errC.backward()
 
         optimizerD.step()
@@ -120,26 +123,25 @@ def train_model(networks, optimizers, dataloader, epoch=None, **options):
             imutil.show(img, filename=filename, resize_to=(512,512))
 
             bps = i / (time.time() - start_time)
-            egp = 0#errGP.data[0]
             ed = errD.data[0]
             eg = errG.data[0]
             acc = correct / max(total, 1)
-            msg = '[{}][{}/{}] GrP {:.3f} D:{:.3f} G:{:.3f} Acc. {:.3f} {:.3f} batch/sec'
+            msg = '[{}][{}/{}] D:{:.3f} G:{:.3f} Acc. {:.3f} {:.3f} batch/sec'
             msg = msg.format(
                   epoch, i, len(dataloader),
-                  egp, ed, eg, acc, bps)
+                  ed, eg, acc, bps)
             print(msg)
     return video_filename
 
 
-def train_discriminator(images, labels, netD, netG, noise):
+def train_discriminator(images, labels, netD, netG):
     # Train discriminator as a classifier
     logits = netD(images)
     positive_labels = (labels == 1).type(torch.cuda.FloatTensor)
     negative_labels = (labels == -1).type(torch.cuda.FloatTensor)
 
     # Hinge loss term for negative and positive labels
-    errHinge = relu(1+logits) * negative_labels + relu(1-logits) * positive_labels
+    errHinge = F.softplus(logits) * negative_labels + F.softplus(-logits) * positive_labels
 
     # Log-Likelihood to calibrate the K separate one-vs-all classifiers
     errNLL = -log_softmax(logits, dim=1) * positive_labels

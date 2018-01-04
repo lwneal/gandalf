@@ -26,7 +26,7 @@ parser.add_argument('--random_horizontal_flip', type=is_true, default=False, hel
 parser.add_argument('--delete_background', type=is_true, default=False, help='Delete non-foreground pixels from images [default: False]')
 # Gradient penalty lambda defaults to 10 following Gulrajani et al https://arxiv.org/abs/1704.00028
 parser.add_argument('--gradient_penalty_lambda', type=float, default=10.0, help='Magnitude of discriminator regularization [default: 10.0]')
-parser.add_argument('--discriminator_per_gen', type=int, default=5, help='Discriminator updates per generator update [default: 5]')
+parser.add_argument('--discriminator_per_gen', type=int, default=4, help='Discriminator updates per generator update [default: 4]')
 
 # This might change with each run
 parser.add_argument('--epochs', type=int, default=10, help='number of epochs to train for [default: 10]')
