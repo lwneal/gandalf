@@ -104,7 +104,6 @@ def train_model(networks, optimizers, dataloader, epoch=None, **options):
             aux_images = Variable(aux_images)
             aux_labels = Variable(aux_labels)
             errC += train_discriminator(aux_images, aux_labels, netD, netG)
-        errC *= 0.1
         errC.backward()
 
         optimizerD.step()
@@ -126,11 +125,12 @@ def train_model(networks, optimizers, dataloader, epoch=None, **options):
             bps = (i+1) / (time.time() - start_time)
             ed = errD.data[0]
             eg = errG.data[0]
+            ec = errC.data[0]
             acc = correct / max(total, 1)
-            msg = '[{}][{}/{}] D:{:.3f} G:{:.3f} Acc. {:.3f} {:.3f} batch/sec'
+            msg = '[{}][{}/{}] D:{:.3f} G:{:.3f} C:{:.3f} Acc. {:.3f} {:.3f} batch/sec'
             msg = msg.format(
                   epoch, i+1, len(dataloader),
-                  ed, eg, acc, bps)
+                  ed, eg, ec, acc, bps)
             print(msg)
     return video_filename
 
@@ -138,20 +138,22 @@ def train_model(networks, optimizers, dataloader, epoch=None, **options):
 def train_discriminator(images, labels, netD, netG):
     # Train discriminator as a classifier
     logits = netD(images)
+    is_positive_example = labels.max(dim=1)[0]
+    is_negative_example = 1 - is_positive_example
     positive_labels = (labels == 1).type(torch.cuda.FloatTensor)
     negative_labels = (labels == -1).type(torch.cuda.FloatTensor)
 
-    # Hinge loss term for negative and positive labels
-    # TODO: possibly change
-    errHinge = F.softplus(logits) * negative_labels + F.softplus(-logits) * positive_labels
+    # Negative-labeled examples
+    hinge_losses = F.softplus(logits) * negative_labels
+    errNegative = hinge_losses.sum(dim=1) * is_negative_example
 
-    # Log-Likelihood to calibrate the K separate one-vs-all classifiers
-    # Among K+1 classes? Test, see which is better
+    # Positive-labeled examples
     openset_positive_labels = F.pad(positive_labels, pad=(0,1))
     openset_logits = F.pad(logits, pad=(0, 1))
-
-    errNLL = -log_softmax(openset_logits, dim=1) * openset_positive_labels
-    errC = errHinge.sum() + errNLL.sum()
+    nll_losses = -log_softmax(openset_logits, dim=1) * openset_positive_labels
+    errPositive = nll_losses.sum(dim=1) * is_positive_example
+    errC = errNegative.sum() + errPositive.sum() / 64
+    #print("errNeg {:.3f}  errPos {:.3f}".format(errNegative.sum().data[0], errPositive.sum().data[0]))
     return errC
 
 
