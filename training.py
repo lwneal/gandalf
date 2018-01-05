@@ -54,6 +54,7 @@ def train_model(networks, optimizers, dataloader, epoch=None, **options):
     start_time = time.time()
     correct = 0
     total = 0
+    margin = 100
 
     for i, (images, class_labels) in enumerate(dataloader):
         images = Variable(images)
@@ -62,15 +63,16 @@ def train_model(networks, optimizers, dataloader, epoch=None, **options):
         ############################
         # Generator Updates
         ############################
+        discriminator_per_gen = 2
         if i % discriminator_per_gen == 0:
             netG.zero_grad()
             gen_images = netG(gen_noise(noise))
             
             # Feature Matching: Average of one batch of real vs. generated
-            features_real = netD(images, return_features=True).mean(dim=0)
-            features_gen = netD(gen_images, return_features=True).mean(dim=0)
-
-            errG = torch.mean((features_real - features_gen) ** 2)
+            #features_real = netD(images, return_features=True).mean(dim=0)
+            #features_gen = netD(gen_images, return_features=True).mean(dim=0)
+            #errG = torch.mean((features_real - features_gen) ** 2)
+            errG = F.softplus(margin - netD(gen_images)).mean()
             errG.backward()
             optimizerG.step()
         ###########################
@@ -83,16 +85,20 @@ def train_model(networks, optimizers, dataloader, epoch=None, **options):
         # Classify generated examples as the K+1th "open" class
         fake_images = netG(gen_noise(noise)).detach()
         fake_logits = netD(fake_images)
-        err_fake = F.softplus(log_sum_exp(fake_logits)).mean()
+        augmented_logits = F.pad(fake_logits, pad=(0,1))
+        log_prob_fake = F.log_softmax(augmented_logits, dim=1)
+        err_fake = -log_prob_fake[:, -1].mean()
+        #err_fake = (log_sum_exp(fake_logits)).mean()
         errD = err_fake
         errD.backward()
 
-        # Classify real examples as their classes
+        # Classify real examples into the correct K classes
         real_logits = netD(images)
         positive_labels = (labels == 1).type(torch.cuda.FloatTensor)
-        errHingePos = (F.softplus(-real_logits) * positive_labels).mean()
-
-        errC = errHingePos
+        augmented_logits = F.pad(real_logits, pad=(0,1))
+        augmented_labels = F.pad(positive_labels, pad=(0,1))
+        log_likelihood = F.log_softmax(augmented_logits, dim=1) * augmented_labels
+        errC = -log_likelihood.mean()
         errC.backward()
 
         optimizerD.step()
