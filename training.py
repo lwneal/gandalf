@@ -117,7 +117,11 @@ def train_model(networks, optimizers, dataloader, epoch=None, **options):
             errHingeNegAux = F.softplus(aux_logits) * aux_negative_labels 
             errHingePosAux = F.softplus(-aux_logits) * aux_positive_labels
             errNLLAux = -log_softmax(aux_logits, dim=1) * aux_positive_labels
-            errCAux += errHingeNegAux.sum() + errHingePosAux.sum() + errNLLAux.sum()
+
+            errHingeNegAux = errHingeNegAux.mean()
+            errHingePosAux = errHingePosAux.mean()
+            errNLLAux = errNLLAux.mean()
+            errCAux = errHingeNegAux + errHingePosAux + errNLLAux
             errC += errCAux
         errC.backward()
 
@@ -140,6 +144,12 @@ def train_model(networks, optimizers, dataloader, epoch=None, **options):
             eg = errG.data[0]
             ec = errC.data[0]
             acc = correct / max(total, 1)
+            if 'errHingeNegAux' in locals():
+                print("errHingeNegAux: {:.3f}".format(errHingeNegAux.data[0]))
+            if 'errHingePosAux' in locals():
+                print("errHingePosAux: {:.3f}".format(errHingePosAux.data[0]))
+            if 'errCAux' in locals():
+                print("errCAux: {:.3f}".format(errCAux.data[0]))
             print("Accuracy {}/{}".format(correct, total))
             msg = '[{}][{}/{}] D:{:.3f} G:{:.3f} C:{:.3f} Acc. {:.3f} {:.3f} batch/sec'
             msg = msg.format(
