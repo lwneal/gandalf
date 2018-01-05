@@ -34,13 +34,11 @@ def train_model(networks, optimizers, dataloader, epoch=None, **options):
     image_size = options['image_size']
     latent_size = options['latent_size']
     discriminator_updates_per_generator = options['discriminator_per_gen']
-    video_filename = "{}/generated.mjpeg".format(result_dir)
 
     noise = Variable(torch.FloatTensor(batch_size, latent_size).cuda())
     fixed_noise = Variable(torch.FloatTensor(batch_size, latent_size).normal_(0, 1)).cuda()
     clamp_to_unit_sphere(fixed_noise)
     demo_images, demo_labels = next(d for d in dataloader)
-
 
     dataset_filename = os.path.join(options['result_dir'], 'aux_dataset.dataset')
     use_aux_dataset = os.path.exists(dataset_filename) # and options['use_aux_dataset']
@@ -104,7 +102,8 @@ def train_model(networks, optimizers, dataloader, epoch=None, **options):
         errHingeNeg = F.softplus(logits) * negative_labels 
         errHingePos = F.softplus(-logits) * positive_labels
         errNLL = -log_softmax(logits, dim=1) * positive_labels
-        errC = errHingeNeg.sum() + errHingePos.sum() + errNLL.sum()
+        errC = errHingeNeg.mean() + errHingePos.mean() + errNLL.mean()
+        errC.backward()
 
         # Classify human-labeled active learning data
         if use_aux_dataset:
@@ -117,13 +116,11 @@ def train_model(networks, optimizers, dataloader, epoch=None, **options):
             errHingeNegAux = F.softplus(aux_logits) * aux_negative_labels 
             errHingePosAux = F.softplus(-aux_logits) * aux_positive_labels
             errNLLAux = -log_softmax(aux_logits, dim=1) * aux_positive_labels
-
             errHingeNegAux = errHingeNegAux.mean()
             errHingePosAux = errHingePosAux.mean()
             errNLLAux = errNLLAux.mean()
             errCAux = errHingeNegAux + errHingePosAux + errNLLAux
-            errC += errCAux
-        errC.backward()
+            errCAux.backward()
 
         optimizerD.step()
         ############################
@@ -139,18 +136,12 @@ def train_model(networks, optimizers, dataloader, epoch=None, **options):
             img = torch.cat([demo_fakes.data[:36]])
             filename = "{}/demo_{}.jpg".format(result_dir, int(time.time()))
             imutil.show(img, filename=filename, resize_to=(512,512))
+
             bps = (i+1) / (time.time() - start_time)
             ed = errD.data[0]
             eg = errG.data[0]
             ec = errC.data[0]
             acc = correct / max(total, 1)
-            if 'errHingeNegAux' in locals():
-                print("errHingeNegAux: {:.3f}".format(errHingeNegAux.data[0]))
-            if 'errHingePosAux' in locals():
-                print("errHingePosAux: {:.3f}".format(errHingePosAux.data[0]))
-            if 'errCAux' in locals():
-                print("errCAux: {:.3f}".format(errCAux.data[0]))
-            print("Accuracy {}/{}".format(correct, total))
             msg = '[{}][{}/{}] D:{:.3f} G:{:.3f} C:{:.3f} Acc. {:.3f} {:.3f} batch/sec'
             msg = msg.format(
                   epoch, i+1, len(dataloader),
@@ -162,7 +153,12 @@ def train_model(networks, optimizers, dataloader, epoch=None, **options):
                 errNLL.sum().data[0]))
             print("err_fake {:.3f}".format(err_fake.data[0]))
             print("err_real {:.3f}".format(err_real.data[0]))
-    return video_filename
+            if use_aux_dataset:
+                print("errHingeNegAux: {:.3f}".format(errHingeNegAux.data[0]))
+                print("errHingePosAux: {:.3f}".format(errHingePosAux.data[0]))
+                print("errCAux: {:.3f}".format(errCAux.data[0]))
+            print("Accuracy {}/{}".format(correct, total))
+    return True
 
 
 def gen_noise(noise, spherical_noise=True):
