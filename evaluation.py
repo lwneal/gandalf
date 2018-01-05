@@ -43,7 +43,7 @@ def evaluate_classifier(networks, dataloader, open_set_dataloader=None, **option
         # Predict a classification among known classes
         net_y = netD(images)
         class_predictions = softmax(net_y, dim=1)
-
+        
         # Also predict whether each example belongs to any class at all
         is_known = predict_openset(networks, images)
 

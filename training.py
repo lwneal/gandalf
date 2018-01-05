@@ -69,9 +69,8 @@ def train_model(networks, optimizers, dataloader, epoch=None, **options):
         if i % discriminator_updates_per_generator == 0:
             netG.zero_grad()
             noise = gen_noise(noise)
-            logits = netD(netG(noise))
-            errG = F.softplus(-log_sum_exp(logits))
-            errG = errG.mean()
+            gen_logits = netD(netG(noise))
+            errG = F.softplus(1-log_sum_exp(gen_logits)).mean()
             errG.backward()
             optimizerG.step()
         ###########################
@@ -86,9 +85,10 @@ def train_model(networks, optimizers, dataloader, epoch=None, **options):
         noise = gen_noise(noise)
         fake_images = netG(noise).detach()
         err_fake = F.softplus(log_sum_exp(netD(fake_images))).mean()
-        # TODO: Merge this term into the K+1 positive class loss?
-        #err_real = F.softplus(-log_sum_exp(netD(images))).mean()
-        errD = err_fake #+ err_real
+
+        real_logits = netD(images)
+        err_real = F.softplus(-log_sum_exp(real_logits)).mean()
+        errD = err_fake + err_real
         errD.backward()
 
         # Apply gradient penalty
@@ -97,25 +97,38 @@ def train_model(networks, optimizers, dataloader, epoch=None, **options):
             errGP *= options['gradient_penalty_lambda']
             errGP.backward()
 
-        # Apply loss for classification error
-        errC = train_discriminator(images, labels, netD, netG)
+        # Classify ground truth labeled data
+        logits = netD(images)
+        positive_labels = (labels == 1).type(torch.cuda.FloatTensor)
+        negative_labels = (labels == -1).type(torch.cuda.FloatTensor)
+        errHingeNeg = F.softplus(logits) * negative_labels 
+        errHingePos = F.softplus(-logits) * positive_labels
+        errNLL = -log_softmax(logits, dim=1) * positive_labels
+        errC = errHingeNeg.sum() + errHingePos.sum() + errNLL.sum()
+
+        # Classify human-labeled active learning data
         if use_aux_dataset:
             aux_images, aux_labels = aux_dataloader.get_batch()
             aux_images = Variable(aux_images)
             aux_labels = Variable(aux_labels)
-            errC += train_discriminator(aux_images, aux_labels, netD, netG)
+            aux_logits = netD(aux_images)
+            aux_positive_labels = (aux_labels == 1).type(torch.cuda.FloatTensor)
+            aux_negative_labels = (aux_labels == -1).type(torch.cuda.FloatTensor)
+            errHingeNegAux = F.softplus(aux_logits) * aux_negative_labels 
+            errHingePosAux = F.softplus(-aux_logits) * aux_positive_labels
+            errNLLAux = -log_softmax(aux_logits, dim=1) * aux_positive_labels
+            errCAux += errHingeNegAux.sum() + errHingePosAux.sum() + errNLLAux.sum()
+            errC += errCAux
         errC.backward()
 
         optimizerD.step()
         ############################
 
         # Keep track of accuracy on positive-labeled examples for monitoring
-        net_y = netD(images)
-        _, pred_idx = net_y.max(1)
+        _, pred_idx = real_logits.max(1)
         _, label_idx = labels.max(1)
         correct += sum(pred_idx == label_idx).data.cpu().numpy()[0]
         total += len(labels)
-
 
         if i % 100 == 0:
             demo_fakes = netG(fixed_noise)
@@ -127,49 +140,20 @@ def train_model(networks, optimizers, dataloader, epoch=None, **options):
             eg = errG.data[0]
             ec = errC.data[0]
             acc = correct / max(total, 1)
+            print("Accuracy {}/{}".format(correct, total))
             msg = '[{}][{}/{}] D:{:.3f} G:{:.3f} C:{:.3f} Acc. {:.3f} {:.3f} batch/sec'
             msg = msg.format(
                   epoch, i+1, len(dataloader),
                   ed, eg, ec, acc, bps)
             print(msg)
+            print("hingeneg {:.3f} hingepos {:.3f} nll {:.3f}".format(
+                errHingeNeg.sum().data[0],
+                errHingePos.sum().data[0],
+                errNLL.sum().data[0]))
+            print("err_fake {:.3f}".format(err_fake.data[0]))
+            print("err_real {:.3f}".format(err_real.data[0]))
     return video_filename
 
-
-def train_discriminator(images, labels, netD, netG):
-    # Train discriminator as a classifier
-    logits = netD(images)
-    is_positive_example = labels.max(dim=1)[0]
-    is_negative_example = 1 - is_positive_example
-    positive_labels = (labels == 1).type(torch.cuda.FloatTensor)
-    negative_labels = (labels == -1).type(torch.cuda.FloatTensor)
-
-    # Negative-labeled examples
-    hinge_losses = F.softplus(logits) * negative_labels
-    errNegative = hinge_losses.sum(dim=1) * is_negative_example
-
-    # Positive-labeled examples
-    openset_positive_labels = F.pad(positive_labels, pad=(0,1))
-    openset_logits = F.pad(logits, pad=(0, 1))
-    nll_losses = -log_softmax(openset_logits, dim=1) * openset_positive_labels
-    errPositive = nll_losses.sum(dim=1) * is_positive_example
-    errC = errNegative.sum() + errPositive.sum() / 64
-    #print("errNeg {:.3f}  errPos {:.3f}".format(errNegative.sum().data[0], errPositive.sum().data[0]))
-    return errC
-
-
-def show_weights(net):
-    from imutil import show
-    for layer in net.children():
-        if hasattr(layer, 'weight'):
-            print("\nLayer {}".format(layer))
-            show(layer.weight.data, save=False)
-            print('Weight sum: {}'.format(to_scalar(layer.weight.abs().sum())))
-            print('Weight min: {}'.format(to_scalar(layer.weight.min())))
-            print('Weight max: {}'.format(to_scalar(layer.weight.max())))
-
-
-def to_scalar(variable):
-    return variable.data.cpu().numpy()[0]
 
 def gen_noise(noise, spherical_noise=True):
     noise.data.normal_(0, 1)
@@ -182,83 +166,3 @@ def clamp_to_unit_sphere(x):
     norm = torch.norm(x, p=2, dim=1)
     norm = norm.expand(1, x.size()[0])
     return torch.mul(x, 1/norm.t())
-
-
-def shuffle(*args):
-    rng_state = np.random.get_state()
-    for arg in args:
-        np.random.shuffle(arg)
-        np.random.set_state(rng_state)
-
-
-def train_classifier(networks, optimizers, images, labels, **options):
-    netC = networks[options['classifier_name']]
-    netE = networks['encoder']
-    netG = networks['generator']
-    for net in networks.values():
-        net.train()
-    # Do not update the generator
-    netG.eval()
-
-    optimizerC = optimizers[options['classifier_name']]
-    optimizerE = optimizers['encoder']
-    result_dir = options['result_dir']
-    latent_size = options['latent_size']
-    batch_size = options['batch_size']
-    num_classes = 10  # TODO
-
-    def generator(points, labels):
-        assert len(points) == len(labels)
-        while True:
-            i = 0
-            shuffle(points, labels)
-            while i < len(points) - batch_size:
-                x = torch.FloatTensor(points[i:i+batch_size].transpose((0,3,1,2)))
-                y = torch.FloatTensor(labels[i:i+batch_size].astype(float))
-                x, y = x.cuda(), y.cuda()
-                yield x.squeeze(1), y
-                i += batch_size
-
-    dataloader = generator(images, labels)
-
-    correct = 0
-    total = 0
-    batch_count = len(images) // batch_size
-    for i in range(batch_count):
-        images, labels = next(dataloader)
-        images = Variable(images).cuda()
-        labels = Variable(labels).cuda()
-
-        maxval, _ = labels.max(dim=1)
-        is_blue = (maxval == 1).type(torch.cuda.FloatTensor)
-        is_red = (1 - is_blue)
-
-        net_y = netC(netE(images))[:,:-1]
-
-        label_pos = (labels == 1).type(torch.cuda.FloatTensor)
-        label_neg = (labels == -1).type(torch.cuda.FloatTensor)
-
-        # Positive and Negative labels: train a 1-vs-all classifier for each class
-        from torch.nn.functional import log_softmax
-        log_preds = log_softmax(net_y)
-        errClass = -(log_preds * (labels == 1).type(torch.cuda.FloatTensor)).sum()
-
-        # Additional term: Hinge loss on the linear layer before the activation
-        from torch.nn.functional import relu
-        errHinge = (relu(1+net_y) * label_neg + relu(1-net_y) * label_pos).sum()
-
-        errC = errClass + errHinge
-
-        errC.backward()
-        optimizerC.step()
-
-        class_preds = torch.exp(log_preds)
-        _, predicted = class_preds.max(1)
-        _, correct_labels = labels.max(1)
-        correct += sum((predicted.data == correct_labels.data).type(torch.cuda.FloatTensor) * is_blue.data)
-        total += sum(is_blue.data)
-
-    print('[{}/{}] LogLoss: {:.3f}  HingeLoss: {:.3f} Accuracy:{:.3f}'.format(
-        i, batch_count, errClass.data[0], errHinge.data[0],float(correct) / total))
-
-    return float(correct) / total

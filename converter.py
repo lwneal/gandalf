@@ -96,7 +96,8 @@ class FlexibleLabelConverter(Converter):
     def __init__(self, dataset, label_key="label", negative_key="label_n", **kwargs):
         self.label_key = label_key
         self.negative_key = negative_key
-        self.labels = list(set(get_labels(dataset, label_key) + get_labels(dataset, negative_key)))
+        #self.labels = list(set(get_labels(dataset, label_key) + get_labels(dataset, negative_key)))
+        self.labels = get_labels(dataset, label_key)
         self.num_classes = len(self.labels)
         self.idx = {self.labels[i]: i for i in range(self.num_classes)}
 
