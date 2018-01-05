@@ -16,7 +16,9 @@ def weights_init(m):
 class generator32(nn.Module):
     def __init__(self, latent_size=100, **kwargs):
         super(self.__class__, self).__init__()
-        self.conv1 = nn.ConvTranspose2d(latent_size, 512, 4, 1, 0, bias=False)
+        self.fc1 = nn.Linear(latent_size, 1024, bias=False)
+        self.bn0 = nn.BatchNorm1d(1024)
+        self.conv1 = nn.ConvTranspose2d( 1024,     512, 4, 1, 0, bias=False)
         self.conv2 = nn.ConvTranspose2d(   512,    256, 4, 2, 1, bias=False)
         self.conv3 = nn.ConvTranspose2d(   256,    128, 4, 2, 1, bias=False)
         self.conv4 = nn.ConvTranspose2d(   128,     3, 4, 2, 1, bias=False)
@@ -28,6 +30,9 @@ class generator32(nn.Module):
         self.cuda()
 
     def forward(self, x):
+        x = self.fc1(x)
+        x = self.bn0(x)
+        x = nn.LeakyReLU(0.2, inplace=True)(x)
         x = x.unsqueeze(-1).unsqueeze(-1)
         x = self.conv1(x)
         x = self.bn1(x)
@@ -43,7 +48,6 @@ class generator32(nn.Module):
         return x
 
 
-
 class multiclassDiscriminator32(nn.Module):
     def __init__(self, latent_size=100, num_classes=2, batch_size=64, **kwargs):
         super(self.__class__, self).__init__()
@@ -56,13 +60,12 @@ class multiclassDiscriminator32(nn.Module):
         self.conv5 = nn.Conv2d(512,     1024,       2, 1, 0, bias=False)
         self.ln1 = nn.InstanceNorm2d(256)
         self.ln2 = nn.InstanceNorm2d(512)
-
         self.fc1 = nn.Linear(1024, num_classes)
-        self.apply(weights_init)
 
+        self.apply(weights_init)
         self.cuda()
 
-    def forward(self, x):
+    def forward(self, x, return_features=False):
         batch_size = len(x)
         x = self.conv1(x)
         x = nn.LeakyReLU(0.2, inplace=True)(x)
@@ -77,5 +80,7 @@ class multiclassDiscriminator32(nn.Module):
         x = self.conv5(x)
         x = nn.LeakyReLU(0.2, inplace=True)(x)
         x = x.view(batch_size, -1)
+        if return_features:
+            return x
         x = self.fc1(x)
         return x

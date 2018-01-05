@@ -33,7 +33,7 @@ def train_model(networks, optimizers, dataloader, epoch=None, **options):
     batch_size = options['batch_size']
     image_size = options['image_size']
     latent_size = options['latent_size']
-    discriminator_updates_per_generator = options['discriminator_per_gen']
+    discriminator_per_gen = options['discriminator_per_gen']
 
     noise = Variable(torch.FloatTensor(batch_size, latent_size).cuda())
     fixed_noise = Variable(torch.FloatTensor(batch_size, latent_size).normal_(0, 1)).cuda()
@@ -62,13 +62,15 @@ def train_model(networks, optimizers, dataloader, epoch=None, **options):
         ############################
         # Generator Updates
         ############################
-        # Fool the discriminator by outputting images that are classified with
-        #  high certainty as being a real (known) class
-        if i % discriminator_updates_per_generator == 0:
+        if i % discriminator_per_gen == 0:
             netG.zero_grad()
-            noise = gen_noise(noise)
-            gen_logits = netD(netG(noise))
-            errG = F.softplus(1-log_sum_exp(gen_logits)).mean()
+            gen_images = netG(gen_noise(noise))
+            
+            # Feature Matching: Average of one batch of real vs. generated
+            features_real = netD(images, return_features=True).mean(dim=0)
+            features_gen = netD(gen_images, return_features=True).mean(dim=0)
+
+            errG = torch.mean((features_real - features_gen) ** 2)
             errG.backward()
             optimizerG.step()
         ###########################
@@ -78,49 +80,20 @@ def train_model(networks, optimizers, dataloader, epoch=None, **options):
         ###########################
         netD.zero_grad()
 
-        # Every generated image should be classified as the open set
-        # Every real image should be classified as NOT open set
-        noise = gen_noise(noise)
-        fake_images = netG(noise).detach()
-        err_fake = F.softplus(log_sum_exp(netD(fake_images))).mean()
-
-        real_logits = netD(images)
-        err_real = F.softplus(-log_sum_exp(real_logits)).mean()
-        errD = err_fake + err_real
+        # Classify generated examples as the K+1th "open" class
+        fake_images = netG(gen_noise(noise)).detach()
+        fake_logits = netD(fake_images)
+        err_fake = F.softplus(log_sum_exp(fake_logits)).mean()
+        errD = err_fake
         errD.backward()
 
-        # Apply gradient penalty
-        if options['gradient_penalty_lambda'] != 0:
-            errGP = calc_gradient_penalty(netD, images.data, fake_images.data)
-            errGP *= options['gradient_penalty_lambda']
-            errGP.backward()
-
-        # Classify ground truth labeled data
-        logits = netD(images)
+        # Classify real examples as their classes
+        real_logits = netD(images)
         positive_labels = (labels == 1).type(torch.cuda.FloatTensor)
-        negative_labels = (labels == -1).type(torch.cuda.FloatTensor)
-        errHingeNeg = F.softplus(logits) * negative_labels 
-        errHingePos = F.softplus(-logits) * positive_labels
-        errNLL = -log_softmax(logits, dim=1) * positive_labels
-        errC = errHingeNeg.mean() + errHingePos.mean() + errNLL.mean()
-        errC.backward()
+        errHingePos = (F.softplus(-real_logits) * positive_labels).mean()
 
-        # Classify human-labeled active learning data
-        if use_aux_dataset:
-            aux_images, aux_labels = aux_dataloader.get_batch()
-            aux_images = Variable(aux_images)
-            aux_labels = Variable(aux_labels)
-            aux_logits = netD(aux_images)
-            aux_positive_labels = (aux_labels == 1).type(torch.cuda.FloatTensor)
-            aux_negative_labels = (aux_labels == -1).type(torch.cuda.FloatTensor)
-            errHingeNegAux = F.softplus(aux_logits) * aux_negative_labels 
-            errHingePosAux = F.softplus(-aux_logits) * aux_positive_labels
-            errNLLAux = -log_softmax(aux_logits, dim=1) * aux_positive_labels
-            errHingeNegAux = errHingeNegAux.mean()
-            errHingePosAux = errHingePosAux.mean()
-            errNLLAux = errNLLAux.mean()
-            errCAux = errHingeNegAux + errHingePosAux + errNLLAux
-            errCAux.backward()
+        errC = errHingePos
+        errC.backward()
 
         optimizerD.step()
         ############################
@@ -147,16 +120,9 @@ def train_model(networks, optimizers, dataloader, epoch=None, **options):
                   epoch, i+1, len(dataloader),
                   ed, eg, ec, acc, bps)
             print(msg)
-            print("hingeneg {:.3f} hingepos {:.3f} nll {:.3f}".format(
-                errHingeNeg.sum().data[0],
-                errHingePos.sum().data[0],
-                errNLL.sum().data[0]))
+            #print("errHingePos: {:.3f}".format(errHingePos.data[0]))
             print("err_fake {:.3f}".format(err_fake.data[0]))
-            print("err_real {:.3f}".format(err_real.data[0]))
-            if use_aux_dataset:
-                print("errHingeNegAux: {:.3f}".format(errHingeNegAux.data[0]))
-                print("errHingePosAux: {:.3f}".format(errHingePosAux.data[0]))
-                print("errCAux: {:.3f}".format(errCAux.data[0]))
+            #print("err_real {:.3f}".format(err_real.data[0]))
             print("Accuracy {}/{}".format(correct, total))
     return True
 
