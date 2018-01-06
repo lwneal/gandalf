@@ -69,10 +69,20 @@ def train_model(networks, optimizers, dataloader, epoch=None, **options):
             gen_images = netG(gen_noise(noise))
             
             # Feature Matching: Average of one batch of real vs. generated
-            #features_real = netD(images, return_features=True).mean(dim=0)
-            #features_gen = netD(gen_images, return_features=True).mean(dim=0)
-            #errG = torch.mean((features_real - features_gen) ** 2)
-            errG = F.softplus(margin - netD(gen_images)).mean()
+            features_real = netD(images, return_features=True)
+            features_gen = netD(gen_images, return_features=True)
+            fm_loss = torch.mean((features_real.mean(0) - features_gen.mean(0)) ** 2)
+
+            # Pull-away term from https://github.com/kimiyoung/ssl_bad_gan
+            nsample = features_gen.size(0)
+            denom = features_gen.norm(dim=0).expand_as(features_gen)
+            gen_feat_norm = features_gen / denom
+            cosine = torch.mm(features_gen, features_gen.t())
+            mask = Variable((torch.ones(cosine.size()) - torch.diag(torch.ones(nsample))).cuda())
+            pt_loss = torch.sum((cosine * mask) ** 2) / (nsample * (nsample + 1))
+
+            errG = 100 * fm_loss + .00001 * pt_loss
+
             errG.backward()
             optimizerG.step()
         ###########################
