@@ -127,7 +127,7 @@ def train_model(networks, optimizers, dataloader, epoch=None, **options):
             errHingeNegAux = errHingeNegAux.mean()
             errHingePosAux = errHingePosAux.mean()
             errNLLAux = errNLLAux.mean()
-            errCAux = errHingeNegAux + errHingePosAux
+            errCAux = errHingeNegAux + errHingePosAux# + errNLLAux
             errCAux.backward()
 
         optimizerD.step()

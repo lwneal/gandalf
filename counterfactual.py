@@ -134,7 +134,7 @@ def generate_images_for_class(networks, dataloader, class_idx, **options):
         dc_dz = autograd.grad(cf_loss, z, cf_loss, retain_graph=True)[0]
         z -= dc_dz * speed
         z /= torch.sqrt(torch.mul(z, z).sum())
-        if all(pred_classes == class_idx) and all(pred_confidences > 0.90):
+        if all(pred_classes == class_idx) and all(pred_confidences > 0.99):
             break
     return images.data.cpu().numpy()
     

@@ -36,13 +36,13 @@ if options['comparison_dataset']:
     comparison_options['dataset'] = options['comparison_dataset']
     comparison_dataloader = CustomDataloader(last_batch=True, shuffle=False, **comparison_options)
     comparison_name = options['comparison_dataset'].split('/')[-1].split('.')[0]
-    # Hack: ignore the label count
-    """
     labels_dir = os.path.join(options['result_dir'], 'labels')
     if os.path.exists(labels_dir):
         label_count = len(os.listdir(labels_dir))
     else:
         label_count = 0
+    # Hack: ignore the label count
+    """
     options['fold'] = 'openset_{}_{:04d}'.format(comparison_name, label_count)
     """
     options['fold'] = 'openset_{}'.format(comparison_name)
@@ -52,6 +52,8 @@ if options['comparison_dataset']:
     openset_results = evaluate_openset(networks, dataloader, comparison_dataloader, **options)
     pprint(openset_results)
     new_results[options['fold'] + '_openset'] = openset_results
+
+new_results[options['fold']]['active_learning_label_count'] = label_count
 
 save_evaluation(new_results, options['result_dir'], options['epoch'])
 
