@@ -57,7 +57,6 @@ class multiclassDiscriminator32(nn.Module):
         self.bn1 = nn.BatchNorm2d(256)
         self.bn2 = nn.BatchNorm2d(512)
         self.bn3 = nn.BatchNorm2d(512)
-        self.bn4 = nn.BatchNorm2d(1024)
         self.fc1 = nn.Linear(1024, num_classes)
 
         self.apply(weights_init)
@@ -78,7 +77,6 @@ class multiclassDiscriminator32(nn.Module):
         x = self.bn3(x)
         x = nn.LeakyReLU(0.2, inplace=True)(x)
         x = self.conv5(x)
-        x = self.bn4(x)
         x = nn.LeakyReLU(0.2, inplace=True)(x)
         x = x.view(batch_size, -1)
         if return_features:
