@@ -72,6 +72,7 @@ def train_model(networks, optimizers, dataloader, epoch=None, **options):
             features_real = netD(images, return_features=True)
             features_gen = netD(gen_images, return_features=True)
             fm_loss = torch.mean((features_real.mean(0) - features_gen.mean(0)) ** 2)
+            fm_loss *= 10
 
             # Pull-away term from https://github.com/kimiyoung/ssl_bad_gan
             nsample = features_gen.size(0)
@@ -80,8 +81,9 @@ def train_model(networks, optimizers, dataloader, epoch=None, **options):
             cosine = torch.mm(features_gen, features_gen.t())
             mask = Variable((torch.ones(cosine.size()) - torch.diag(torch.ones(nsample))).cuda())
             pt_loss = torch.sum((cosine * mask) ** 2) / (nsample * (nsample + 1))
+            pt_loss /= (1024 * 1024)
 
-            errG = 100 * fm_loss + .00001 * pt_loss
+            errG = fm_loss + pt_loss
 
             errG.backward()
             optimizerG.step()
@@ -108,7 +110,7 @@ def train_model(networks, optimizers, dataloader, epoch=None, **options):
         augmented_logits = F.pad(real_logits, pad=(0,1))
         augmented_labels = F.pad(positive_labels, pad=(0,1))
         log_likelihood = F.log_softmax(augmented_logits, dim=1) * augmented_labels
-        errC = -log_likelihood.mean()
+        errC = -log_likelihood.mean() * 100
         errC.backward()
 
         optimizerD.step()
@@ -139,6 +141,8 @@ def train_model(networks, optimizers, dataloader, epoch=None, **options):
             #print("errHingePos: {:.3f}".format(errHingePos.data[0]))
             print("err_fake {:.3f}".format(err_fake.data[0]))
             #print("err_real {:.3f}".format(err_real.data[0]))
+            print("fm_loss {:.3f}".format(fm_loss.data[0]))
+            print("pt_loss {:.3f}".format(pt_loss.data[0]))
             print("Accuracy {}/{}".format(correct, total))
     return True
 
