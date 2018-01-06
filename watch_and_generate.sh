@@ -1,5 +1,5 @@
 #!/bin/bash
-RESULT_DIR=/mnt/results/svhn_test5
+RESULT_DIR=/mnt/results/svhn_test71
 
 echo "Watching $RESULT_DIR..."
 while true; do

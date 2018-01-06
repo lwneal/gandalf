@@ -113,6 +113,23 @@ def train_model(networks, optimizers, dataloader, epoch=None, **options):
         errC = -log_likelihood.mean() * 100
         errC.backward()
 
+        # Classify human-labeled active learning data
+        if use_aux_dataset:
+            aux_images, aux_labels = aux_dataloader.get_batch()
+            aux_images = Variable(aux_images)
+            aux_labels = Variable(aux_labels)
+            aux_logits = netD(aux_images)
+            aux_positive_labels = (aux_labels == 1).type(torch.cuda.FloatTensor)
+            aux_negative_labels = (aux_labels == -1).type(torch.cuda.FloatTensor)
+            errHingeNegAux = F.softplus(aux_logits) * aux_negative_labels
+            errHingePosAux = F.softplus(-aux_logits) * aux_positive_labels
+            errNLLAux = -log_softmax(aux_logits, dim=1) * aux_positive_labels
+            errHingeNegAux = errHingeNegAux.mean()
+            errHingePosAux = errHingePosAux.mean()
+            errNLLAux = errNLLAux.mean()
+            errCAux = errHingeNegAux + errHingePosAux
+            errCAux.backward()
+
         optimizerD.step()
         ############################
 
