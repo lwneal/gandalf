@@ -63,7 +63,6 @@ def train_model(networks, optimizers, dataloader, epoch=None, **options):
         ############################
         # Generator Updates
         ############################
-        discriminator_per_gen = 2
         if i % discriminator_per_gen == 0:
             netG.zero_grad()
             z = gen_noise(batch_size, latent_size)
@@ -131,7 +130,7 @@ def train_model(networks, optimizers, dataloader, epoch=None, **options):
             errHingeNegAux = errHingeNegAux.mean()
             errHingePosAux = errHingePosAux.mean()
             errNLLAux = errNLLAux.mean()
-            errCAux = errHingeNegAux + errHingePosAux# + errNLLAux
+            errCAux = errHingeNegAux + errHingePosAux # + errNLLAux
             errCAux.backward()
 
         optimizerD.step()
