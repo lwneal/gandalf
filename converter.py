@@ -80,6 +80,7 @@ class LabelConverter(Converter):
         self.labels = get_labels(dataset, label_key)
         self.num_classes = len(self.labels)
         self.idx = {self.labels[i]: i for i in range(self.num_classes)}
+        print("LabelConverter: labels are {}".format(self.labels))
 
     def to_array(self, example):
         return self.idx[example[self.label_key]]
@@ -96,10 +97,11 @@ class FlexibleLabelConverter(Converter):
     def __init__(self, dataset, label_key="label", negative_key="label_n", **kwargs):
         self.label_key = label_key
         self.negative_key = negative_key
-        #self.labels = list(set(get_labels(dataset, label_key) + get_labels(dataset, negative_key)))
-        self.labels = get_labels(dataset, label_key)
+        self.labels = sorted(list(set(get_labels(dataset, label_key) + get_labels(dataset, negative_key))))
+        #self.labels = get_labels(dataset, label_key)
         self.num_classes = len(self.labels)
         self.idx = {self.labels[i]: i for i in range(self.num_classes)}
+        print("FlexibleLabelConverter: labels are {}".format(self.labels))
 
     def to_array(self, example):
         array = np.zeros(self.num_classes)

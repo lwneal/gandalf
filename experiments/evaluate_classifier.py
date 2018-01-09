@@ -52,8 +52,8 @@ if options['comparison_dataset']:
     openset_results = evaluate_openset(networks, dataloader, comparison_dataloader, **options)
     pprint(openset_results)
     new_results[options['fold'] + '_openset'] = openset_results
+    new_results[options['fold']]['active_learning_label_count'] = label_count
 
-new_results[options['fold']]['active_learning_label_count'] = label_count
 
 save_evaluation(new_results, options['result_dir'], options['epoch'])
 
