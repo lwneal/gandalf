@@ -7,6 +7,7 @@ from torch import autograd
 from torch.autograd import Variable
 from torch.nn.functional import softmax, sigmoid, log_softmax
 from torch.nn.functional import nll_loss, cross_entropy
+from vector import gen_noise, clamp_to_unit_sphere
 import imutil
 from imutil import VideoMaker
 
@@ -52,8 +53,11 @@ def generate_grid(networks, dataloader, **options):
 
 # Generates 'counterfactual' images for each class, by gradient descent of the class
 def generate_comparison(networks, dataloader, **options):
+    # ISSUE: Unexpected BatchNorm behavior causes bad output if .eval() is set
+    """
     for net in networks:
         networks[net].eval()
+    """
     netG = networks['generator']
     netD = networks['discriminator']
     result_dir = options['result_dir']
@@ -111,14 +115,9 @@ def generate_images_for_class(networks, dataloader, class_idx, **options):
     target_label[:] = class_idx
     target_label = Variable(target_label).cuda()
 
-    maxval = None  # So speed=.1 works for any classifier
-
     for i in range(max_iters):
         images = netG(z)
         net_y = netD(images)
-        if maxval is None:
-            maxval = net_y.max()
-        net_y /= maxval
         preds = softmax(net_y)
 
         pred_classes = to_np(preds.max(1)[1])
@@ -129,27 +128,14 @@ def generate_images_for_class(networks, dataloader, class_idx, **options):
         print("Class: {} ({:.3f} confidence). Target class {}".format(
             predicted_class_name, pred_confidence, class_idx))
 
-        cf_loss = nll_loss(log_softmax(net_y), target_label)
+        cf_loss = nll_loss(log_softmax(net_y, dim=1), target_label)
 
         dc_dz = autograd.grad(cf_loss, z, cf_loss, retain_graph=True)[0]
         z -= dc_dz * speed
-        z /= torch.sqrt(torch.mul(z, z).sum())
-        if all(pred_classes == class_idx) and all(pred_confidences > 0.99):
+        z = clamp_to_unit_sphere(z)
+        if all(pred_classes == class_idx) and all(pred_confidences > 0.75):
             break
     return images.data.cpu().numpy()
-    
-    
-def gen_noise(K, latent_size):
-    noise = torch.zeros((K, latent_size))
-    noise.normal_(0, 1)
-    noise = clamp_to_unit_sphere(noise)
-    return noise
-
-
-def clamp_to_unit_sphere(x):
-    norm = torch.norm(x, p=2, dim=1)
-    norm = norm.expand(1, x.size()[0])
-    return torch.mul(x, 1/norm.t())
 
 
 # Trajectories are written to result_dir/trajectories/

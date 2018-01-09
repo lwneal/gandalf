@@ -11,6 +11,7 @@ from torch.nn.functional import nll_loss, binary_cross_entropy
 import torch.nn.functional as F
 from torch.nn.functional import softmax, log_softmax, relu
 import imutil
+from vector import gen_noise, clamp_to_unit_sphere
 from dataloader import FlexibleCustomDataloader
 
 np.random.seed(123)
@@ -35,9 +36,8 @@ def train_model(networks, optimizers, dataloader, epoch=None, **options):
     latent_size = options['latent_size']
     discriminator_per_gen = options['discriminator_per_gen']
 
-    noise = Variable(torch.FloatTensor(batch_size, latent_size).cuda())
     fixed_noise = Variable(torch.FloatTensor(batch_size, latent_size).normal_(0, 1)).cuda()
-    clamp_to_unit_sphere(fixed_noise)
+    fixed_noise = clamp_to_unit_sphere(fixed_noise)
     demo_images, demo_labels = next(d for d in dataloader)
 
     dataset_filename = os.path.join(options['result_dir'], 'aux_dataset.dataset')
@@ -66,7 +66,9 @@ def train_model(networks, optimizers, dataloader, epoch=None, **options):
         discriminator_per_gen = 2
         if i % discriminator_per_gen == 0:
             netG.zero_grad()
-            gen_images = netG(gen_noise(noise))
+            z = gen_noise(batch_size, latent_size)
+            z = Variable(z).cuda()
+            gen_images = netG(z)
             
             # Feature Matching: Average of one batch of real vs. generated
             features_real = netD(images, return_features=True)
@@ -95,7 +97,9 @@ def train_model(networks, optimizers, dataloader, epoch=None, **options):
         netD.zero_grad()
 
         # Classify generated examples as the K+1th "open" class
-        fake_images = netG(gen_noise(noise)).detach()
+        z = gen_noise(batch_size, latent_size)
+        z = Variable(z).cuda()
+        fake_images = netG(z).detach()
         fake_logits = netD(fake_images)
         augmented_logits = F.pad(fake_logits, pad=(0,1))
         log_prob_fake = F.log_softmax(augmented_logits, dim=1)
@@ -163,15 +167,3 @@ def train_model(networks, optimizers, dataloader, epoch=None, **options):
             print("Accuracy {}/{}".format(correct, total))
     return True
 
-
-def gen_noise(noise, spherical_noise=True):
-    noise.data.normal_(0, 1)
-    if spherical_noise:
-        noise = clamp_to_unit_sphere(noise)
-    return noise
-
-
-def clamp_to_unit_sphere(x):
-    norm = torch.norm(x, p=2, dim=1)
-    norm = norm.expand(1, x.size()[0])
-    return torch.mul(x, 1/norm.t())
