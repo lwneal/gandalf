@@ -14,7 +14,7 @@ def weights_init(m):
 
 
 class generator32(nn.Module):
-    def __init__(self, latent_size=100, **kwargs):
+    def __init__(self, latent_size=100, batch_size=64, **kwargs):
         super(self.__class__, self).__init__()
         self.fc1 = nn.Linear(latent_size, 4*4*512)
         self.conv2 = nn.ConvTranspose2d(   512,      256, 4, stride=2, padding=1, bias=False)
@@ -25,11 +25,12 @@ class generator32(nn.Module):
         self.bn2 = nn.BatchNorm2d(256)
         self.bn3 = nn.BatchNorm2d(128)
 
+        self.batch_size = batch_size
         self.apply(weights_init)
         self.cuda()
 
     def forward(self, x):
-        batch_size=64
+        batch_size = x.shape[0]
         x = self.fc1(x)
         x = nn.ReLU(inplace=True)(x)
         x = self.bn0(x)
