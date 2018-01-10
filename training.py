@@ -121,6 +121,7 @@ def train_model(networks, optimizers, dataloader, epoch=None, **options):
             aux_images = Variable(aux_images)
             aux_labels = Variable(aux_labels)
             aux_logits = netD(aux_images)
+            # Use all aux_dataset as negative examples for netD
             """
             aux_positive_labels = (aux_labels == 1).type(torch.cuda.FloatTensor)
             aux_negative_labels = (aux_labels == -1).type(torch.cuda.FloatTensor)
@@ -133,8 +134,10 @@ def train_model(networks, optimizers, dataloader, epoch=None, **options):
             errCAux = errHingeNegAux + errHingePosAux # + errNLLAux
             import pdb; pdb.set_trace()
             """
-            # Use all aux_dataset as negative examples for netD
-            errCAux = F.softplus(log_sum_exp(aux_logits)).mean()
+            augmented_aux_logits = F.pad(aux_logits, pad=(0,1))
+            aux_log_prob = F.log_softmax(augmented_aux_logits, dim=1)
+            aux_log_prob_fake = aux_log_prob[:, -1]
+            errCAux = -aux_log_prob_fake.mean()
             errCAux.backward()
 
         optimizerD.step()
