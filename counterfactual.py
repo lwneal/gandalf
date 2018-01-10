@@ -118,7 +118,7 @@ def generate_images_for_class(networks, dataloader, class_idx, **options):
     for i in range(max_iters):
         images = netG(z)
         net_y = netD(images)
-        preds = softmax(net_y)
+        preds = softmax(net_y, dim=1)
 
         pred_classes = to_np(preds.max(1)[1])
         predicted_class = pred_classes[0]
