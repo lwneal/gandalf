@@ -73,7 +73,6 @@ def train_model(networks, optimizers, dataloader, epoch=None, **options):
             features_real = netD(images, return_features=True)
             features_gen = netD(gen_images, return_features=True)
             fm_loss = torch.mean((features_real.mean(0) - features_gen.mean(0)) ** 2)
-            fm_loss *= 10
 
             # Pull-away term from https://github.com/kimiyoung/ssl_bad_gan
             nsample = features_gen.size(0)
@@ -84,7 +83,7 @@ def train_model(networks, optimizers, dataloader, epoch=None, **options):
             pt_loss = torch.sum((cosine * mask) ** 2) / (nsample * (nsample + 1))
             pt_loss /= (1024 * 1024)
 
-            errG = fm_loss + pt_loss
+            errG = fm_loss + pt_loss * .0001
 
             errG.backward()
             optimizerG.step()
@@ -104,7 +103,7 @@ def train_model(networks, optimizers, dataloader, epoch=None, **options):
         log_prob_fake = F.log_softmax(augmented_logits, dim=1)
         err_fake = -log_prob_fake[:, -1].mean()
         #err_fake = (log_sum_exp(fake_logits)).mean()
-        errD = err_fake
+        errD = err_fake * .1
         errD.backward()
 
         # Classify real examples into the correct K classes
@@ -113,7 +112,7 @@ def train_model(networks, optimizers, dataloader, epoch=None, **options):
         augmented_logits = F.pad(real_logits, pad=(0,1))
         augmented_labels = F.pad(positive_labels, pad=(0,1))
         log_likelihood = F.log_softmax(augmented_logits, dim=1) * augmented_labels
-        errC = -log_likelihood.mean() * 100
+        errC = -log_likelihood.mean() * 10
         errC.backward()
 
         # Classify human-labeled active learning data
