@@ -16,10 +16,11 @@ def weights_init(m):
 class generator32(nn.Module):
     def __init__(self, latent_size=100, **kwargs):
         super(self.__class__, self).__init__()
-        self.conv1 = nn.ConvTranspose2d(latent_size,     512, 4, 1, 0, bias=False)
-        self.conv2 = nn.ConvTranspose2d(   512,    256, 4, 2, 1, bias=False)
-        self.conv3 = nn.ConvTranspose2d(   256,    128, 4, 2, 1, bias=False)
-        self.conv4 = nn.ConvTranspose2d(   128,     3, 4, 2, 1, bias=False)
+        self.fc1 = nn.Linear(latent_size, 4*4*512)
+        self.conv2 = nn.ConvTranspose2d(   512,      256, 4, stride=2, padding=1, bias=False)
+        self.conv3 = nn.ConvTranspose2d(   256,      128, 4, stride=2, padding=1, bias=False)
+        self.conv4 = nn.ConvTranspose2d(   128,        3, 4, stride=2, padding=1, bias=False)
+        self.bn0 = nn.BatchNorm1d(4*4*512)
         self.bn1 = nn.BatchNorm2d(512)
         self.bn2 = nn.BatchNorm2d(256)
         self.bn3 = nn.BatchNorm2d(128)
@@ -28,10 +29,11 @@ class generator32(nn.Module):
         self.cuda()
 
     def forward(self, x):
-        x = x.unsqueeze(-1).unsqueeze(-1)
-        x = self.conv1(x)
-        x = self.bn1(x)
-        x = nn.LeakyReLU(0.2, inplace=True)(x)
+        batch_size=64
+        x = self.fc1(x)
+        x = nn.ReLU(inplace=True)(x)
+        x = self.bn0(x)
+        x = x.resize(batch_size, 512, 4, 4)
         x = self.conv2(x)
         x = self.bn2(x)
         x = nn.LeakyReLU(0.2, inplace=True)(x)
