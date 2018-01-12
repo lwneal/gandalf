@@ -1,5 +1,5 @@
 #!/bin/bash
-RESULT_DIR=/mnt/results/svhn_big_space
+RESULT_DIR=/mnt/results/svhn_test87
 
 echo "Watching $RESULT_DIR..."
 while true; do
@@ -10,6 +10,6 @@ while true; do
     echo Out of $TRAJECTORY_COUNT trajectories, $LABEL_COUNT are labeled
 
     if (( $TRAJECTORY_COUNT < $(($LABEL_COUNT + 2)) )); then
-        python experiments/generate_counterfactual.py --result_dir $RESULT_DIR
+        python experiments/generate_counterfactual.py --result_dir $RESULT_DIR --speed 0 --counterfactual_max_iters 1
     fi
 done

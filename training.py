@@ -47,9 +47,11 @@ def train_model(networks, optimizers, dataloader, epoch=None, **options):
         'batch_size': options['batch_size'],
         'image_size': options['image_size'],
     }
+    use_aux_dataset = True
     if use_aux_dataset:
         print("Enabling aux dataset")
-        aux_dataloader = FlexibleCustomDataloader(**aux_kwargs)
+        #aux_dataloader = FlexibleCustomDataloader(**aux_kwargs)
+        aux_dataloader = FlexibleCustomDataloader('/mnt/data/svhn-59.dataset')
 
     start_time = time.time()
     correct = 0
@@ -63,7 +65,7 @@ def train_model(networks, optimizers, dataloader, epoch=None, **options):
         ############################
         # Generator Updates
         ############################
-        if i % discriminator_per_gen == 0:
+        if False and i % discriminator_per_gen == 0:
             netG.zero_grad()
             z = gen_noise(batch_size, latent_size)
             z = Variable(z).cuda()
@@ -94,6 +96,7 @@ def train_model(networks, optimizers, dataloader, epoch=None, **options):
         ###########################
         netD.zero_grad()
 
+        """
         # Classify generated examples as the K+1th "open" class
         z = gen_noise(batch_size, latent_size)
         z = Variable(z).cuda()
@@ -105,6 +108,7 @@ def train_model(networks, optimizers, dataloader, epoch=None, **options):
         #err_fake = (log_sum_exp(fake_logits)).mean()
         errD = err_fake * .1
         errD.backward()
+        """
 
         # Classify real examples into the correct K classes
         real_logits = netD(images)
@@ -112,33 +116,19 @@ def train_model(networks, optimizers, dataloader, epoch=None, **options):
         augmented_logits = F.pad(real_logits, pad=(0,1))
         augmented_labels = F.pad(positive_labels, pad=(0,1))
         log_likelihood = F.log_softmax(augmented_logits, dim=1) * augmented_labels
-        errC = -log_likelihood.mean() * 10
+        errC = -log_likelihood.mean()
         errC.backward()
 
-        # Classify human-labeled active learning data
+        # Aux dataset now includes ONLY images deemed to be "open set"
         if use_aux_dataset:
             aux_images, aux_labels = aux_dataloader.get_batch()
             aux_images = Variable(aux_images)
             aux_labels = Variable(aux_labels)
+
             aux_logits = netD(aux_images)
-            # Use all aux_dataset as negative examples for netD
-            aux_positive_labels = (aux_labels == 1).type(torch.cuda.FloatTensor)
-            aux_negative_labels = (aux_labels == -1).type(torch.cuda.FloatTensor)
-            """
-            errHingeNegAux = F.softplus(aux_logits) * aux_negative_labels
-            errHingePosAux = F.softplus(-aux_logits) * aux_positive_labels
-            errNLLAux = -log_softmax(aux_logits, dim=1) * aux_positive_labels
-            errHingeNegAux = errHingeNegAux.mean()
-            errHingePosAux = errHingePosAux.mean()
-            errNLLAux = errNLLAux.mean()
-            errCAux = errHingeNegAux + errHingePosAux # + errNLLAux
-            import pdb; pdb.set_trace()
-            """
-            augmented_aux_logits = F.pad(aux_logits, pad=(0,1))
-            aux_log_prob = F.log_softmax(augmented_aux_logits, dim=1) 
-            neg, _ = aux_labels.min(dim=1)
-            aux_log_prob_fake = aux_log_prob[:, -1]* neg
-            errCAux = aux_log_prob_fake.mean()
+            augmented_logits = F.pad(aux_logits, pad=(0,1))
+            fake_log_likelihood = F.log_softmax(augmented_logits, dim=1)[:,-1]
+            errCAux = -fake_log_likelihood.mean()
             errCAux.backward()
 
         optimizerD.step()
@@ -157,8 +147,8 @@ def train_model(networks, optimizers, dataloader, epoch=None, **options):
             imutil.show(img, filename=filename, resize_to=(512,512))
 
             bps = (i+1) / (time.time() - start_time)
-            ed = errD.data[0]
-            eg = errG.data[0]
+            ed = 0#errD.data[0]
+            eg = 0#errG.data[0]
             ec = errC.data[0]
             acc = correct / max(total, 1)
             msg = '[{}][{}/{}] D:{:.3f} G:{:.3f} C:{:.3f} Acc. {:.3f} {:.3f} batch/sec'
@@ -167,10 +157,10 @@ def train_model(networks, optimizers, dataloader, epoch=None, **options):
                   ed, eg, ec, acc, bps)
             print(msg)
             #print("errHingePos: {:.3f}".format(errHingePos.data[0]))
-            print("err_fake {:.3f}".format(err_fake.data[0]))
+            #print("err_fake {:.3f}".format(err_fake.data[0]))
             #print("err_real {:.3f}".format(err_real.data[0]))
-            print("fm_loss {:.3f}".format(fm_loss.data[0]))
-            print("pt_loss {:.3f}".format(pt_loss.data[0]))
+            #print("fm_loss {:.3f}".format(fm_loss.data[0]))
+            #print("pt_loss {:.3f}".format(pt_loss.data[0]))
             print("Accuracy {}/{}".format(correct, total))
     return True
 
