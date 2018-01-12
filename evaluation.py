@@ -31,7 +31,6 @@ def evaluate_classifier(networks, dataloader, open_set_dataloader=None, **option
     netG = networks['generator']
     netD = networks['discriminator']
     result_dir = options['result_dir']
-    batch_size = options['batch_size']
     image_size = options['image_size']
     latent_size = options['latent_size']
 
@@ -112,7 +111,6 @@ def evaluate_openset(networks, dataloader_on, dataloader_off, **options):
     for net in networks.values():
         net.eval()
     result_dir = options['result_dir']
-    batch_size = options['batch_size']
     image_size = options['image_size']
     latent_size = options['latent_size']
 
