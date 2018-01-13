@@ -21,9 +21,11 @@ class generator32(nn.Module):
         self.conv3 = nn.ConvTranspose2d(   256,      128, 4, stride=2, padding=1, bias=False)
         self.conv4 = nn.ConvTranspose2d(   128,        3, 4, stride=2, padding=1, bias=False)
         self.bn0 = nn.BatchNorm1d(4*4*512)
-        self.bn1 = nn.BatchNorm2d(512)
+        self.dr1 = nn.Dropout2d(p=0.2)
         self.bn2 = nn.BatchNorm2d(256)
+        self.dr2 = nn.Dropout2d(p=0.2)
         self.bn3 = nn.BatchNorm2d(128)
+        self.dr3 = nn.Dropout2d(p=0.2)
 
         self.batch_size = batch_size
         self.apply(weights_init)
@@ -32,14 +34,15 @@ class generator32(nn.Module):
     def forward(self, x):
         batch_size = x.shape[0]
         x = self.fc1(x)
-        x = nn.ReLU(inplace=True)(x)
-        x = self.bn0(x)
+        x = nn.LeakyReLU(0.2, inplace=True)(x)
         x = x.resize(batch_size, 512, 4, 4)
         x = self.conv2(x)
         x = self.bn2(x)
+        x = self.dr2(x)
         x = nn.LeakyReLU(0.2, inplace=True)(x)
         x = self.conv3(x)
         x = self.bn3(x)
+        x = self.dr3(x)
         x = nn.LeakyReLU(0.2, inplace=True)(x)
         x = self.conv4(x)
         x = nn.Sigmoid()(x)
