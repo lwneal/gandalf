@@ -47,10 +47,7 @@ def train_model(networks, optimizers, dataloader, epoch=None, **options):
         'batch_size': options['batch_size'],
         'image_size': options['image_size'],
     }
-    use_aux_dataset = True
     if use_aux_dataset:
-        print("Enabling aux dataset")
-        #aux_dataloader = FlexibleCustomDataloader(**aux_kwargs)
         aux_dataloader = FlexibleCustomDataloader('/mnt/data/svhn-59.dataset')
 
     start_time = time.time()
@@ -65,7 +62,7 @@ def train_model(networks, optimizers, dataloader, epoch=None, **options):
         ############################
         # Generator Updates
         ############################
-        if False and i % discriminator_per_gen == 0:
+        if i % discriminator_per_gen == 0:
             netG.zero_grad()
             z = gen_noise(batch_size, latent_size)
             z = Variable(z).cuda()
@@ -96,7 +93,6 @@ def train_model(networks, optimizers, dataloader, epoch=None, **options):
         ###########################
         netD.zero_grad()
 
-        """
         # Classify generated examples as the K+1th "open" class
         z = gen_noise(batch_size, latent_size)
         z = Variable(z).cuda()
@@ -108,7 +104,6 @@ def train_model(networks, optimizers, dataloader, epoch=None, **options):
         #err_fake = (log_sum_exp(fake_logits)).mean()
         errD = err_fake * .1
         errD.backward()
-        """
 
         # Classify real examples into the correct K classes
         real_logits = netD(images)
