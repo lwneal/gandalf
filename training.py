@@ -50,39 +50,36 @@ def train_gan(networks, optimizers, dataloader, epoch=None, **options):
         ############################
         # Generator Updates
         ############################
-        if i % discriminator_per_gen == 0:
-            netG.zero_grad()
-            z = gen_noise(batch_size, latent_size)
-            z = Variable(z).cuda()
-            gen_images = netG(z)
-            
-            """
-            # Feature Matching: Average of one batch of real vs. generated
-            features_real = netD(images, return_features=True)
-            features_gen = netD(gen_images, return_features=True)
-            fm_loss = torch.mean((features_real.mean(0) - features_gen.mean(0)) ** 2)
+        netG.zero_grad()
+        z = gen_noise(batch_size, latent_size)
+        z = Variable(z).cuda()
+        gen_images = netG(z)
+        
+        # Feature Matching: Average of one batch of real vs. generated
+        features_real = netD(images, return_features=True)
+        features_gen = netD(gen_images, return_features=True)
+        fm_loss = torch.mean((features_real.mean(0) - features_gen.mean(0)) ** 2)
 
-            # Pull-away term from https://github.com/kimiyoung/ssl_bad_gan
-            nsample = features_gen.size(0)
-            denom = features_gen.norm(dim=0).expand_as(features_gen)
-            gen_feat_norm = features_gen / denom
-            cosine = torch.mm(features_gen, features_gen.t())
-            mask = Variable((torch.ones(cosine.size()) - torch.diag(torch.ones(nsample))).cuda())
-            pt_loss = torch.sum((cosine * mask) ** 2) / (nsample * (nsample + 1))
-            pt_loss /= (1024 * 1024)
-            """
+        # Pull-away term from https://github.com/kimiyoung/ssl_bad_gan
+        nsample = features_gen.size(0)
+        denom = features_gen.norm(dim=0).expand_as(features_gen)
+        gen_feat_norm = features_gen / denom
+        cosine = torch.mm(features_gen, features_gen.t())
+        mask = Variable((torch.ones(cosine.size()) - torch.diag(torch.ones(nsample))).cuda())
+        pt_loss = torch.sum((cosine * mask) ** 2) / (nsample * (nsample + 1))
+        pt_loss /= (1024 * 1024)
 
-            #errG = fm_loss + pt_loss * .001
-            #errG = pt_loss * .001
+        #errG = fm_loss * .01 + pt_loss * .001
+        errG = fm_loss * .01
 
-            # Classify generated examples as "not fake"
-            gen_logits = netD(gen_images)
-            augmented_logits = F.pad(-gen_logits, pad=(0,1))
-            log_prob_gen = F.log_softmax(augmented_logits, dim=1)[:, -1]
-            errG = -log_prob_gen.mean()
+        # Classify generated examples as "not fake"
+        gen_logits = netD(gen_images)
+        augmented_logits = F.pad(-gen_logits, pad=(0,1))
+        log_prob_gen = F.log_softmax(augmented_logits, dim=1)[:, -1]
+        errG += -log_prob_gen.mean()
 
-            errG.backward()
-            optimizerG.step()
+        errG.backward()
+        optimizerG.step()
         ###########################
 
         ############################
@@ -98,7 +95,7 @@ def train_gan(networks, optimizers, dataloader, epoch=None, **options):
         augmented_logits = F.pad(fake_logits, pad=(0,1))
         log_prob_fake = F.log_softmax(augmented_logits, dim=1)[:, -1]
         errD = -log_prob_fake.mean()
-
+        errD.backward()
 
         # Classify real examples into the correct K classes
         real_logits = netD(images)
@@ -138,8 +135,8 @@ def train_gan(networks, optimizers, dataloader, epoch=None, **options):
             print("log_prob_real {:.3f}".format(log_prob_real.mean().data[0]))
             print("log_prob_fake {:.3f}".format(log_prob_fake.mean().data[0]))
             print("log_prob_gen {:.3f}".format(log_prob_gen.mean().data[0]))
-            #print("pt_loss {:.3f}".format(pt_loss.data[0]))
-            #print("pt_loss {:.3f}".format(pt_loss.data[0]))
+            print("pt_loss {:.3f}".format(pt_loss.data[0]))
+            print("fm_loss {:.3f}".format(fm_loss.data[0]))
             print("Accuracy {}/{}".format(correct, total))
     return True
 
