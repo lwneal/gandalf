@@ -77,8 +77,8 @@ def train_gan(networks, optimizers, dataloader, epoch=None, **options):
 
             # Classify generated examples as "not fake"
             gen_logits = netD(gen_images)
-            augmented_logits = F.pad(gen_logits, pad=(0,1))[:, -2:]
-            log_prob_gen = F.log_softmax(augmented_logits, dim=1)[:, 0]
+            augmented_logits = F.pad(-gen_logits, pad=(0,1))
+            log_prob_gen = F.log_softmax(augmented_logits, dim=1)[:, -1]
             errG = -log_prob_gen.mean()
 
             errG.backward()
@@ -90,25 +90,23 @@ def train_gan(networks, optimizers, dataloader, epoch=None, **options):
         ###########################
         netD.zero_grad()
 
-        # Classify generated examples as the K+1th "open" class
+        # Classify generated examples as "fake" (ie the K+1th "open" class)
         z = gen_noise(batch_size, latent_size)
         z = Variable(z).cuda()
         fake_images = netG(z).detach()
         fake_logits = netD(fake_images)
-        augmented_logits = F.pad(fake_logits, pad=(0,1))[:, -2:]
-        log_prob_fake = F.log_softmax(augmented_logits, dim=1)[:, 1]
+        augmented_logits = F.pad(fake_logits, pad=(0,1))
+        log_prob_fake = F.log_softmax(augmented_logits, dim=1)[:, -1]
         errD = -log_prob_fake.mean()
-        errD.backward()
-        optimizerD.step()
 
-        netD.zero_grad()
+
         # Classify real examples into the correct K classes
         real_logits = netD(images)
         positive_labels = (labels == 1).type(torch.cuda.FloatTensor)
-        augmented_logits = F.pad(real_logits, pad=(0,1))[:, -2:]
+        augmented_logits = F.pad(real_logits, pad=(0,1))
         augmented_labels = F.pad(positive_labels, pad=(0,1))
-        #log_prob_real = F.log_softmax(augmented_logits, dim=1) * augmented_labels
-        log_prob_real = F.log_softmax(augmented_logits, dim=1)[:, 0]
+        log_prob_real = F.log_softmax(augmented_logits, dim=1) * augmented_labels
+        #log_prob_real = F.log_softmax(augmented_logits, dim=1)[:, 0]
         errC = -log_prob_real.mean()
         errC.backward()
 
