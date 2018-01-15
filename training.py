@@ -67,10 +67,9 @@ def train_gan(networks, optimizers, dataloader, epoch=None, **options):
         cosine = torch.mm(features_gen, features_gen.t())
         mask = Variable((torch.ones(cosine.size()) - torch.diag(torch.ones(nsample))).cuda())
         pt_loss = torch.sum((cosine * mask) ** 2) / (nsample * (nsample + 1))
-        pt_loss /= (1024 * 1024)
+        pt_loss /= (128 * 128)
 
-        #errG = fm_loss * .01 + pt_loss * .001
-        errG = fm_loss * .01
+        errG = fm_loss + pt_loss
 
         # Classify generated examples as "not fake"
         gen_logits = netD(gen_images)

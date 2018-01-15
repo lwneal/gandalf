@@ -88,7 +88,7 @@ class multiclassDiscriminator32(nn.Module):
         self.bn8 = nn.BatchNorm2d(128)
         self.bn9 = nn.BatchNorm2d(128)
 
-        self.fc1 = nn.Linear(128, num_classes)
+        self.fc1 = nn.Linear(128*4*4, num_classes)
         self.dr1 = nn.Dropout2d(0.2)
         self.dr2 = nn.Dropout2d(0.2)
         self.dr3 = nn.Dropout2d(0.2)
@@ -151,8 +151,8 @@ class multiclassDiscriminator32(nn.Module):
         x = self.bn9(x)
         x = nn.LeakyReLU(0.2, inplace=True)(x)
 
-        # Global mean pooling
-        x = x.mean(-1).mean(-1)
+        #x = x.mean(-1).mean(-1) # Global mean pooling
+
         x = x.view(batch_size, -1)
         if return_features:
             return x
