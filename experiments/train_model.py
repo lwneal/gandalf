@@ -60,7 +60,7 @@ try:
             optimizer.param_groups[0]['lr'] = options['lr'] * (options['decay'] ** min(epoch, MAX_EPOCH))
         """
 
-        video_filename = train_model(networks, optimizers, dataloader, epoch=epoch, **options)
+        video_filename = train_gan(networks, optimizers, dataloader, epoch=epoch, **options)
         save_networks(networks, epoch, options['result_dir'])
 finally:
     release_lock(options['result_dir'])

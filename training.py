@@ -23,7 +23,7 @@ def log_sum_exp(inputs, dim=None, keepdim=False):
     return inputs - log_softmax(inputs, dim=1)
 
 
-def train_model(networks, optimizers, dataloader, epoch=None, **options):
+def train_gan(networks, optimizers, dataloader, epoch=None, **options):
     for net in networks.values():
         net.train()
     netD = networks['discriminator']
