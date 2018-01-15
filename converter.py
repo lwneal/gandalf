@@ -51,7 +51,7 @@ class ImageConverter(Converter):
             filename = os.path.join(DATA_DIR, filename)
         box = example.get('box') if self.bounding_box else None
         # HACK
-        box = (.25, .75, 0, 1)
+        #box = (.25, .75, 0, 1)
         img = imutil.decode_jpg(filename, 
                 resize_to=self.img_shape, 
                 crop_to_box=box)

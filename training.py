@@ -38,22 +38,10 @@ def train_gan(networks, optimizers, dataloader, epoch=None, **options):
 
     fixed_noise = Variable(torch.FloatTensor(batch_size, latent_size).normal_(0, 1)).cuda()
     fixed_noise = clamp_to_unit_sphere(fixed_noise)
-    demo_images, demo_labels = next(d for d in dataloader)
-
-    dataset_filename = os.path.join(options['result_dir'], 'aux_dataset.dataset')
-    use_aux_dataset = os.path.exists(dataset_filename) # and options['use_aux_dataset']
-    aux_kwargs = {
-        'dataset': dataset_filename,
-        'batch_size': options['batch_size'],
-        'image_size': options['image_size'],
-    }
-    if use_aux_dataset:
-        aux_dataloader = FlexibleCustomDataloader('/mnt/data/svhn-59.dataset')
 
     start_time = time.time()
     correct = 0
     total = 0
-    margin = 100
 
     for i, (images, class_labels) in enumerate(dataloader):
         images = Variable(images)
@@ -82,7 +70,7 @@ def train_gan(networks, optimizers, dataloader, epoch=None, **options):
             pt_loss = torch.sum((cosine * mask) ** 2) / (nsample * (nsample + 1))
             pt_loss /= (1024 * 1024)
 
-            errG = fm_loss + pt_loss * .0001
+            errG = fm_loss# + pt_loss * .001
 
             errG.backward()
             optimizerG.step()
@@ -100,9 +88,7 @@ def train_gan(networks, optimizers, dataloader, epoch=None, **options):
         fake_logits = netD(fake_images)
         augmented_logits = F.pad(fake_logits, pad=(0,1))
         log_prob_fake = F.log_softmax(augmented_logits, dim=1)
-        err_fake = -log_prob_fake[:, -1].mean()
-        #err_fake = (log_sum_exp(fake_logits)).mean()
-        errD = err_fake * .1
+        errD = -log_prob_fake[:, -1].mean()
         errD.backward()
 
         # Classify real examples into the correct K classes
@@ -113,18 +99,6 @@ def train_gan(networks, optimizers, dataloader, epoch=None, **options):
         log_likelihood = F.log_softmax(augmented_logits, dim=1) * augmented_labels
         errC = -log_likelihood.mean()
         errC.backward()
-
-        # Aux dataset now includes ONLY images deemed to be "open set"
-        if use_aux_dataset:
-            aux_images, aux_labels = aux_dataloader.get_batch()
-            aux_images = Variable(aux_images)
-            aux_labels = Variable(aux_labels)
-
-            aux_logits = netD(aux_images)
-            augmented_logits = F.pad(aux_logits, pad=(0,1))
-            fake_log_likelihood = F.log_softmax(augmented_logits, dim=1)[:,-1]
-            errCAux = -fake_log_likelihood.mean()
-            errCAux.backward()
 
         optimizerD.step()
         ############################
@@ -142,6 +116,79 @@ def train_gan(networks, optimizers, dataloader, epoch=None, **options):
             imutil.show(img, filename=filename, resize_to=(512,512))
 
             bps = (i+1) / (time.time() - start_time)
+            ed = errD.data[0]
+            eg = errG.data[0]
+            ec = errC.data[0]
+            acc = correct / max(total, 1)
+            msg = '[{}][{}/{}] D:{:.3f} G:{:.3f} C:{:.3f} Acc. {:.3f} {:.3f} batch/sec'
+            msg = msg.format(
+                  epoch, i+1, len(dataloader),
+                  ed, eg, ec, acc, bps)
+            print(msg)
+            print("fm_loss {:.3f}".format(fm_loss.data[0]))
+            print("pt_loss {:.3f}".format(pt_loss.data[0]))
+            print("Accuracy {}/{}".format(correct, total))
+    return True
+
+
+def train_classifier(networks, optimizers, dataloader, epoch=None, **options):
+    for net in networks.values():
+        net.train()
+    netD = networks['discriminator']
+    optimizerD = optimizers['discriminator']
+    result_dir = options['result_dir']
+    batch_size = options['batch_size']
+    image_size = options['image_size']
+    latent_size = options['latent_size']
+
+    # Hack: use a ground-truth dataset to test
+    dataset_filename = '/mnt/data/svhn-59.dataset'
+    #dataset_filename = os.path.join(options['result_dir'], 'aux_dataset.dataset')
+    aux_dataloader = FlexibleCustomDataloader(dataset_filename, batch_size=batch_size, image_size=image_size)
+
+    start_time = time.time()
+    correct = 0
+    total = 0
+
+    for i, (images, class_labels) in enumerate(dataloader):
+        images = Variable(images)
+        labels = Variable(class_labels)
+
+        ############################
+        # Discriminator Updates
+        ###########################
+        netD.zero_grad()
+
+        # Classify real examples into the correct K classes
+        real_logits = netD(images)
+        positive_labels = (labels == 1).type(torch.cuda.FloatTensor)
+        augmented_logits = F.pad(real_logits, pad=(0,1))
+        augmented_labels = F.pad(positive_labels, pad=(0,1))
+        log_likelihood = F.log_softmax(augmented_logits, dim=1) * augmented_labels
+        errC = -log_likelihood.mean()
+        errC.backward()
+
+        # Classify the generated examples into the "open set"
+        aux_images, aux_labels = aux_dataloader.get_batch()
+        aux_images = Variable(aux_images)
+        aux_labels = Variable(aux_labels)
+        aux_logits = netD(aux_images)
+        augmented_logits = F.pad(aux_logits, pad=(0,1))
+        fake_log_likelihood = F.log_softmax(augmented_logits, dim=1)[:,-1]
+        errCAux = -fake_log_likelihood.mean()
+        errCAux.backward()
+
+        optimizerD.step()
+        ############################
+
+        # Keep track of accuracy on positive-labeled examples for monitoring
+        _, pred_idx = real_logits.max(1)
+        _, label_idx = labels.max(1)
+        correct += sum(pred_idx == label_idx).data.cpu().numpy()[0]
+        total += len(labels)
+
+        if i % 100 == 0:
+            bps = (i+1) / (time.time() - start_time)
             ed = 0#errD.data[0]
             eg = 0#errG.data[0]
             ec = errC.data[0]
@@ -151,11 +198,6 @@ def train_gan(networks, optimizers, dataloader, epoch=None, **options):
                   epoch, i+1, len(dataloader),
                   ed, eg, ec, acc, bps)
             print(msg)
-            #print("errHingePos: {:.3f}".format(errHingePos.data[0]))
-            #print("err_fake {:.3f}".format(err_fake.data[0]))
-            #print("err_real {:.3f}".format(err_real.data[0]))
-            #print("fm_loss {:.3f}".format(fm_loss.data[0]))
-            #print("pt_loss {:.3f}".format(pt_loss.data[0]))
             print("Accuracy {}/{}".format(correct, total))
     return True
 
