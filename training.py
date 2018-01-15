@@ -151,8 +151,8 @@ def train_classifier(networks, optimizers, dataloader, epoch=None, **options):
     latent_size = options['latent_size']
 
     # Hack: use a ground-truth dataset to test
-    dataset_filename = '/mnt/data/svhn-59.dataset'
-    #dataset_filename = os.path.join(options['result_dir'], 'aux_dataset.dataset')
+    #dataset_filename = '/mnt/data/svhn-59.dataset'
+    dataset_filename = os.path.join(options['result_dir'], 'aux_dataset.dataset')
     aux_dataloader = FlexibleCustomDataloader(dataset_filename, batch_size=batch_size, image_size=image_size)
 
     start_time = time.time()
