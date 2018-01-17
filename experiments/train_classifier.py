@@ -39,9 +39,11 @@ acquire_lock(options['result_dir'])
 try:
     for epoch in range(start_epoch, start_epoch + options['epochs']):
         # Apply learning rate decay
+        """
         for name, optimizer in optimizers.items():
             MAX_EPOCH = 100
             optimizer.param_groups[0]['lr'] = options['lr'] * (options['decay'] ** min(epoch, MAX_EPOCH))
+        """
         video_filename = train_classifier(networks, optimizers, dataloader, epoch=epoch, **options)
         save_networks(networks, epoch, options['result_dir'])
 finally:

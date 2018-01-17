@@ -177,14 +177,17 @@ def train_classifier(networks, optimizers, dataloader, epoch=None, **options):
         errC = -log_likelihood.mean()
         errC.backward()
 
-        # Classify the generated examples into the "open set"
+        # Classify the user-labeled (active learning) examples
         aux_images, aux_labels = aux_dataloader.get_batch()
         aux_images = Variable(aux_images)
         aux_labels = Variable(aux_labels)
         aux_logits = netD(aux_images)
         augmented_logits = F.pad(aux_logits, pad=(0,1))
-        fake_log_likelihood = F.log_softmax(augmented_logits, dim=1)[:,-1]
-        errCAux = -fake_log_likelihood.mean()
+        is_positive = (aux_labels.max(dim=1)[0] == 1).type(torch.FloatTensor).cuda()
+        is_negative = 1 - is_positive
+        fake_log_likelihood = F.log_softmax(augmented_logits, dim=1)[:,-1] * is_negative
+        real_log_likelihood = augmented_logits[:,-1].abs() * is_positive
+        errCAux = -fake_log_likelihood.mean() #- 0.5 * real_log_likelihood.mean()
         errCAux.backward()
 
         optimizerD.step()
@@ -206,6 +209,60 @@ def train_classifier(networks, optimizers, dataloader, epoch=None, **options):
             msg = msg.format(
                   epoch, i+1, len(dataloader),
                   ed, eg, ec, acc, bps)
+            print(msg)
+            print("Accuracy {}/{}".format(correct, total))
+    return True
+
+
+"""
+A baseline one-vs-all classifier for open set image recognition
+"""
+def train_baseline(networks, optimizers, dataloader, epoch=None, **options):
+    for net in networks.values():
+        net.train()
+    netD = networks['discriminator']
+    optimizerD = optimizers['discriminator']
+    result_dir = options['result_dir']
+    batch_size = options['batch_size']
+    image_size = options['image_size']
+    latent_size = options['latent_size']
+
+    start_time = time.time()
+    correct = 0
+    total = 0
+
+    for i, (images, class_labels) in enumerate(dataloader):
+        images = Variable(images)
+        labels = Variable(class_labels)
+
+        ############################
+        # Discriminator Updates
+        ###########################
+        netD.zero_grad()
+
+        # Classify real examples into the correct K classes
+        logits = netD(images)
+        hinge_loss = F.softplus(-logits * labels)
+        errC = hinge_loss.mean()
+        errC.backward()
+
+        optimizerD.step()
+        ############################
+
+        # Keep track of accuracy on positive-labeled examples for monitoring
+        _, pred_idx = logits.max(1)
+        _, label_idx = labels.max(1)
+        correct += sum(pred_idx == label_idx).data.cpu().numpy()[0]
+        total += len(labels)
+
+        if i % 100 == 0:
+            bps = (i+1) / (time.time() - start_time)
+            ec = errC.data[0]
+            acc = correct / max(total, 1)
+            msg = '[{}][{}/{}] Loss:{:.3f} Acc. {:.3f} {:.3f} batch/sec'
+            msg = msg.format(
+                  epoch, i+1, len(dataloader),
+                  ec, acc, bps)
             print(msg)
             print("Accuracy {}/{}".format(correct, total))
     return True
