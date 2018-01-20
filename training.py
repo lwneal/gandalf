@@ -174,9 +174,7 @@ def train_classifier(networks, optimizers, dataloader, epoch=None, **options):
         augmented_logits = F.pad(real_logits, pad=(0,1))
         augmented_labels = F.pad(positive_labels, pad=(0,1))
         log_likelihood = F.log_softmax(augmented_logits, dim=1) * augmented_labels
-        #errC = -log_likelihood.mean()
-        errC = -log_likelihood.mean() * .5
-        errC.backward()
+        errC = -0.5 * log_likelihood.mean()
 
         # Classify the user-labeled (active learning) examples
         aux_images, aux_labels = aux_dataloader.get_batch()
@@ -191,10 +189,10 @@ def train_classifier(networks, optimizers, dataloader, epoch=None, **options):
         fake_log_likelihood = F.log_softmax(augmented_logits, dim=1)[:,-1] * is_negative
         #real_log_likelihood = augmented_logits[:,-1].abs() * is_positive
         real_log_likelihood = (F.log_softmax(augmented_logits, dim=1) * augmented_positive_labels).sum(dim=1)
-        #errCAux = -fake_log_likelihood.mean()
-        errCAux = -fake_log_likelihood.mean() - 0.5 * real_log_likelihood.mean()
-        errCAux.backward()
+        errC -= fake_log_likelihood.mean() 
+        errC -= 0.5 * real_log_likelihood.mean()
 
+        errC.backward()
         optimizerD.step()
         ############################
 

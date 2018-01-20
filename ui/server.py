@@ -232,6 +232,7 @@ def route_label_batch(result_dir):
     return flask.render_template('label_batch.html', **args)
 
 
+# Grid labeling: The human gives a binary 'true' or 'false' label to every image
 @app.route('/grid/<result_dir>')
 def route_label_grid(result_dir):
     filenames = get_unlabeled_trajectories(result_dir, fold='grid', extension='.jpg')
@@ -242,6 +243,19 @@ def route_label_grid(result_dir):
     else:
         args = {'unlabeled_count': 0}
     return flask.render_template('label_grid.html', **args)
+
+
+# Oracle labeling: The human types in the correct class for every input image
+@app.route('/oracle/<result_dir>')
+def route_label_oracle(result_dir):
+    filenames = get_unlabeled_trajectories(result_dir, fold='grid', extension='.jpg')
+    if filenames:
+        filename = random.choice(filenames)
+        args = get_args_batch(filename, result_dir)
+        args['unlabeled_count'] = len(filenames)
+    else:
+        args = {'unlabeled_count': 0}
+    return flask.render_template('label_oracle.html', **args)
 
 
 @app.route('/submit/<result_dir>', methods=['POST'])
