@@ -174,7 +174,8 @@ def train_classifier(networks, optimizers, dataloader, epoch=None, **options):
         augmented_logits = F.pad(real_logits, pad=(0,1))
         augmented_labels = F.pad(positive_labels, pad=(0,1))
         log_likelihood = F.log_softmax(augmented_logits, dim=1) * augmented_labels
-        errC = -log_likelihood.mean()
+        #errC = -log_likelihood.mean()
+        errC = -log_likelihood.mean() * .5
         errC.backward()
 
         # Classify the user-labeled (active learning) examples
@@ -183,11 +184,15 @@ def train_classifier(networks, optimizers, dataloader, epoch=None, **options):
         aux_labels = Variable(aux_labels)
         aux_logits = netD(aux_images)
         augmented_logits = F.pad(aux_logits, pad=(0,1))
+        augmented_labels = F.pad(aux_labels, pad=(0, 1))
+        augmented_positive_labels = (augmented_labels == 1).type(torch.FloatTensor).cuda()
         is_positive = (aux_labels.max(dim=1)[0] == 1).type(torch.FloatTensor).cuda()
         is_negative = 1 - is_positive
         fake_log_likelihood = F.log_softmax(augmented_logits, dim=1)[:,-1] * is_negative
-        real_log_likelihood = augmented_logits[:,-1].abs() * is_positive
-        errCAux = -fake_log_likelihood.mean() #- 0.5 * real_log_likelihood.mean()
+        #real_log_likelihood = augmented_logits[:,-1].abs() * is_positive
+        real_log_likelihood = (F.log_softmax(augmented_logits, dim=1) * augmented_positive_labels).sum(dim=1)
+        #errCAux = -fake_log_likelihood.mean()
+        errCAux = -fake_log_likelihood.mean() - 0.5 * real_log_likelihood.mean()
         errCAux.backward()
 
         optimizerD.step()
