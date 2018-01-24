@@ -118,7 +118,7 @@ class multiclassDiscriminator32(nn.Module):
         """
         batch_size = len(x)
 
-        x = self.dr1(x)
+        #x = self.dr1(x)
         x = self.conv1(x)
         x = self.bn1(x)
         x = nn.LeakyReLU(0.2, inplace=True)(x)
@@ -129,7 +129,7 @@ class multiclassDiscriminator32(nn.Module):
         x = self.bn3(x)
         x = nn.LeakyReLU(0.2, inplace=True)(x)
 
-        x = self.dr2(x)
+        #x = self.dr2(x)
         x = self.conv4(x)
         x = self.bn4(x)
         x = nn.LeakyReLU(0.2, inplace=True)(x)
@@ -140,7 +140,7 @@ class multiclassDiscriminator32(nn.Module):
         x = self.bn6(x)
         x = nn.LeakyReLU(0.2, inplace=True)(x)
 
-        x = self.dr3(x)
+        #x = self.dr3(x)
         x = self.conv7(x)
         x = self.bn7(x)
         x = nn.LeakyReLU(0.2, inplace=True)(x)
