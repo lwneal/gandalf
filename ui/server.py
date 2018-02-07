@@ -10,7 +10,7 @@ from PIL import Image
 NUM_CLASSES = 5
 
 FILES_URL = 'http://files.deeplearninggroup.com'
-RESULTS_PATH = '/mnt/results/'
+RESULTS_PATH = '/mnt/nfs/experiments/'
 app = flask.Flask(__name__)
 
 
